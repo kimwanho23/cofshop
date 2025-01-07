@@ -1,0 +1,110 @@
+package kwh.cofshop.order.service;
+
+import jakarta.persistence.EntityNotFoundException;
+import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
+import kwh.cofshop.item.domain.ItemImg;
+import kwh.cofshop.item.domain.ItemOption;
+import kwh.cofshop.item.repository.ItemOptionRepository;
+import kwh.cofshop.member.domain.Member;
+import kwh.cofshop.order.domain.Order;
+import kwh.cofshop.order.domain.OrderItem;
+import kwh.cofshop.order.domain.OrderState;
+import kwh.cofshop.order.dto.request.OrderCancelRequestDto;
+import kwh.cofshop.order.dto.request.OrderItemRequestDto;
+import kwh.cofshop.order.dto.request.OrderRequestDto;
+import kwh.cofshop.order.dto.response.OrderCancelResponseDto;
+import kwh.cofshop.order.dto.response.OrderResponseDto;
+import kwh.cofshop.order.mapper.OrderItemMapper;
+import kwh.cofshop.order.mapper.OrderMapper;
+import kwh.cofshop.order.repository.OrderRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class OrderService {
+
+    private final OrderRepository orderRepository;
+    private final OrderMapper orderMapper;
+    private final OrderItemMapper orderItemMapper;
+
+    private final ItemOptionRepository itemOptionRepository;
+
+    @Transactional // 상품 주문
+    public OrderResponseDto createOrder(OrderRequestDto orderRequestDto, Member member) {
+
+        List<Long> optionIds = orderRequestDto.getOrderItemRequestDtoList()
+                .stream()
+                .map(OrderItemRequestDto::getOptionId)
+                .toList();
+
+        Map<Long, ItemOption> itemOptionMap = itemOptionRepository.findAllById(optionIds)
+                .stream()
+                .collect(Collectors.toMap(ItemOption::getOptionId, Function.identity()));
+
+
+        List<OrderItem> orderItems = orderRequestDto.getOrderItemRequestDtoList().stream()
+                .map(dto -> {
+                    ItemOption itemOption = itemOptionMap.get(dto.getOptionId());
+                    if (itemOption == null) {
+                        throw new EntityNotFoundException("상품 옵션을 찾을 수 없습니다.");
+                    }
+
+                    // ✅ 재고 감소 (변경 감지로 자동 반영)
+                    itemOption.removeStock(dto.getQuantity());
+
+                    return OrderItem.createOrderItem(itemOption.getItem(), itemOption, dto.getQuantity());
+                }).toList();
+
+        // Order 생성
+        Order order = Order.createOrder(
+                member,
+                orderRequestDto.getOrdererRequestDto().getAddress(),
+                orderItems
+        );
+
+        // Order 저장 및 DTO 변환 후 반환
+        Order saveOrder = orderRepository.save(order);
+        return orderMapper.toResponseDto(saveOrder);
+    }
+
+    @Transactional // 주문 취소
+    public OrderCancelResponseDto cancelOrder(Long orderId, OrderCancelRequestDto orderCancelRequestDto) {
+        // 1. 주문 찾기
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND)); // 주문 정보
+
+        // 2. 주문 상태 변경 (취소 처리)
+        order.ChangeOrderState(OrderState.CANCELLED);
+
+        // 3. 재고 복구
+        for (OrderItem orderItem : order.getOrderItems()) {
+            ItemOption itemOption = orderItem.getItemOption();
+            itemOption.addStock(orderItem.getQuantity());
+        }
+
+        OrderCancelResponseDto orderCancelResponseDto = new OrderCancelResponseDto();
+        orderCancelResponseDto.setOrderId(orderCancelRequestDto.getOrderId());
+        orderCancelResponseDto.setCancelReason(orderCancelRequestDto.getCancelReason());
+
+        return orderCancelResponseDto;
+    }
+
+    // 상품 주문 정보
+    @Transactional(readOnly = true)
+    public OrderResponseDto orderSummary(Long orderId) {
+        return orderRepository.findByOrderIdWithItems(orderId);
+    }
+
+}

@@ -1,6 +1,7 @@
 package kwh.cofshop.member.dto;
 
 import kwh.cofshop.member.domain.MemberState;
+import kwh.cofshop.member.domain.Role;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -16,6 +17,9 @@ public class MemberResponseDto {
     private String email;   // 사용자 이메일
     private String memberName;  // 사용자 이름
     private String tel;  // 사용자 전화번호
+    private Role role; // 사용자 정보
+
+
     private MemberState memberState;  // 회원 상태
     private Integer point;  // 사용자 포인트
     private LocalDateTime createdAt;  // 가입일자

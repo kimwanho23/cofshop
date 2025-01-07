@@ -2,12 +2,10 @@
 package kwh.cofshop.item.service;
 
 import kwh.cofshop.item.domain.Item;
+import kwh.cofshop.item.domain.ItemOption;
 import kwh.cofshop.item.dto.request.ItemCreateRequestDto;
-import kwh.cofshop.item.dto.request.ItemImgRequestDto;
-import kwh.cofshop.item.dto.request.ItemOptionRequestDto;
 import kwh.cofshop.item.dto.request.ItemRequestDto;
 import kwh.cofshop.item.dto.response.ItemCreateResponseDto;
-import kwh.cofshop.item.dto.response.ItemResponseDto;
 import kwh.cofshop.item.mapper.ItemCreateMapper;
 import kwh.cofshop.item.mapper.ItemMapper;
 import kwh.cofshop.item.repository.ItemRepository;
@@ -25,20 +23,21 @@ import java.io.IOException;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class ItemService {
-    private final MemberRepository memberRepository;
+public class ItemService { // 통합 Item 서비스
     private final ItemRepository itemRepository;
 
-    private final ItemMapper itemMapper; // 매퍼 클래스
+    // 매퍼 클래스
+    private final ItemMapper itemMapper;
     private final ItemCreateMapper itemCreateMapper;
 
     // 연관관계 서비스
     private final ItemImgService itemImgService; // 이미지 서비스
     private final ItemOptionService itemOptionService; // 옵션 서비스
 
+
+    // 아이템 등록
     @Transactional
-    public ItemCreateResponseDto save(ItemCreateRequestDto itemCreateRequestDto) throws IOException {
-       Member seller = getMember();
+    public ItemCreateResponseDto saveItem(ItemCreateRequestDto itemCreateRequestDto, Member seller) throws IOException {
 
        Item savedItem = getSavedItem(itemCreateRequestDto.getItemRequestDto(), seller);
 
@@ -48,8 +47,10 @@ public class ItemService {
        // 옵션 저장
        itemOptionService.saveItemOptions(savedItem, itemCreateRequestDto.getItemOptionRequestDto());
 
+       ItemCreateResponseDto responseDto = itemCreateMapper.toResponseDto(savedItem);
+       responseDto.getItemResponseDto().setEmail(seller.getEmail());
        // Response DTO 반환
-       return itemCreateMapper.toResponseDto(savedItem);
+       return responseDto;
    }
 
     @Transactional
@@ -57,14 +58,6 @@ public class ItemService {
         Item item = itemMapper.toEntity(itemRequestDto); // DTO 엔티티 변환
         item.setSeller(seller); // 연관관계 편의 메서드
         return itemRepository.save(item);
-    }
-
-    private Member getMember() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        log.info("인증 성공: {}", authentication.getName());
-
-        return memberRepository.findByEmail(authentication.getName())
-                .orElseThrow(() -> new IllegalArgumentException("판매자를 찾을 수 없습니다."));
     }
 
 }

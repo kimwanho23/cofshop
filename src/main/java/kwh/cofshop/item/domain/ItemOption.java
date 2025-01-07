@@ -1,6 +1,8 @@
 package kwh.cofshop.item.domain;
 
 import jakarta.persistence.*;
+import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -22,6 +24,9 @@ public class ItemOption {
     @Column
     private Integer additionalPrice; // 추가금 (기본금에 더해서)
 
+    @Column(unique = true)
+    private Integer optionNo;
+
     @Column(nullable = false)
     private Integer stock; // 옵션별 재고
 
@@ -41,27 +46,41 @@ public class ItemOption {
     }
 
     @Builder
-    public ItemOption(Long optionId, String description, Integer additionalPrice, Integer stock, OptionState optionState, Item item) {
+    public ItemOption(Long optionId, String description, Integer additionalPrice, Integer optionNo, Integer stock, OptionState optionState, Item item) {
         this.optionId = optionId;
         this.description = description;
         this.additionalPrice = additionalPrice;
+        this.optionNo = optionNo;
         this.stock = stock;
         this.optionState = optionState;
         this.item = item;
     }
 
     // 정적 팩토리 메서드
-    public static ItemOption createOption(String description, Integer additionalPrice, Integer stock, Item item) {
+    public static ItemOption createOption(String description, Integer additionalPrice, Integer optionNo, Integer stock, Item item) {
         ItemOption itemOption = ItemOption.builder()
                 .description(description)
                 .additionalPrice(additionalPrice)
+                .optionNo(optionNo)
                 .stock(stock)
                 .optionState(OptionState.SELL) // 기본 상태 설정
                 .item(item) // 연관 관계 설정
                 .build();
 
         item.addItemOption(itemOption); // 연관관계 설정
-
         return itemOption;
     }
+
+    public void addStock(int stock){ // 재고 더하기 (주문 취소, 재고 추가)
+        this.stock += stock;
+    }
+
+    public void removeStock(int stock){ // 재고 감소 (주문, 재고 조정)
+        if (this.stock < stock) {
+            throw new BusinessException(BusinessErrorCode.OUT_OF_STOCK);
+        }
+        this.stock -= stock;
+    }
+
+
 }

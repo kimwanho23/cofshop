@@ -18,7 +18,8 @@ public interface ReviewMapper {
 
   //  Review toEntity(ReviewRequestDto reviewRequestDto);
 
-    @Mapping(target = "member", source = "member")
+    @Mapping(source = "item.itemId", target = "item")
+    @Mapping(source = "member", target = "member")
     ReviewResponseDto toResponseDto(Review review);
 
 

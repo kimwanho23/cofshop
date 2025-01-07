@@ -22,6 +22,7 @@ public class ItemOptionService {
                 .map(dto -> ItemOption.createOption(
                         dto.getDescription(),
                         dto.getAdditionalPrice(),
+                        dto.getOptionNo(),
                         dto.getStock(),
                         item
                 ))

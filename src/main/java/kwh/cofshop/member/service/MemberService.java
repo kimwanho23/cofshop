@@ -28,21 +28,22 @@ public class MemberService {
     private final BCryptPasswordEncoder passwordEncoder;
 
     @Transactional
-    public Member save(MemberRequestDto memberDto){ // Save, Update 로직
+    public MemberResponseDto save(MemberRequestDto memberDto){ // Save, Update 로직
         memberDto.setMemberPwd(passwordEncoder.encode(memberDto.getMemberPwd()));
-        return memberRepository.save(memberMapper.toEntity(memberDto)); // DTO 엔티티로 변환해서 저장
+        Member member = memberRepository.save(memberMapper.toEntity(memberDto));// DTO 엔티티로 변환해서 저장
+        return memberMapper.toResponseDto(member);
     }
 
     public MemberResponseDto findMember(Long memberId) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new BadRequestException(BadRequestErrorCode.USER_NOT_FOUND));
 
-        return memberMapper.toResponseDto(member); //엔티티를 DTO로 변환, 엔티티를 받아오더라도 DTO로 변환하여 엔티티의 직접적인 변경을 막는다.
+        return memberMapper.toResponseDto(member);
     }
 
     public MemberResponseDto findMember(String email) {
         Member member = memberRepository.findByEmail(email).orElseThrow();
-        return memberMapper.toResponseDto(member); //엔티티를 DTO로 변환, 엔티티를 받아오더라도 DTO로 변환하여 엔티티의 직접적인 변경을 막는다.
+        return memberMapper.toResponseDto(member);
     }
 
     public List<MemberResponseDto> memberLists() {
@@ -50,6 +51,13 @@ public class MemberService {
                 .map(memberMapper::toResponseDto)
                 .toList();
     }
+
+    @Transactional
+    public void updateMemberPassword(Member member, String newPassword) {
+        member.changePassword(newPassword);
+    }
+
+
 
 /*    public Member login(LoginDto loginDto) {
         Member findMember = memberRepository.findByEmail(loginDto.getEmail()).orElseThrow();

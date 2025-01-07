@@ -9,7 +9,7 @@ import java.util.List;
 @Setter
 public class ItemCreateRequestDto {
 
-    ItemRequestDto itemRequestDto;
-    ItemImgRequestDto itemImgRequestDto;
-    List<ItemOptionRequestDto> itemOptionRequestDto;
+    private ItemRequestDto itemRequestDto;
+    private ItemImgRequestDto itemImgRequestDto;
+    private List<ItemOptionRequestDto> itemOptionRequestDto;
 }

@@ -43,6 +43,7 @@ public class ItemImg extends BaseTimeEntity {
         this.item = item;
     }
 
+    // 정적 팩토리 메소드
     public static ItemImg createImg(String imgName, String oriImgName, String imgUrl, ImgType imgType, Item item) {
         ItemImg itemImg = ItemImg.builder()
                 .imgName(imgName)

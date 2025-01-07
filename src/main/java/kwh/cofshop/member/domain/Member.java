@@ -1,6 +1,7 @@
 package kwh.cofshop.member.domain;
 
 import jakarta.persistence.*;
+import kwh.cofshop.cart.domain.Cart;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.Review;
 import lombok.AccessLevel;
@@ -61,6 +62,8 @@ public class Member {
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Review> reviews = new ArrayList<>();
 
+    @OneToOne(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Cart cart;
 
     @Builder
     public Member(String email, String memberName, String memberPwd,
@@ -69,13 +72,18 @@ public class Member {
         this.memberName = memberName;
         this.memberPwd = memberPwd;
         this.tel = tel;
+        this.cart = new Cart(this);
     }
 
-/*    // 편의 메서드
-    public void addItem(Item item) {
-        this.getItemList().add(item);
-        item.setSeller(this);
-    }*/
+    public void initializeCartIfAbsent() {
+        if (this.cart == null) {
+            this.cart = new Cart(this);
+        }
+    }
+
+    public Cart createCart() {
+        return new Cart(this);  // Cart 생성 시 연관관계 설정
+    }
 
     @PrePersist
     public void prePersist() {

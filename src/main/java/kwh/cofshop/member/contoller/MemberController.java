@@ -16,33 +16,24 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/item")
+@RequestMapping("/api/member")
 @RequiredArgsConstructor
 public class MemberController {
 
     private final MemberService memberService;
 
-    @PostMapping(value = "/m/signup")
-    public ResponseEntity<ApiResponse<MemberRequestDto>> save(@Valid @RequestBody MemberRequestDto memberSaveDto) {
-        memberService.save(memberSaveDto);
+    @PostMapping(value = "/signup")
+    public ResponseEntity<ApiResponse<MemberResponseDto>> save(@Valid @RequestBody MemberRequestDto memberSaveDto) {
+        MemberResponseDto memberSaveResponseDto = memberService.save(memberSaveDto);
         return ResponseEntity.ok()
-                .body(ApiResponse.Created(memberSaveDto)); // 메서드 체이닝 패턴
+                .body(ApiResponse.Created(memberSaveResponseDto)); // 메서드 체이닝 패턴
     }
 
-    @GetMapping("/m/{id}")
+    @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<MemberResponseDto>> getMemberById(@PathVariable Long id) {
         return ResponseEntity.ok()
                 .body(ApiResponse.OK(memberService.findMember(   id)));
     }
-
-/*    @GetMapping("/m/info")
-    public ResponseEntity<MemberResponseDto> getUserInfo(Authentication authentication) {
-
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        MemberResponseDto memberInfo = memberService.findMember(userDetails.getUsername());
-
-        return ResponseEntity.ok(memberInfo);
-    }*/
 
     @GetMapping(value="/allUsers")
     public ResponseEntity<ApiResponse<List<MemberResponseDto>>> memberList(){ // 멤버 리스트 조회

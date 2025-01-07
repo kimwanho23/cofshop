@@ -23,7 +23,7 @@ public class Item extends BaseEntity {
     private String itemName; // 상품명
 
     @Column(nullable = false)
-    private Integer price; // 가격
+    private int price; // 가격
 
     @Column(name = "item_state", nullable = false)
     private ItemState itemState; // 상품 상태 (1: 판매중, 0: 판매 중단)
@@ -54,13 +54,13 @@ public class Item extends BaseEntity {
     @JoinColumn(name = "seller_email", referencedColumnName = "email", nullable = false)
     private Member seller;  // 판매자 정보(이메일)
 
-    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<ItemOption> itemOptions = new ArrayList<>(); // 옵션 리스트
 
-    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<ItemImg> itemImgs = new ArrayList<>();  // 컬렉션 타입 사용
 
-    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<Review> reviews = new ArrayList<>();
 
 
@@ -91,6 +91,12 @@ public class Item extends BaseEntity {
         this.reviewCount = reviewCount;
     }
 
+
+    // 옵션 인덱스
+    public Integer setNextOptionNo() {
+        return this.itemOptions.size() + 1;
+    }
+
     ///// 연관관계 편의 메서드
 
     // 이미지
@@ -109,6 +115,8 @@ public class Item extends BaseEntity {
             seller.getItemList().add(this);
         }
     }
+
+
 
 
 

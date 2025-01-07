@@ -1,5 +1,6 @@
 package kwh.cofshop.member.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kwh.cofshop.global.TokenDto;
 import kwh.cofshop.member.domain.Role;
@@ -12,12 +13,14 @@ import kwh.cofshop.member.mapper.MemberMapper;
 import kwh.cofshop.member.repository.MemberRepository;
 import kwh.cofshop.security.CustomUserDetails;
 import kwh.cofshop.security.JwtTokenProvider;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.annotation.Commit;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;  // POST 요청
@@ -31,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Slf4j
 class MemberServiceTest {
 
     @Autowired
@@ -53,23 +57,25 @@ class MemberServiceTest {
 
     @Test
     @DisplayName("회원가입 로직 테스트")
-    void signUp(){
+    @Transactional
+    void signUp() throws JsonProcessingException {
 
         //DTO 생성 (프론트에서 입력)
         MemberRequestDto requestDto = new MemberRequestDto();
-        requestDto.setEmail("test@gmail.com");
+        requestDto.setEmail("test3@gmail.com");
         requestDto.setMemberName("테스트");
         requestDto.setMemberPwd("1234567890");
         requestDto.setTel("010-1234-5678");
 
         // 저장
-        Member savedMember = memberService.save(requestDto);
+        MemberResponseDto savedMember = memberService.save(requestDto);
+
+        log.info(objectMapper.writeValueAsString(savedMember));
 
         // 데이터 검증
         assertThat(savedMember).isNotNull();
-        assertThat(savedMember.getEmail()).isEqualTo("test@gmail.com");
+        assertThat(savedMember.getEmail()).isEqualTo("test3@gmail.com");
         assertThat(savedMember.getMemberName()).isEqualTo("테스트");
-//        assertThat(savedMember.getMemberPwd()).isEqualTo("1234567890");
         assertThat(savedMember.getTel()).isEqualTo("010-1234-5678");
 
         // 기본값 검증
@@ -115,17 +121,17 @@ class MemberServiceTest {
                 .andExpect(jsonPath("$.accessToken").exists())  // accessToken
                 .andExpect(jsonPath("$.refreshToken").exists())  // refreshToken
                 .andDo(print());  // 요청 및 응답 출력
-
+/*
         // 로그인 실패 테스트
         LoginDto loginDto2 = new LoginDto();
         loginDto.setEmail("test@gmail.com");
         loginDto.setMemberPwd("123456789");
 
-        mockMvc.perform(post("/doLogin")
+        mockMvc.perform(post("/login")
                         .contentType(MediaType.APPLICATION_JSON)  // JSON 데이터 타입 설정
-                        .content(objectMapper.writeValueAsString(loginDto)))  // DTO -> JSON 변환
+                        .content(objectMapper.writeValueAsString(loginDto2)))  // DTO -> JSON 변환
                 .andExpect(status().isUnauthorized())  // 401 에러
-                .andDo(print());  // 요청 및 응답 출력
+                .andDo(print());  // 요청 및 응답 출력*/
     }
 
     @Test

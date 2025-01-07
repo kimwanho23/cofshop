@@ -1,5 +1,7 @@
 package kwh.cofshop.item.dto.response;
 
+import com.querydsl.core.types.dsl.NumberPath;
+import com.querydsl.core.types.dsl.StringPath;
 import kwh.cofshop.item.domain.ItemState;
 import kwh.cofshop.item.dto.request.ItemImgRequestDto;
 import lombok.Getter;
@@ -18,4 +20,5 @@ public class ItemResponseDto {
     private Integer itemLimit; // 수량 제한(한 번에 구입 가능한 개수)
     private ItemState itemState;
     private String email; // 판매자 이메일
+
 }

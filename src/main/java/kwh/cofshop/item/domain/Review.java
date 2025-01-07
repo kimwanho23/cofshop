@@ -30,10 +30,10 @@ public class Review extends BaseTimeEntity { // 리뷰 엔티티 : 1명당 1개�
     private Long rating; // 별점
 
     @Column(nullable = false)
-    private String description; // 후기글
+    private String content; // 후기글
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_email", nullable = false)
+    @JoinColumn(name = "member_email", referencedColumnName = "email", nullable = false)
     private Member member; // 작성자
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -41,19 +41,19 @@ public class Review extends BaseTimeEntity { // 리뷰 엔티티 : 1명당 1개�
     private Item item; // 아이템
 
     @Builder
-    public Review(Long reviewId, Long rating, String description, Member member, Item item) {
+    public Review(Long reviewId, Long rating, String content, Member member, Item item) {
         this.reviewId = reviewId;
         this.rating = rating;
-        this.description = description;
+        this.content = content;
         this.member = member;
         this.item = item;
     }
 
     // 정적 팩토리 메서드
-    public static Review createReview(Long rating, String description, Member member, Item item) {
+    public static Review createReview(Long rating, String content, Member member, Item item) {
         Review review = new Review();
         review.rating = rating;
-        review.description = description;
+        review.content = content;
         review.setMember(member);
         review.setItem(item);
         return review;

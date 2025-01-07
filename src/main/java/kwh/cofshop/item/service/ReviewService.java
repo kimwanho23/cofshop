@@ -29,9 +29,8 @@ public class ReviewService {
     private final MemberRepository memberRepository;
 
     @Transactional
-    public ReviewResponseDto save(ReviewRequestDto requestDto) {
-        Member member = getMember();
-        Item item = findItemById(requestDto.getItemId());
+    public ReviewResponseDto save(ReviewRequestDto requestDto, Member member) {
+        Item item = findItemById(requestDto.getItem());
         Review review = Review.createReview(
                 requestDto.getRating(),
                 requestDto.getContent(),
@@ -40,7 +39,21 @@ public class ReviewService {
         );
 
         reviewRepository.save(review);
+        updateItemReviewStats(item);
         return reviewMapper.toResponseDto(review);
+    }
+
+    // Item 평균 평점 및 리뷰 개수 업데이트
+    private void updateItemReviewStats(Item item) {
+        List<Review> reviews = reviewRepository.findByItem(item);
+
+        int reviewCount = reviews.size();
+        double averageRating = reviews.stream()
+                .mapToDouble(Review::getRating)
+                .average()
+                .orElse(0.0);
+
+        item.updateReviewStats(averageRating, reviewCount);
     }
 
     @Transactional(readOnly = true)

@@ -1,20 +1,8 @@
 package kwh.cofshop.item.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.persistence.EntityManager;
-import kwh.cofshop.item.domain.Item;
-import kwh.cofshop.item.domain.Review;
-import kwh.cofshop.item.dto.request.ItemImgRequestDto;
-import kwh.cofshop.item.dto.request.ItemOptionRequestDto;
-import kwh.cofshop.item.dto.request.ItemRequestDto;
-import kwh.cofshop.item.dto.request.ReviewRequestDto;
+import kwh.cofshop.item.dto.request.*;
 import kwh.cofshop.item.dto.response.ItemCreateResponseDto;
-import kwh.cofshop.item.dto.response.ItemResponseDto;
-import kwh.cofshop.item.dto.response.ReviewResponseDto;
-import kwh.cofshop.item.mapper.ItemCreateMapper;
-import kwh.cofshop.item.mapper.ItemMapper;
-import kwh.cofshop.item.mapper.ReviewMapper;
-import kwh.cofshop.item.repository.ItemRepository;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.repository.MemberRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.annotation.Commit;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -37,23 +26,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 @AutoConfigureMockMvc
 class ItemServiceTest {
 
-    @Autowired
-    private ObjectMapper objectMapper;  // JSON 변환 도구
+    /////////////////// Mapper
 
     @Autowired
-    private ItemMapper itemMapper;  // JSON 변환 도구
+    private ObjectMapper objectMapper;
+
+    /////////////////// Service
 
     @Autowired
     private ItemService itemService;
-
-    @Autowired
-    private ItemRepository itemRepository;
-
-    @Autowired
-    private MemberRepository memberRepository;
-
-    @Autowired
-    private EntityManager entityManager;
 
     @Autowired
     private ItemImgService itemImgService;
@@ -62,75 +43,39 @@ class ItemServiceTest {
     private ItemOptionService itemOptionService;
 
     @Autowired
-    private ReviewMapper reviewMapper;
-
-    @Autowired
-    private ItemCreateMapper itemCreateMapper;
-
+    private MemberRepository memberRepository;
 
     @Test
     @DisplayName("아이템 등록 테스트")
     @Transactional
+    @Commit
     void createItem() throws Exception {
 
-        // 1. 판매자 조회
-        Member seller = memberRepository.findByEmail("test@gmail.com")
-                .orElseThrow(() -> new IllegalArgumentException("판매자를 찾을 수 없습니다."));
+        Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
 
-        // 2. ItemRequestDto 생성 및 엔티티 변환
+        // 1. ItemRequestDto
         ItemRequestDto requestDto = getItemRequestDto();
-        Item entity = itemMapper.toEntity(requestDto);
-        entity.setSeller(seller);
 
-        // 3. Item 저장
-        Item savedItem = itemRepository.save(entity);
-
-        // 4. ItemImgRequestDto 생성, 이미지 저장
+        // 2. ItemImgRequestDto
         ItemImgRequestDto imgRequestDto = getItemImgRequestDto();
-        itemImgService.saveItemImages(savedItem, imgRequestDto);
 
-        // 4. ItemOptionRequestDto 생성, 옵션 저장
+        // 3. ItemOptionRequestDto
         List<ItemOptionRequestDto> itemOptionRequestDto = getItemOptionRequestDto();
-        itemOptionService.saveItemOptions(savedItem, itemOptionRequestDto);
 
-        // 5. ItemCreateResponseDto 생성 (응답 객체)
-        ItemCreateResponseDto responseDto = itemCreateMapper.toResponseDto(savedItem);
+        ItemCreateRequestDto itemCreateRequestDto = new ItemCreateRequestDto(); // ItemCreateDto 설정
+        itemCreateRequestDto.setItemRequestDto(requestDto);
+        itemCreateRequestDto.setItemImgRequestDto(imgRequestDto);
+        itemCreateRequestDto.setItemOptionRequestDto(itemOptionRequestDto);
 
+        ItemCreateResponseDto responseDto = itemService.saveItem(itemCreateRequestDto, member);
 
-        responseDto.getItemResponseDto().setEmail(seller.getEmail());
-
-        // 연관관계 List 추가 시, 확장성 있게 가져갈 수 있다.
-        // 최종 ResponseDto JSON 변환
+        // ResponseDto JSON 변환
         String itemJson = objectMapper.writeValueAsString(responseDto);
         log.info("Item JSON: {}", itemJson);
     }
 
-    @Test
-    @DisplayName("리뷰 작성")
-    @Transactional
-    void createReview() throws Exception {
 
-        Member member = memberRepository.findByEmail("test@gmail.com")
-                .orElseThrow(() -> new IllegalArgumentException("유저를 찾을 수 없습니다."));
-
-        Item item = itemRepository.findById(1L)
-                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));
-
-        ReviewRequestDto reviewRequestDto  = new ReviewRequestDto();
-        reviewRequestDto.setContent("괜찮은 것 같은 상품");
-        reviewRequestDto.setRating(5L);
-
-        Review review = Review.createReview(reviewRequestDto.getRating(),
-                reviewRequestDto.getContent(), member, item);
-
-        ReviewResponseDto responseDto = reviewMapper.toResponseDto(review);
-
-
-        String reviewJson = objectMapper.writeValueAsString(responseDto);
-        log.info("review Json : {}", reviewJson);
-
-    }
-
+    // 이미지 파일 임의 생성
     private static ItemImgRequestDto getItemImgRequestDto() {
         MockMultipartFile repImage = new MockMultipartFile("repImage", "test.jpg", "image/jpeg", "test data".getBytes());
         MockMultipartFile subImage1 = new MockMultipartFile("subImages", "test1.jpg", "image/jpeg", "test data 1".getBytes());
@@ -143,6 +88,7 @@ class ItemServiceTest {
         return imgRequestDto;
     }
 
+    // 옵션 DTO
     private List<ItemOptionRequestDto> getItemOptionRequestDto() {
         return List.of(
                 createOption("Small Size", 0, 100),
@@ -150,6 +96,7 @@ class ItemServiceTest {
         );
     }
 
+    // 옵션 만들기
     private ItemOptionRequestDto createOption(String description, int additionalPrice, int stock) {
         ItemOptionRequestDto option = new ItemOptionRequestDto();
         option.setDescription(description);
@@ -157,7 +104,6 @@ class ItemServiceTest {
         option.setStock(stock);
         return option;
     }
-
 
     private static ItemRequestDto getItemRequestDto() {
         ItemRequestDto requestDto = new ItemRequestDto();
