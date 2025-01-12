@@ -52,13 +52,12 @@ public class OrderItem extends BaseTimeEntity {
     }
 
     public static OrderItem createOrderItem(Item item, ItemOption itemOption, int quantity) {
-        OrderItem orderItem = OrderItem.builder()
+        return OrderItem.builder()
                 .item(item)
                 .itemOption(itemOption)
                 .quantity(quantity)
                 .orderPrice(item.getPrice() + itemOption.getAdditionalPrice())
                 .build();
-        return orderItem;
     }
 
 

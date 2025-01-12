@@ -24,7 +24,7 @@ public class ItemOption {
     @Column
     private Integer additionalPrice; // 추가금 (기본금에 더해서)
 
-    @Column(unique = true)
+
     private Integer optionNo;
 
     @Column(nullable = false)

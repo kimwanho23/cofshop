@@ -34,7 +34,7 @@ public class OrderController {
     public ResponseEntity<ApiResponse<OrderCancelResponseDto>> cancelOrder(
             @PathVariable Long orderId,
             @Valid @RequestBody OrderCancelRequestDto orderCancelRequestDto){
-        OrderCancelResponseDto orderCancelResponseDto = orderService.cancelOrder(orderId, orderCancelRequestDto);
+        OrderCancelResponseDto orderCancelResponseDto = orderService.cancelOrder(orderCancelRequestDto);
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.OK(orderCancelResponseDto));
     }

@@ -24,7 +24,7 @@ public class ReviewController {
 
     private final ReviewService reviewService;
 
-    @PostMapping("/createReview") // 상품 리뷰
+    @PostMapping("/createReview") // 상품 리뷰 , 한 상품에 리뷰는 하나만 작성 가능
     public ResponseEntity<ApiResponse<ReviewResponseDto>> addReview(
             @LoginMember Member member,
             @Valid @RequestBody ReviewRequestDto reviewRequestDto) throws IOException {

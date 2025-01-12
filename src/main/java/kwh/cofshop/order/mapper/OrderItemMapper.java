@@ -14,8 +14,14 @@ import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
 )
 
 public interface OrderItemMapper {
-    @Mapping(target = "item", source = "item")
-    @Mapping(target = "itemOption", source = "itemOption")
+
+    @Mapping(source = "item.itemName", target = "itemName")
+    @Mapping(source = "item.price", target = "price")
+    @Mapping(source = "item.discount", target = "discount")
+    @Mapping(source = "item.deliveryFee", target = "deliveryFee")
+    @Mapping(source = "item.category", target = "categories")
+    @Mapping(source = "item.origin", target = "origin")
+    @Mapping(source = "quantity", target = "quantity")
     OrderItemResponseDto toResponseDto(OrderItem orderItem);
 
 }

@@ -37,7 +37,6 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
-    private final OrderItemMapper orderItemMapper;
 
     private final ItemOptionRepository itemOptionRepository;
 
@@ -49,21 +48,16 @@ public class OrderService {
                 .map(OrderItemRequestDto::getOptionId)
                 .toList();
 
-        Map<Long, ItemOption> itemOptionMap = itemOptionRepository.findAllById(optionIds)
-                .stream()
+        Map<Long, ItemOption> itemOptionMap = optionIds.stream()
+                .map(optionId -> itemOptionRepository.findByIdWithLock(optionId)
+                        .orElseThrow(() -> new EntityNotFoundException("옵션을 찾을 수 없습니다.")))
                 .collect(Collectors.toMap(ItemOption::getOptionId, Function.identity()));
 
 
         List<OrderItem> orderItems = orderRequestDto.getOrderItemRequestDtoList().stream()
                 .map(dto -> {
                     ItemOption itemOption = itemOptionMap.get(dto.getOptionId());
-                    if (itemOption == null) {
-                        throw new EntityNotFoundException("상품 옵션을 찾을 수 없습니다.");
-                    }
-
-                    // ✅ 재고 감소 (변경 감지로 자동 반영)
                     itemOption.removeStock(dto.getQuantity());
-
                     return OrderItem.createOrderItem(itemOption.getItem(), itemOption, dto.getQuantity());
                 }).toList();
 
@@ -80,9 +74,9 @@ public class OrderService {
     }
 
     @Transactional // 주문 취소
-    public OrderCancelResponseDto cancelOrder(Long orderId, OrderCancelRequestDto orderCancelRequestDto) {
+    public OrderCancelResponseDto cancelOrder(OrderCancelRequestDto orderCancelRequestDto) {
         // 1. 주문 찾기
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findById(orderCancelRequestDto.getOrderId())
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND)); // 주문 정보
 
         // 2. 주문 상태 변경 (취소 처리)
@@ -101,10 +95,16 @@ public class OrderService {
         return orderCancelResponseDto;
     }
 
-    // 상품 주문 정보
+    // 하나의 주문 정보
     @Transactional(readOnly = true)
     public OrderResponseDto orderSummary(Long orderId) {
         return orderRepository.findByOrderIdWithItems(orderId);
+    }
+
+    // 멤버의 주문 목록
+    @Transactional(readOnly = true)
+    public List<OrderResponseDto> memberOrders(Member member){
+        return orderRepository.findOrderListByEmail(member.getEmail());
     }
 
 }

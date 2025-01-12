@@ -3,6 +3,8 @@ package kwh.cofshop.cart.service;
 import jakarta.persistence.EntityNotFoundException;
 import kwh.cofshop.cart.domain.Cart;
 import kwh.cofshop.cart.domain.CartItem;
+import kwh.cofshop.cart.dto.request.CartItemRequestDto;
+import kwh.cofshop.cart.dto.request.CartRequestDto;
 import kwh.cofshop.cart.dto.response.CartItemResponseDto;
 import kwh.cofshop.cart.dto.response.CartResponseDto;
 import kwh.cofshop.cart.mapper.CartItemMapper;
@@ -27,6 +29,8 @@ public class CartService {
     private final MemberRepository memberRepository;
     private final CartItemRepository cartItemRepository;
 
+    private final CartItemMapper cartItemMapper;
+
     @Transactional
     public void initializeCartsForExistingMembers() {
         List<Member> membersWithoutCart = memberRepository.findAll().stream()
@@ -37,6 +41,21 @@ public class CartService {
             Cart newCart = member.createCart();
             cartRepository.save(newCart);
         }
+    }
+
+    // 장바구니에 아이템 등록
+    @Transactional
+    public CartItemResponseDto addCartItem(CartItemRequestDto cartItemRequestDto){
+        Optional<CartItem> existingCartItem = cartItemRepository.findByOptionIdAndItemId(
+                cartItemRequestDto.getOptionId(), cartItemRequestDto.getItemId());
+        if (existingCartItem.isPresent()) {
+            // 이미 존재하는 경우 수량 증가
+            CartItem cartItem = existingCartItem.get();
+            cartItem.addQuantity(cartItemRequestDto.getQuantity());
+            return cartItemMapper.toResponseDto(cartItem);
+        }
+        CartItem save = cartItemRepository.save(cartItemMapper.toEntity(cartItemRequestDto));
+        return cartItemMapper.toResponseDto(save);
     }
 
     @Transactional(readOnly = true)

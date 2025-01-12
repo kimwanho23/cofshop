@@ -3,6 +3,7 @@ package kwh.cofshop.item.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kwh.cofshop.item.dto.request.*;
 import kwh.cofshop.item.dto.response.ItemCreateResponseDto;
+import kwh.cofshop.item.dto.response.ItemSearchResponseDto;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.repository.MemberRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +12,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.annotation.Commit;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,6 +78,18 @@ class ItemServiceTest {
         log.info("Item JSON: {}", itemJson);
     }
 
+    @Test
+    @DisplayName("아이템 검색 테스트")
+    @Transactional
+    void SearchItems() throws Exception {
+        ItemSearchRequestDto itemSearchRequestDto = new ItemSearchRequestDto();
+        itemSearchRequestDto.setCategory(null);
+        itemSearchRequestDto.setItemName("커피");
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<ItemSearchResponseDto> itemSearchResponseDtoList = itemService.searchItem(itemSearchRequestDto, pageable);
+        log.info(objectMapper.writeValueAsString(itemSearchResponseDtoList));
+    }
+
 
     // 이미지 파일 임의 생성
     private static ItemImgRequestDto getItemImgRequestDto() {
@@ -91,17 +107,18 @@ class ItemServiceTest {
     // 옵션 DTO
     private List<ItemOptionRequestDto> getItemOptionRequestDto() {
         return List.of(
-                createOption("Small Size", 0, 100),
-                createOption("Large Size", 500, 50)
+                createOption("Small Size", 0, 100, 1),
+                createOption("Large Size", 500, 50, 2)
         );
     }
 
     // 옵션 만들기
-    private ItemOptionRequestDto createOption(String description, int additionalPrice, int stock) {
+    private ItemOptionRequestDto createOption(String description, int additionalPrice, int stock, int optionNo) {
         ItemOptionRequestDto option = new ItemOptionRequestDto();
         option.setDescription(description);
         option.setAdditionalPrice(additionalPrice);
         option.setStock(stock);
+        option.setOptionNo(optionNo);
         return option;
     }
 
