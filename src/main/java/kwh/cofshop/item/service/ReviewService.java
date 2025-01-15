@@ -30,7 +30,7 @@ public class ReviewService {
 
     @Transactional
     public ReviewResponseDto save(ReviewRequestDto requestDto, Member member) {
-        Item item = findItemById(requestDto.getItem());
+        Item item = itemRepository.findById(requestDto.getItem()).orElseThrow();
         Review review = Review.createReview(
                 requestDto.getRating(),
                 requestDto.getContent(),
@@ -77,8 +77,4 @@ public class ReviewService {
                 .orElseThrow(() -> new IllegalArgumentException("판매자를 찾을 수 없습니다."));
     }
 
-    private Item findItemById(Long itemId) {
-        return itemRepository.findById(itemId)
-                .orElseThrow(() -> new IllegalArgumentException("Item not found"));
-    }
 }

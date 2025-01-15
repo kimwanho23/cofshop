@@ -17,8 +17,11 @@ import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
 )
 public interface ItemMapper {
     // DTO → 엔티티 매핑
+
     Item toEntity(ItemRequestDto dto);
 
+    @Mapping(target = "imgResponseDto", source = "itemImgs")
+    @Mapping(target = "optionResponseDto", source = "itemOptions")
     ItemResponseDto toResponseDto(Item item);
 }
 

@@ -15,9 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.annotation.Commit;
 import org.springframework.transaction.annotation.Transactional;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
@@ -61,14 +59,13 @@ class ReviewServiceTest {
         ReviewRequestDto reviewRequestDto  = new ReviewRequestDto();
         reviewRequestDto.setContent("리뷰 평점 테스트");
         reviewRequestDto.setRating(5L);
-        reviewRequestDto.setItem(item.getItemId());
+        reviewRequestDto.setItem(item.getId());
         return reviewRequestDto;
     }
 
     @Test
     @DisplayName("리뷰 제거")
     @Transactional
-    @Commit
     void deleteReview() throws Exception {
 
         Item item = itemRepository.findById(1L)

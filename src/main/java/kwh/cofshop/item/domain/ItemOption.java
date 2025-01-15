@@ -16,7 +16,7 @@ public class ItemOption {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long optionId;
+    private Long id;
 
     @Column
     private String description; // 옵션 내용
@@ -46,8 +46,8 @@ public class ItemOption {
     }
 
     @Builder
-    public ItemOption(Long optionId, String description, Integer additionalPrice, Integer optionNo, Integer stock, OptionState optionState, Item item) {
-        this.optionId = optionId;
+    public ItemOption(Long id, String description, Integer additionalPrice, Integer optionNo, Integer stock, OptionState optionState, Item item) {
+        this.id = id;
         this.description = description;
         this.additionalPrice = additionalPrice;
         this.optionNo = optionNo;

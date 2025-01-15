@@ -62,7 +62,7 @@ public class Member {
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Review> reviews = new ArrayList<>();
 
-    @OneToOne(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToOne(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Cart cart;
 
     @Builder
@@ -73,12 +73,6 @@ public class Member {
         this.memberPwd = memberPwd;
         this.tel = tel;
         this.cart = new Cart(this);
-    }
-
-    public void initializeCartIfAbsent() {
-        if (this.cart == null) {
-            this.cart = new Cart(this);
-        }
     }
 
     public Cart createCart() {

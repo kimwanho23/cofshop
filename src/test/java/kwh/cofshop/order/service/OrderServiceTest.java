@@ -3,6 +3,7 @@ package kwh.cofshop.order.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.LockModeType;
+import kwh.cofshop.ServiceTestSetting;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemOption;
 import kwh.cofshop.item.repository.ItemOptionRepository;
@@ -23,11 +24,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.jpa.repository.Lock;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.annotation.Commit;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,12 +33,10 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static kwh.cofshop.member.domain.QMember.member;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SpringBootTest
 @Slf4j
-class OrderServiceTest {
+class OrderServiceTest extends ServiceTestSetting {
 
     @Autowired
     private OrderService orderService;
@@ -53,11 +47,6 @@ class OrderServiceTest {
     @Autowired
     private ItemOptionRepository itemOptionRepository;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-    
-    @Autowired
-    private MemberRepository memberRepository;
 
     private ExecutorService executorService;
 
@@ -75,16 +64,12 @@ class OrderServiceTest {
     @Test
     @DisplayName("주문 생성")
     @Transactional
-    //@Commit
     void createOrder() throws Exception {
 
         Member member = memberRepository.findByEmail("test2@gmail.com").orElseThrow();
         Item item = itemRepository.findById(1L).orElseThrow();
 
-        Address address = new Address("서울", "도시", "33145");
-        OrdererRequestDto ordererRequestDto = new OrdererRequestDto();
-        ordererRequestDto.setEmail(member.getEmail());
-        ordererRequestDto.setAddress(address);
+        OrdererRequestDto ordererRequestDto = getOrdererRequestDto(member);
 
         OrderRequestDto orderRequestDto = getOrderRequestDto(item, ordererRequestDto);
 
@@ -130,14 +115,14 @@ class OrderServiceTest {
         Member member = memberRepository.findByEmail("test2@gmail.com").orElseThrow();
         Item item = itemRepository.findById(1L).orElseThrow();
 
-        Address address = new Address("서울", "도시", "33145");
-        OrdererRequestDto ordererRequestDto = new OrdererRequestDto();
-        ordererRequestDto.setEmail(member.getEmail());
-        ordererRequestDto.setAddress(address);
+        OrdererRequestDto ordererRequestDto = getOrdererRequestDto(member); // 주문자
 
-        OrderRequestDto orderRequestDto = getOrderRequestDto(item, ordererRequestDto);
-        int threadCount = 10;
+        OrderRequestDto orderRequestDto = getOrderRequestDto(item, ordererRequestDto); // 주문
+
+        int threadCount = 10; //스레드 개수
         CountDownLatch latch = new CountDownLatch(threadCount);
+
+
         for (int i = 0; i < threadCount; i++) {
             int count = i;
             executorService.execute(() -> {
@@ -152,21 +137,31 @@ class OrderServiceTest {
             });
         }
 
-        // ✅ 모든 스레드 완료 대기
         latch.await();
-        //2025 01 - 08
-    //Exception occurred: could not execute statement [Deadlock found when trying to get lock; try restarting transaction] 트랜잭션 데드락 발생
-        // ItemOption 조회 시 비관적 락 적용
+        //2025 01-08
+        // Exception occurred: could not execute statement [Deadlock found when trying to get lock; try restarting transaction] 트랜잭션 데드락 발생
+        // ItemOption 조회 시 비관적 락을 적용하여 해결
     }
 
+
+    // 주문자 정보
+    private static OrdererRequestDto getOrdererRequestDto(Member member) {
+        Address address = new Address("서울", "도시", "33145");
+        OrdererRequestDto ordererRequestDto = new OrdererRequestDto();
+        ordererRequestDto.setEmail(member.getEmail());
+        ordererRequestDto.setAddress(address);
+        return ordererRequestDto;
+    }
+
+    // 주문 상품 정보
     private static OrderRequestDto getOrderRequestDto(Item item, OrdererRequestDto ordererRequestDto) {
         OrderItemRequestDto orderItem1 = new OrderItemRequestDto();
-        orderItem1.setItem(item.getItemId());
+        orderItem1.setItem(item.getId());
         orderItem1.setQuantity(2);
         orderItem1.setOptionId(1L);
 
         OrderItemRequestDto orderItem2 = new OrderItemRequestDto();
-        orderItem2.setItem(item.getItemId());
+        orderItem2.setItem(item.getId());
         orderItem2.setQuantity(2);
         orderItem2.setOptionId(2L);
 

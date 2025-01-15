@@ -1,7 +1,9 @@
 package kwh.cofshop.cart.controller;
 
+import kwh.cofshop.ControllerTestSetting;
+
 import static org.junit.jupiter.api.Assertions.*;
 
-class CartControllerTest {
+class CartControllerTest extends ControllerTestSetting {
 
 }

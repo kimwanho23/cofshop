@@ -1,8 +1,7 @@
 
 package kwh.cofshop.security;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import kwh.cofshop.global.TokenDto;
 import kwh.cofshop.member.domain.Member;
@@ -18,30 +17,35 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import java.security.Key;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Date;
+import java.time.Duration;
+import java.util.*;
 import java.nio.charset.StandardCharsets;
-import java.util.stream.Collectors;
 
 @Component
 @Slf4j
-@RequiredArgsConstructor
 public class JwtTokenProvider {
-    @Value("${jwt.secret-key}")
-    private String SECRET_KEY;
 
-    private static final long AUTH_TOKEN_EXPIRATION = 3600000;  // 1시간
-    private static final long REFRESH_TOKEN_EXPIRATION = 604800000;  // 7일
+    private final Key key;
+    private static final String AUTHORITIES_KEY = "roles";
+    private static final String BEARER_TYPE = "bearer";
+    private static final long AUTH_TOKEN_EXPIRATION = Duration.ofHours(1).toMillis();  // 1시간
+    private static final long REFRESH_TOKEN_EXPIRATION = Duration.ofDays(7).toMillis(); // 7일
 
-    private Key getSigningKey() {
-        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
+    public JwtTokenProvider(@Value("${jwt.secret-key}") String secretKey) {
+        this.key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     }
 
+    private Key getSigningKey() {
+        return this.key;
+    }
+
+    // JWT 토큰 복호화, 토큰 정보 추출
     public Authentication getAuthentication(String accessToken) {
         Claims claims = getClaims(accessToken);
+
+        // 권한 정보 추출
         Collection<? extends GrantedAuthority> authorities =
-                Arrays.stream(claims.get(SECRET_KEY).toString().split(","))
+                Arrays.stream(claims.get(AUTHORITIES_KEY).toString().split(","))
                         .map(SimpleGrantedAuthority::new)
                         .toList();
         UserDetails principal = new User(claims.getSubject(), "", authorities);
@@ -57,47 +61,48 @@ public class JwtTokenProvider {
     }
 
     // Access Token 생성
-    public TokenDto createAuthToken(CustomUserDetails userDetails) {
+    public TokenDto createAuthToken(Authentication authentication) {
+
+        List<String> authorities = authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .toList();
 
         String accessToken = Jwts.builder()
-                .setSubject(userDetails.getUsername())            // 사용자 식별자
-                .claim("roles", userDetails.getAuthorities())    // 권한 정보
+                .setSubject(authentication.getName())            // 사용자 식별자
+                .claim(AUTHORITIES_KEY, authorities)    // 권한 정보
                 .setIssuedAt(new Date(System.currentTimeMillis()))  // 발급 시간
                 .setExpiration(new Date(System.currentTimeMillis() + AUTH_TOKEN_EXPIRATION))  // 만료 시간
-                .signWith(getSigningKey())  // 서명 알고리즘과 비밀키
+                .signWith(getSigningKey(), SignatureAlgorithm.HS512)  // 서명 알고리즘과 비밀키
                 .compact();
 
-        String refreshToken =  Jwts.builder()
-                .setSubject(userDetails.getUsername())
-                .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION))  // 만료 시간
-                .signWith(getSigningKey())
+        String refreshToken = Jwts.builder()
+                .setSubject(authentication.getName())  // 사용자 식별자만 포함
+                .setExpiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION))
+                .signWith(getSigningKey(), SignatureAlgorithm.HS512)
                 .compact();
 
-        TokenDto tokenDto = new TokenDto();
-        tokenDto.setAccessToken(accessToken);
-        tokenDto.setRefreshToken(refreshToken);
-        tokenDto.setGrantType("Bearer");
-        return tokenDto;
+        return TokenDto.builder()
+                .grantType(BEARER_TYPE)
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
     }
 
     // 토큰 검증
-    public Claims validateToken(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token);
+            return true;
+        } catch (ExpiredJwtException e) {
+            log.error("토큰 만료됨: {}", e.getMessage());
+        } catch (JwtException e) {
+            log.error("잘못된 토큰: {}", e.getMessage());
+        }
+        return false;
     }
 
-    // 토큰의 유효성 검사
-    public boolean isTokenValid(String token) {
-        try {
-            Claims claims = validateToken(token);
-            return claims.getExpiration().after(new Date());
-        } catch (Exception e) {
-            return false;
-        }
-    }
 }
 

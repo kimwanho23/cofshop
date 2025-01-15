@@ -12,6 +12,8 @@ import kwh.cofshop.cart.mapper.CartMapper;
 import kwh.cofshop.cart.repository.CartItemRepository;
 import kwh.cofshop.cart.repository.CartRepository;
 import kwh.cofshop.cart.repository.custom.CartRepositoryImpl;
+import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,7 @@ public class CartService {
 
     private final CartItemMapper cartItemMapper;
 
+    // 장바구니 시스템이 없는 유저에게 장바구니를 추가했다.
     @Transactional
     public void initializeCartsForExistingMembers() {
         List<Member> membersWithoutCart = memberRepository.findAll().stream()
@@ -46,7 +49,7 @@ public class CartService {
     // 장바구니에 아이템 등록
     @Transactional
     public CartItemResponseDto addCartItem(CartItemRequestDto cartItemRequestDto){
-        Optional<CartItem> existingCartItem = cartItemRepository.findByOptionIdAndItemId(
+        Optional<CartItem> existingCartItem = cartItemRepository.findByItemOptionIdAndItemId(
                 cartItemRequestDto.getOptionId(), cartItemRequestDto.getItemId());
         if (existingCartItem.isPresent()) {
             // 이미 존재하는 경우 수량 증가
@@ -58,6 +61,8 @@ public class CartService {
         return cartItemMapper.toResponseDto(save);
     }
 
+
+    // 회원 장바구니 조회 ( 장바구니에 있는 물건 )
     @Transactional(readOnly = true)
     public CartResponseDto getMemberCartItems(Member member){
         List<CartItemResponseDto> cartItemsByMember = cartRepository.findCartItemsByMember(member);
@@ -68,13 +73,15 @@ public class CartService {
         return cartResponseDto;
     }
 
+    // 장바구니 아이템 삭제
     @Transactional
     public void deleteCartItem(Long cartItemId) {
         CartItem cartItem = cartItemRepository.findById(cartItemId)
-                .orElseThrow(EntityNotFoundException::new);
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
         cartItemRepository.delete(cartItem);
     }
 
+    // 장바구니 전체 삭제
     @Transactional
     public void deleteCartItemAll(Long cartId) {
         cartRepository.deleteAllByCartId(cartId);

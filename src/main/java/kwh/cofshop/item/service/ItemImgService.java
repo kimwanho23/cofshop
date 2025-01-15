@@ -2,7 +2,6 @@ package kwh.cofshop.item.service;
 
 import kwh.cofshop.file.domain.FileStore;
 import kwh.cofshop.file.domain.UploadFile;
-import kwh.cofshop.item.domain.ImgType;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemImg;
 import kwh.cofshop.item.dto.request.ItemImgRequestDto;
@@ -15,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @RequiredArgsConstructor
 @Service
@@ -23,49 +23,36 @@ public class ItemImgService {
     private final FileStore fileStore; // 파일 저장 클래스
     private final ItemImgRepository itemImgRepository;
 
-    @Transactional
-    public List<ItemImg> saveItemImages(Item item, ItemImgRequestDto imgRequestDto) throws IOException {
-        // 파일 저장
-        List<UploadFile> uploadFiles = storeFiles(imgRequestDto);
 
-        // ItemImg 생성
-        List<ItemImg> itemImgs = uploadFiles.stream()
-                .map(uploadFile -> ItemImg.createImg(
+
+    @Transactional
+    public List<ItemImg> saveItemImages(Item item, Map<ItemImgRequestDto, MultipartFile> imgMap) throws IOException {
+        List<ItemImg> itemImgs = new ArrayList<>();
+
+        for (Map.Entry<ItemImgRequestDto, MultipartFile> entry : imgMap.entrySet()) {
+            ItemImgRequestDto imgRequestDto = entry.getKey();
+            MultipartFile file = entry.getValue();
+
+            if (file != null && !file.isEmpty()) {
+                // ✅ 파일 저장
+                UploadFile uploadFile = fileStore.storeFile(file);
+
+                // ✅ 이미지 엔티티 생성 및 추가
+                itemImgs.add(ItemImg.createImg(
                         uploadFile.getStoreFileName(),
                         uploadFile.getUploadFileName(),
                         "/images/" + uploadFile.getStoreFileName(),
-                        determineImgType(uploadFile, imgRequestDto), // 대표/서브 여부 결정
+                        imgRequestDto.getImgType(),
                         item
-                ))
-                .toList();
+                ));
+            }
+        }
 
-        // 저장 및 반환
+        // ✅ DB 저장
         return itemImgRepository.saveAll(itemImgs);
     }
 
-    private List<UploadFile> storeFiles(ItemImgRequestDto imgRequestDto) throws IOException {
-        List<UploadFile> uploadFiles = new ArrayList<>();
 
-        // 대표 이미지 처리
-        MultipartFile repImage = imgRequestDto.getRepImage();
-        if (repImage != null && !repImage.isEmpty()) {
-            uploadFiles.add(fileStore.storeFile(repImage));
-        }
 
-        // 서브 이미지 처리
-        List<MultipartFile> subImages = imgRequestDto.getSubImages();
-        if (subImages != null && !subImages.isEmpty()) {
-            uploadFiles.addAll(fileStore.storeFiles(subImages));
-        }
-
-        return uploadFiles;
-    }
-
-    private ImgType determineImgType(UploadFile uploadFile, ItemImgRequestDto imgRequestDto) {
-        return imgRequestDto.getRepImage() != null &&
-                uploadFile.getUploadFileName().equals(imgRequestDto.getRepImage().getOriginalFilename())
-                ? ImgType.REPRESENTATIVE
-                : ImgType.SUB;
-    }
 
 }

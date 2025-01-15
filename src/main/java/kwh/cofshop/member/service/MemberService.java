@@ -36,7 +36,7 @@ public class MemberService {
 
     public MemberResponseDto findMember(Long memberId) {
         Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new BadRequestException(BadRequestErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
 
         return memberMapper.toResponseDto(member);
     }

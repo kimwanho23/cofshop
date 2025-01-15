@@ -51,7 +51,7 @@ public class OrderService {
         Map<Long, ItemOption> itemOptionMap = optionIds.stream()
                 .map(optionId -> itemOptionRepository.findByIdWithLock(optionId)
                         .orElseThrow(() -> new EntityNotFoundException("옵션을 찾을 수 없습니다.")))
-                .collect(Collectors.toMap(ItemOption::getOptionId, Function.identity()));
+                .collect(Collectors.toMap(ItemOption::getId, Function.identity()));
 
 
         List<OrderItem> orderItems = orderRequestDto.getOrderItemRequestDtoList().stream()
@@ -94,6 +94,8 @@ public class OrderService {
 
         return orderCancelResponseDto;
     }
+
+    // 반품 요청
 
     // 하나의 주문 정보
     @Transactional(readOnly = true)

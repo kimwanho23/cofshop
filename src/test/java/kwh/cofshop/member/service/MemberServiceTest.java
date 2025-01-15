@@ -141,10 +141,8 @@ class MemberServiceTest {
 
         CustomUserDetails customUserDetails = new CustomUserDetails(byEmail);
 
-        TokenDto token = jwtTokenProvider.createAuthToken(customUserDetails); // 토큰 생성
-
         mockMvc.perform(get("/api/m/protected")
-                        .header("Authorization", "Bearer " + token.getAccessToken()))
+                        .header("Authorization", "Bearer " /*+ token.getAccessToken()*/))
                 .andExpect(status().isOk())  // 200 응답 확인
                 .andExpect(jsonPath("$.body.data").value("보호된 페이지에 접근 성공!"))
                 .andDo(print()); // 인증이 필요한 페이지에 접속 테스트

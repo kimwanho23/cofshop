@@ -4,8 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import kwh.cofshop.cart.dto.request.CartItemRequestDto;
 import kwh.cofshop.cart.dto.response.CartItemResponseDto;
 import kwh.cofshop.item.domain.Item;
-import kwh.cofshop.item.domain.ItemOption;
-import kwh.cofshop.item.repository.ItemOptionRepository;
+
 import kwh.cofshop.item.repository.ItemRepository;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.repository.MemberRepository;
@@ -49,19 +48,19 @@ class CartItemServiceTest {
         List<CartItemRequestDto> cartItemRequestDtoList = new ArrayList<>();
 
         CartItemRequestDto cartItemRequestDto1 = new CartItemRequestDto();
-        cartItemRequestDto1.setItemId(item.getItemId());
+        cartItemRequestDto1.setItemId(item.getId());
         cartItemRequestDto1.setOptionId(1L);
         cartItemRequestDto1.setQuantity(1);
         cartItemRequestDtoList.add(cartItemRequestDto1);
 
         CartItemRequestDto cartItemRequestDto2 = new CartItemRequestDto();
-        cartItemRequestDto2.setItemId(item.getItemId());
+        cartItemRequestDto2.setItemId(item.getId());
         cartItemRequestDto2.setOptionId(1L);
         cartItemRequestDto2.setQuantity(2);
         cartItemRequestDtoList.add(cartItemRequestDto2);
 
         CartItemRequestDto cartItemRequestDto3 = new CartItemRequestDto();
-        cartItemRequestDto3.setItemId(item.getItemId());
+        cartItemRequestDto3.setItemId(item.getId());
         cartItemRequestDto3.setOptionId(2L);
         cartItemRequestDto3.setQuantity(2);
         cartItemRequestDtoList.add(cartItemRequestDto3);

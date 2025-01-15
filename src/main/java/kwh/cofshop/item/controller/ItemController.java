@@ -4,7 +4,7 @@ import jakarta.validation.Valid;
 import kwh.cofshop.config.argumentResolver.LoginMember;
 import kwh.cofshop.global.response.ApiResponse;
 import kwh.cofshop.item.dto.request.*;
-import kwh.cofshop.item.dto.response.ItemCreateResponseDto;
+import kwh.cofshop.item.dto.response.ItemResponseDto;
 import kwh.cofshop.item.dto.response.ItemSearchResponseDto;
 import kwh.cofshop.item.service.ItemService;
 import kwh.cofshop.member.domain.Member;
@@ -15,8 +15,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/item")
@@ -25,16 +29,21 @@ public class ItemController {
 
     private final ItemService itemService;
 
-    @PostMapping("/create") // 상품 올리기
-    public ResponseEntity<ApiResponse<ItemCreateResponseDto>> uploadItem(
+    @PostMapping("/create")
+    public ResponseEntity<ApiResponse<ItemResponseDto>> uploadItem(
             @LoginMember Member member,
-            @Valid @RequestBody ItemCreateRequestDto requestDto) throws IOException {
+            @RequestPart("itemRequestDto") @Valid ItemRequestDto itemRequestDto,
+            @RequestPart("images") List<MultipartFile> images) throws Exception {
 
-        ItemCreateResponseDto responseDto = itemService.saveItem(requestDto,member); // 아이템 및 이미지 저장
+        // 서비스 호출 (DTO + 파일 리스트 전달)
+        ItemResponseDto responseDto = itemService.saveItem(itemRequestDto, member, images);
+
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.Created(responseDto));
     }
 
+
+    // 상품 검색
     @PostMapping("/search")
     public ResponseEntity<ApiResponse<Page<ItemSearchResponseDto>>> searchItems(
             @Valid @RequestBody  ItemSearchRequestDto itemSearchRequestDto,

@@ -3,6 +3,7 @@ package kwh.cofshop.item.controller;
 import jakarta.validation.Valid;
 import kwh.cofshop.config.argumentResolver.LoginMember;
 import kwh.cofshop.global.response.ApiResponse;
+import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.dto.request.ReviewRequestDto;
 import kwh.cofshop.item.dto.response.ReviewResponseDto;
 import kwh.cofshop.item.service.ReviewService;
@@ -28,6 +29,7 @@ public class ReviewController {
     public ResponseEntity<ApiResponse<ReviewResponseDto>> addReview(
             @LoginMember Member member,
             @Valid @RequestBody ReviewRequestDto reviewRequestDto) throws IOException {
+
         ReviewResponseDto responseDto = reviewService.save(reviewRequestDto, member); // 리뷰 등록
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.Created(responseDto));

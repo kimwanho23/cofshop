@@ -1,8 +1,9 @@
 package kwh.cofshop.item.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import kwh.cofshop.item.domain.ImgType;
 import kwh.cofshop.item.dto.request.*;
-import kwh.cofshop.item.dto.response.ItemCreateResponseDto;
+import kwh.cofshop.item.dto.response.ItemResponseDto;
 import kwh.cofshop.item.dto.response.ItemSearchResponseDto;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.repository.MemberRepository;
@@ -16,11 +17,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.annotation.Commit;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -52,7 +55,6 @@ class ItemServiceTest {
     @Test
     @DisplayName("아이템 등록 테스트")
     @Transactional
-    @Commit
     void createItem() throws Exception {
 
         Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
@@ -60,18 +62,19 @@ class ItemServiceTest {
         // 1. ItemRequestDto
         ItemRequestDto requestDto = getItemRequestDto();
 
-        // 2. ItemImgRequestDto
-        ItemImgRequestDto imgRequestDto = getItemImgRequestDto();
+        // 2. ImgRequestDto, MultiPartFile
+        List<MultipartFile> imageFiles = generateImageFiles();
+
 
         // 3. ItemOptionRequestDto
         List<ItemOptionRequestDto> itemOptionRequestDto = getItemOptionRequestDto();
+        List<ItemImgRequestDto> itemImgRequestDto = getImgRequestDto();
 
-        ItemCreateRequestDto itemCreateRequestDto = new ItemCreateRequestDto(); // ItemCreateDto 설정
-        itemCreateRequestDto.setItemRequestDto(requestDto);
-        itemCreateRequestDto.setItemImgRequestDto(imgRequestDto);
-        itemCreateRequestDto.setItemOptionRequestDto(itemOptionRequestDto);
+        requestDto.setItemImgRequestDto(itemImgRequestDto);
+        requestDto.setItemOptionRequestDto(itemOptionRequestDto); // 옵션 설정
 
-        ItemCreateResponseDto responseDto = itemService.saveItem(itemCreateRequestDto, member);
+
+        ItemResponseDto responseDto = itemService.saveItem(requestDto, member, imageFiles);
 
         // ResponseDto JSON 변환
         String itemJson = objectMapper.writeValueAsString(responseDto);
@@ -90,17 +93,31 @@ class ItemServiceTest {
         log.info(objectMapper.writeValueAsString(itemSearchResponseDtoList));
     }
 
+    // 이미지 파일
+    private List<MultipartFile> generateImageFiles() {
+        List<MultipartFile> images = new ArrayList<>();
+        images.add(new MockMultipartFile("images", "test.jpg", "image/jpeg", "test data".getBytes()));
+        images.add(new MockMultipartFile("images", "test1.jpg", "image/jpeg", "test data 1".getBytes()));
+        images.add(new MockMultipartFile("images", "test2.jpg", "image/jpeg", "test data 2".getBytes()));
+        return images;
+    }
 
-    // 이미지 파일 임의 생성
-    private static ItemImgRequestDto getItemImgRequestDto() {
-        MockMultipartFile repImage = new MockMultipartFile("repImage", "test.jpg", "image/jpeg", "test data".getBytes());
-        MockMultipartFile subImage1 = new MockMultipartFile("subImages", "test1.jpg", "image/jpeg", "test data 1".getBytes());
-        MockMultipartFile subImage2 = new MockMultipartFile("subImages", "test2.jpg", "image/jpeg", "test data 2".getBytes());
-        List<MultipartFile> subImages = List.of(subImage1, subImage2);
+    // 이미지 DTO
+    private static List<ItemImgRequestDto> getImgRequestDto() {
+        List<ItemImgRequestDto> imgRequestDto = new ArrayList<>();
 
-        ItemImgRequestDto imgRequestDto = new ItemImgRequestDto();
-        imgRequestDto.setRepImage(repImage);
-        imgRequestDto.setSubImages(subImages);
+        ItemImgRequestDto repDto = new ItemImgRequestDto();
+        repDto.setImgType(ImgType.REPRESENTATIVE);
+        imgRequestDto.add(repDto);
+
+        ItemImgRequestDto subDto1 = new ItemImgRequestDto();
+        subDto1.setImgType(ImgType.SUB);
+        imgRequestDto.add(subDto1);
+
+        ItemImgRequestDto subDto2 = new ItemImgRequestDto();
+        subDto2.setImgType(ImgType.SUB);
+        imgRequestDto.add(subDto2);
+
         return imgRequestDto;
     }
 
@@ -122,7 +139,7 @@ class ItemServiceTest {
         return option;
     }
 
-    private static ItemRequestDto getItemRequestDto() {
+    private ItemRequestDto getItemRequestDto() {
         ItemRequestDto requestDto = new ItemRequestDto();
         requestDto.setItemName("커피 원두");
         requestDto.setPrice(15000);
@@ -131,7 +148,6 @@ class ItemServiceTest {
         requestDto.setDiscount(0); // 할인율
         requestDto.setDeliveryFee(1000); // 배송비
         requestDto.setItemLimit(5); // 수량 제한
-
         return requestDto;
     }
 }

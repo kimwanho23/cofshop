@@ -21,7 +21,7 @@ public class ItemOptionRepositoryImpl implements ItemOptionRepositoryCustom {
 
         ItemOption result = queryFactory
                 .selectFrom(itemOption)
-                .where(itemOption.optionId.eq(optionId))
+                .where(itemOption.id.eq(optionId))
                 .setLockMode(LockModeType.PESSIMISTIC_WRITE)  // 비관적 락 설정
                 .fetchOne();
 

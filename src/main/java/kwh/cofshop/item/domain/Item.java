@@ -16,8 +16,8 @@ public class Item extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "item_id", nullable = false, updatable = false)
-    private Long itemId; // 상품 코드 (기본 키)
+    @Column(nullable = false, updatable = false)
+    private Long id; // 상품 코드 (기본 키)
 
     @Column(name = "item_name", nullable = false)
     private String itemName; // 상품명
@@ -25,6 +25,7 @@ public class Item extends BaseEntity {
     @Column(nullable = false)
     private int price; // 가격
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "item_state", nullable = false)
     private ItemState itemState; // 상품 상태 (1: 판매중, 0: 판매 중단)
 
@@ -46,9 +47,13 @@ public class Item extends BaseEntity {
     //연관관계
     ///////////////////////////////////////////////////////////////////////////////
 
+    // 카테고리
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private Category category; // 상품이 카테고리(FK)
+
+    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL)
+    private List<ItemCategory> itemCategories = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "seller_email", referencedColumnName = "email", nullable = false)
@@ -58,20 +63,21 @@ public class Item extends BaseEntity {
     private List<ItemOption> itemOptions = new ArrayList<>(); // 옵션 리스트
 
     @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<ItemImg> itemImgs = new ArrayList<>();  // 컬렉션 타입 사용
+    private List<ItemImg> itemImgs = new ArrayList<>();  // 아이템 이미지
 
     @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<Review> reviews = new ArrayList<>();
+    private List<Review> reviews = new ArrayList<>(); // 리뷰 목록
 
 
     @Builder
     public Item(String itemName, Integer price, Integer discount,
-                Integer deliveryFee, Category category, String origin, Integer itemLimit, Member seller) {
+                Integer deliveryFee, Category category, List<ItemCategory> itemCategories, String origin, Integer itemLimit, Member seller) {
         this.itemName = itemName;
         this.price = price;
         this.discount = discount;
         this.deliveryFee = deliveryFee;
         this.category = category;
+        this.itemCategories = itemCategories;
         this.origin = origin;
         this.itemLimit = itemLimit;
         this.seller = seller;

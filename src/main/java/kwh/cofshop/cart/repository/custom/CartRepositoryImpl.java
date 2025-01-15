@@ -1,17 +1,11 @@
 package kwh.cofshop.cart.repository.custom;
 
-import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import kwh.cofshop.cart.domain.CartItem;
 import kwh.cofshop.cart.domain.QCartItem;
-import kwh.cofshop.cart.dto.request.CartItemRequestDto;
 import kwh.cofshop.cart.dto.response.CartItemResponseDto;
 import kwh.cofshop.cart.mapper.CartItemMapper;
 import kwh.cofshop.item.domain.*;
-import kwh.cofshop.item.dto.response.ItemOptionResponseDto;
-import kwh.cofshop.item.dto.response.ItemResponseDto;
-import kwh.cofshop.item.mapper.ItemMapper;
-import kwh.cofshop.item.mapper.ItemOptionMapper;
 import kwh.cofshop.member.domain.Member;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -52,7 +46,7 @@ public class CartRepositoryImpl implements CartRepositoryCustom {
         QCartItem cartItem = QCartItem.cartItem;
         queryFactory
                 .delete(cartItem)
-                .where(cartItem.cart.cartId.eq(cartId))
+                .where(cartItem.cart.id.eq(cartId))
                 .execute();
     }
 }

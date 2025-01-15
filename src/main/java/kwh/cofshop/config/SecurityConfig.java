@@ -25,8 +25,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Slf4j
 public class SecurityConfig {
 
-    private final MemberRepository memberRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    private final ObjectMapper objectMapper;
     private final CorsConfig corsConfig;
 
     @Bean
@@ -50,8 +50,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // 무상태
                 .addFilter(corsConfig.corsFilter())
-                .addFilterBefore(new JwtFilter(jwtTokenProvider, memberRepository), UsernamePasswordAuthenticationFilter.class)
-                .addFilterAt(new LoginFilter(authenticationManager(), jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(new JwtFilter(jwtTokenProvider), LoginFilter.class)
+                .addFilterAt(new LoginFilter(authenticationManager(), jwtTokenProvider, objectMapper), UsernamePasswordAuthenticationFilter.class);
 
 
         return http.build();
