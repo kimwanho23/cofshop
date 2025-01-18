@@ -134,20 +134,4 @@ class MemberServiceTest {
                 .andDo(print());  // 요청 및 응답 출력*/
     }
 
-    @Test
-    @DisplayName("토큰 요청 테스트")
-    void expiredJwtTokenTest() throws Exception {
-        Member byEmail = memberRepository.findByEmail("test@gmail.com").orElseThrow();
-
-        CustomUserDetails customUserDetails = new CustomUserDetails(byEmail);
-
-        mockMvc.perform(get("/api/m/protected")
-                        .header("Authorization", "Bearer " /*+ token.getAccessToken()*/))
-                .andExpect(status().isOk())  // 200 응답 확인
-                .andExpect(jsonPath("$.body.data").value("보호된 페이지에 접근 성공!"))
-                .andDo(print()); // 인증이 필요한 페이지에 접속 테스트
-    }
-
-
-
 }

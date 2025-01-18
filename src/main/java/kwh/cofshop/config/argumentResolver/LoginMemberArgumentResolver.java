@@ -1,14 +1,10 @@
 package kwh.cofshop.config.argumentResolver;
 
-import jakarta.servlet.http.HttpSession;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.repository.MemberRepository;
 import kwh.cofshop.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Primary;
 import org.springframework.core.MethodParameter;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;

@@ -1,11 +1,9 @@
-package kwh.cofshop.config;
+package kwh.cofshop.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import kwh.cofshop.member.repository.MemberRepository;
-import kwh.cofshop.security.*;
+import kwh.cofshop.config.CorsConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.catalina.filters.CorsFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -37,8 +35,8 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests((authorize) -> authorize
                         .requestMatchers("/css/**", "/js/**", "/favicon.ico").permitAll()
-                        .requestMatchers("/m/signup", "/",  "/login", "/**").permitAll()
-                        .requestMatchers("/api/m/protected", "/item/**").authenticated()
+                        .requestMatchers("/m/signup", "/",  "/login").permitAll()
+                        .requestMatchers("/api/**", "/item/**").authenticated()
                         .anyRequest().authenticated())
                 .exceptionHandling((exceptions) -> exceptions
                         .authenticationEntryPoint(new CustomAuthenticationEntryPoint())  // 인증 실패 처리

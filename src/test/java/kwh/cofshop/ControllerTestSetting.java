@@ -3,12 +3,14 @@ package kwh.cofshop;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.repository.MemberRepository;
+import kwh.cofshop.security.CustomUserDetails;
 import kwh.cofshop.security.JwtTokenProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 
 

@@ -34,7 +34,7 @@ class CartServiceTest {
     void getCart() throws JsonProcessingException {
         Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
 
-        CartResponseDto memberCartItems = cartService.getMemberCartItems(member);
+        CartResponseDto memberCartItems = cartService.getMemberCartItems(member.getEmail());
         log.info(objectMapper.writeValueAsString(memberCartItems));
     }
 

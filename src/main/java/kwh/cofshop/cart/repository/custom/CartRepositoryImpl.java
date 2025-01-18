@@ -21,7 +21,7 @@ public class CartRepositoryImpl implements CartRepositoryCustom {
     private final CartItemMapper cartItemMapper;
 
     @Override
-    public List<CartItemResponseDto> findCartItemsByMember(Member member) { // Member Cart 조회, Item, ItemOption 등 조인
+    public List<CartItemResponseDto> findCartItemsByMember(String email) { // Member Cart 조회, Item, ItemOption 등 조인
         QCartItem cartItem = QCartItem.cartItem;
         QItem item = QItem.item;
         QItemImg itemImg = QItemImg.itemImg;
@@ -32,7 +32,7 @@ public class CartRepositoryImpl implements CartRepositoryCustom {
                 .join(cartItem.item, item).fetchJoin()
                 .join(cartItem.itemOption, itemOption).fetchJoin()
                 .leftJoin(item.itemImgs, itemImg).fetchJoin()
-                .where(cartItem.cart.member.eq(member)
+                .where(cartItem.cart.member.email.eq(email)
                         .and(itemImg.imgType.eq(ImgType.REPRESENTATIVE)))
                 .fetch();
 

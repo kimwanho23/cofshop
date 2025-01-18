@@ -69,12 +69,4 @@ public class ReviewService {
                 .toList();
     }
 
-    private Member getMember() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        log.info("인증 성공: {}", authentication.getName());
-
-        return memberRepository.findByEmail(authentication.getName())
-                .orElseThrow(() -> new IllegalArgumentException("판매자를 찾을 수 없습니다."));
-    }
-
 }

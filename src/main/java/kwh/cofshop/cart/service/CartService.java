@@ -64,11 +64,11 @@ public class CartService {
 
     // 회원 장바구니 조회 ( 장바구니에 있는 물건 )
     @Transactional(readOnly = true)
-    public CartResponseDto getMemberCartItems(Member member){
-        List<CartItemResponseDto> cartItemsByMember = cartRepository.findCartItemsByMember(member);
+    public CartResponseDto getMemberCartItems(String email){
+        List<CartItemResponseDto> cartItemsByMember = cartRepository.findCartItemsByMember(email);
 
         CartResponseDto cartResponseDto = new CartResponseDto();
-        cartResponseDto.setMemberId(member.getMemberId());
+        cartResponseDto.setEmail(email);
         cartResponseDto.setCartItems(cartItemsByMember);
         return cartResponseDto;
     }

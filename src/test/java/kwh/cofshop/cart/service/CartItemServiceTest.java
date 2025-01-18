@@ -45,6 +45,14 @@ class CartItemServiceTest {
         Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
         Item item = itemRepository.findById(1L).orElseThrow();
 
+        List<CartItemRequestDto> cartItemRequestDtoList = getCartItemRequestDtos(item);
+
+
+        List<CartItemResponseDto> cartItemResponseDto = cartItemService.addCartItem(cartItemRequestDtoList, member);
+        log.info(objectMapper.writeValueAsString(cartItemResponseDto));
+    }
+
+    private static List<CartItemRequestDto> getCartItemRequestDtos(Item item) {
         List<CartItemRequestDto> cartItemRequestDtoList = new ArrayList<>();
 
         CartItemRequestDto cartItemRequestDto1 = new CartItemRequestDto();
@@ -64,10 +72,7 @@ class CartItemServiceTest {
         cartItemRequestDto3.setOptionId(2L);
         cartItemRequestDto3.setQuantity(2);
         cartItemRequestDtoList.add(cartItemRequestDto3);
-
-
-        List<CartItemResponseDto> cartItemResponseDto = cartItemService.addCartItem(cartItemRequestDtoList, member);
-        log.info(objectMapper.writeValueAsString(cartItemResponseDto));
+        return cartItemRequestDtoList;
     }
 
 

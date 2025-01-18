@@ -4,9 +4,11 @@ package kwh.cofshop.security;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import kwh.cofshop.global.TokenDto;
-import kwh.cofshop.member.domain.Member;
-import lombok.RequiredArgsConstructor;
+import kwh.cofshop.member.domain.MemberState;
+import kwh.cofshop.member.domain.Role;
+import kwh.cofshop.member.repository.MemberRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -26,7 +28,7 @@ import java.nio.charset.StandardCharsets;
 public class JwtTokenProvider {
 
     private final Key key;
-    private static final String AUTHORITIES_KEY = "roles";
+    private static final String AUTHORITIES_KEY = "auth";
     private static final String BEARER_TYPE = "bearer";
     private static final long AUTH_TOKEN_EXPIRATION = Duration.ofHours(1).toMillis();  // 1시간
     private static final long REFRESH_TOKEN_EXPIRATION = Duration.ofDays(7).toMillis(); // 7일
@@ -41,6 +43,7 @@ public class JwtTokenProvider {
 
     // JWT 토큰 복호화, 토큰 정보 추출
     public Authentication getAuthentication(String accessToken) {
+
         Claims claims = getClaims(accessToken);
 
         // 권한 정보 추출
@@ -48,7 +51,12 @@ public class JwtTokenProvider {
                 Arrays.stream(claims.get(AUTHORITIES_KEY).toString().split(","))
                         .map(SimpleGrantedAuthority::new)
                         .toList();
-        UserDetails principal = new User(claims.getSubject(), "", authorities);
+
+        CustomUserDetails principal = CustomUserDetails.builder()
+                .email(claims.getSubject())
+                .authorities(authorities)
+                .build();
+
         return new UsernamePasswordAuthenticationToken(principal, "", authorities);
     }
 

@@ -44,7 +44,44 @@ class ItemControllerTest extends ControllerTestSetting {
 
 
         ItemRequestDto requestDto = getItemRequestDto();
-        List<MockMultipartFile> imageFiles = generateImageFiles();
+        List<MockMultipartFile> imageFiles = getImageFiles();
+        List<ItemImgRequestDto> itemImgRequestDto = getImgRequestDto();
+
+        // 3. DTO에 데이터 설정
+        requestDto.setItemImgRequestDto(itemImgRequestDto);
+        requestDto.setItemOptionRequestDto(getItemOptionRequestDto());
+
+
+        // 4. JSON 직렬화 (DTO 객체를 문자열로 변환)
+        String requestDtoJson = objectMapper.writeValueAsString(requestDto);
+        MockMultipartFile itemRequestDtoPart = new MockMultipartFile("itemRequestDto",
+                "itemRequestDto.json", "application/json", requestDtoJson.getBytes(StandardCharsets.UTF_8));
+
+        // 5. MockMvc 요청 수행 (MultipartFile 포함)
+        mockMvc.perform(multipart("/api/item/create")
+                        .file(itemRequestDtoPart)
+                        .file(imageFiles.get(0))
+                        .file(imageFiles.get(1))
+                        .file(imageFiles.get(2))
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.MULTIPART_FORM_DATA))
+                .andExpect(status().isCreated())
+                .andDo(print());
+    }
+
+
+    @Test
+    @DisplayName("검색 테스트")
+    @Transactional
+    void SearchItem() throws Exception {
+        // 1. 멤버 토큰
+        Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
+        Authentication authentication = new UsernamePasswordAuthenticationToken(member.getEmail(), null);
+        String accessToken = jwtTokenProvider.createAuthToken(authentication).getAccessToken();
+
+
+        ItemRequestDto requestDto = getItemRequestDto();
+        List<MockMultipartFile> imageFiles = getImageFiles();
         List<ItemImgRequestDto> itemImgRequestDto = getImgRequestDto();
 
         // 3. DTO에 데이터 설정
@@ -70,7 +107,7 @@ class ItemControllerTest extends ControllerTestSetting {
     }
 
     // 이미지 파일
-    private List<MockMultipartFile> generateImageFiles() {
+    private List<MockMultipartFile> getImageFiles() {
         List<MockMultipartFile> images = new ArrayList<>();
         images.add(new MockMultipartFile("images", "test.jpg", "image/jpeg", "test data".getBytes()));
         images.add(new MockMultipartFile("images", "test1.jpg", "image/jpeg", "test data 1".getBytes()));

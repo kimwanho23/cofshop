@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface CartRepositoryCustom {
 
-    List<CartItemResponseDto> findCartItemsByMember(Member member);
+    List<CartItemResponseDto> findCartItemsByMember(String email);
 
     void deleteAllByCartId(Long cartId);
 }
