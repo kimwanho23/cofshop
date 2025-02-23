@@ -17,13 +17,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.annotation.Commit;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -74,7 +73,7 @@ class ItemServiceTest {
         requestDto.setItemOptionRequestDto(itemOptionRequestDto); // 옵션 설정
 
 
-        ItemResponseDto responseDto = itemService.saveItem(requestDto, member, imageFiles);
+        ItemResponseDto responseDto = itemService.saveItem(requestDto, member.getId(), imageFiles);
 
         // ResponseDto JSON 변환
         String itemJson = objectMapper.writeValueAsString(responseDto);

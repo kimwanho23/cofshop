@@ -1,8 +1,5 @@
-
 package kwh.cofshop.security;
 
-import jakarta.annotation.Resource;
-import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -16,8 +13,7 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
 
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
 
-    @Resource
-    private CustomUserDetailsService userDetailsService;
+    private final CustomUserDetailsService userDetailsService;
 
 
     @Override
@@ -26,7 +22,6 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
         String password = authentication.getCredentials().toString();
 
         CustomUserDetails customUserDetails = (CustomUserDetails) userDetailsService.loadUserByUsername(email);
-
 
         if(!(customUserDetails.getUsername().equals(email) && bCryptPasswordEncoder.matches(password, customUserDetails.getPassword()))){
             System.out.println("Provider 실패");

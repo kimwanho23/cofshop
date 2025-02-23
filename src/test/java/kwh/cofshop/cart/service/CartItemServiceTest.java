@@ -48,7 +48,7 @@ class CartItemServiceTest {
         List<CartItemRequestDto> cartItemRequestDtoList = getCartItemRequestDtos(item);
 
 
-        List<CartItemResponseDto> cartItemResponseDto = cartItemService.addCartItem(cartItemRequestDtoList, member);
+        List<CartItemResponseDto> cartItemResponseDto = cartItemService.addCartItem(cartItemRequestDtoList, member.getId());
         log.info(objectMapper.writeValueAsString(cartItemResponseDto));
     }
 

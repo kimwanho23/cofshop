@@ -22,7 +22,7 @@ public class Member {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "member_id")
-    private Long memberId;  // 기본 키
+    private Long id;  // 기본 키
 
     @Column(nullable = false, unique = true)
     private String email;  // 이메일(Unique)
@@ -66,8 +66,9 @@ public class Member {
     private Cart cart;
 
     @Builder
-    public Member(String email, String memberName, String memberPwd,
+    public Member(Long id, String email, String memberName, String memberPwd,
                   String tel) {
+        this.id = id;
         this.email = email;
         this.memberName = memberName;
         this.memberPwd = memberPwd;
@@ -95,6 +96,14 @@ public class Member {
 
     public void updateLastLogin() {
         this.lastLogin = LocalDateTime.now();  // 로그인 시 자동 업데이트
+    }
+
+    public void memberStateActive(){
+        this.memberState = MemberState.ACTIVE;
+    }
+
+    public void changeMemberState(MemberState newState) {
+        this.memberState = newState;
     }
 
 }

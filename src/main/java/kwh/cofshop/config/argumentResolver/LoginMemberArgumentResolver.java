@@ -4,37 +4,46 @@ import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.repository.MemberRepository;
 import kwh.cofshop.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.ClassUtils;
 import org.springframework.core.MethodParameter;
+import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
+import java.lang.annotation.Annotation;
 import java.util.Objects;
 
 @RequiredArgsConstructor
 @Component
 public class LoginMemberArgumentResolver implements HandlerMethodArgumentResolver {
 
-    private final JwtTokenProvider jwtTokenProvider;
-    private final MemberRepository memberRepository;
-
     @Override
     public boolean supportsParameter(MethodParameter parameter) {
-        boolean isLoginUserAnnotation = parameter.getParameterAnnotation(LoginMember.class) != null;
-        boolean isUserClass = Member.class.
-                equals(parameter.getParameterType());
-        return isLoginUserAnnotation && isUserClass;
+        return parameter.hasParameterAnnotation(LoginMember.class);
     }
 
     @Override
     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
-                                  NativeWebRequest webRequest, WebDataBinderFactory binderFactory) throws Exception {
-        String token = Objects.requireNonNull(webRequest.getHeader("Authorization")).substring(7); // "Bearer " 제거
-        String email = jwtTokenProvider.getClaims(token).getSubject(); // JWT에서 이메일 추출
-        return memberRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("회원 정보를 찾을 수 없습니다."));
+                                  NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new IllegalStateException("인증되지 않은 사용자입니다."); // 로그인 하지 않은 사용자. getPrincipal은 로그인이 되어있지 않으면 annonymousUser를 반환
+        }
+
+        Object principal = authentication.getPrincipal(); // 사용자 ( 주체 ),
+
+        // 타입 검증, CustomUserDetails
+        if (!ClassUtils.isAssignable(principal.getClass(), parameter.getParameterType())) {
+            throw new ClassCastException("Principal 객체가 " + parameter.getParameterType() + "로 변환될 수 없습니다.");
+        }
+
+        return principal;
     }
 }
 

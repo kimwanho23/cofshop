@@ -43,13 +43,13 @@ class ReviewServiceTest {
     @Transactional
    // @Commit
     void createReview() throws Exception {
-        Item item = itemRepository.findById(1L)
+        Item item = itemRepository.findById(2L)
                 .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));
 
         Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
 
         ReviewRequestDto reviewRequestDto = getReviewRequestDto(item);
-        ReviewResponseDto responseDto = reviewService.save(reviewRequestDto, member); // 리뷰 저장
+        ReviewResponseDto responseDto = reviewService.save(reviewRequestDto, member.getId()); // 리뷰 저장
         String reviewJson = objectMapper.writeValueAsString(responseDto);
         log.info("review Json : {}", reviewJson);
 

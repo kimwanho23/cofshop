@@ -27,8 +27,7 @@ class ReviewControllerTest extends ControllerTestSetting {
     @DisplayName("리뷰 등록 통합 테스트")
     @Transactional
     void addReview_success() throws Exception {
-        // 1. 테스트용 데이터 준비
-        Item item = itemRepository.findById(1L).orElseThrow();
+        Item item = itemRepository.findById(2L).orElseThrow();
         ReviewRequestDto requestDto = getReviewRequestDto(item);
         String requestJson = objectMapper.writeValueAsString(requestDto);
 
@@ -48,6 +47,7 @@ class ReviewControllerTest extends ControllerTestSetting {
         ReviewRequestDto reviewRequestDto  = new ReviewRequestDto();
         reviewRequestDto.setContent("리뷰 평점 테스트");
         reviewRequestDto.setRating(5L);
+
         reviewRequestDto.setItem(item.getId());
         return reviewRequestDto;
     }

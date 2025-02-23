@@ -1,35 +1,53 @@
 package kwh.cofshop.member.service;
 
+import kwh.cofshop.global.TokenDto;
 import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.global.exception.errorcodes.ErrorCode;
 import kwh.cofshop.member.domain.Member;
+import kwh.cofshop.member.domain.MemberState;
 import kwh.cofshop.member.dto.LoginDto;
+import kwh.cofshop.member.dto.LoginResponseDto;
 import kwh.cofshop.member.dto.MemberRequestDto;
 import kwh.cofshop.member.dto.MemberResponseDto;
 import kwh.cofshop.member.mapper.MemberMapper;
 import kwh.cofshop.member.repository.MemberRepository;
+import kwh.cofshop.security.CustomUserDetails;
+import kwh.cofshop.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MemberService {
 
     private final MemberRepository memberRepository;
     private final MemberMapper memberMapper;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final JwtTokenProvider tokenProvider;
+    private final AuthenticationManager authenticationManager;
 
     @Transactional
     public MemberResponseDto save(MemberRequestDto memberDto){ // Save, Update 로직
+        if (memberRepository.findByEmail(memberDto.getEmail()).isPresent()){
+            throw new BusinessException(BusinessErrorCode.MEMBER_ALREADY_EXIST);
+        }
+
         memberDto.setMemberPwd(passwordEncoder.encode(memberDto.getMemberPwd()));
+
         Member member = memberRepository.save(memberMapper.toEntity(memberDto));// DTO 엔티티로 변환해서 저장
         return memberMapper.toResponseDto(member);
     }
@@ -41,30 +59,45 @@ public class MemberService {
         return memberMapper.toResponseDto(member);
     }
 
-    public MemberResponseDto findMember(String email) {
-        Member member = memberRepository.findByEmail(email).orElseThrow();
-        return memberMapper.toResponseDto(member);
-    }
-
     public List<MemberResponseDto> memberLists() {
         return memberRepository.findAll().stream()
                 .map(memberMapper::toResponseDto)
                 .toList();
     }
 
+    // 회원 상태 변경
     @Transactional
-    public void updateMemberPassword(Member member, String newPassword) {
-        member.changePassword(newPassword);
+    public void changeMemberState(Long id, MemberState newState) {
+        Member member = memberRepository.findById(id).orElseThrow(
+                () -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND)
+        );
+        member.changeMemberState(newState);
     }
 
+    // 비밀번호 변경
+    @Transactional
+    public void updateMemberPassword(Long id, String newPassword) {
+        Member member = memberRepository.findById(id).orElseThrow(
+                () -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND)
+        );
+        String encodePassword = passwordEncoder.encode(newPassword);
+        member.changePassword(encodePassword);
+    }
 
+    public LoginResponseDto login(LoginDto loginDto) {
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(loginDto.getEmail(), loginDto.getMemberPwd())
+        );
 
-/*    public Member login(LoginDto loginDto) {
-        Member findMember = memberRepository.findByEmail(loginDto.getEmail()).orElseThrow();
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
-        if (!passwordEncoder.matches(loginDto.getMemberPwd(), findMember.getMemberPwd())) {
-            throw new BadCredentialsException("비밀번호가 잘못되었습니다.");
-        }
-        return findMember;
-    }*/
+        TokenDto authToken = tokenProvider.createAuthToken(authentication);
+
+        return LoginResponseDto.builder()
+                .email(userDetails.getEmail())
+                .accessToken(authToken.getAccessToken())
+                .refreshToken(authToken.getRefreshToken())
+                .passwordChangeRequired(userDetails.isCredentialsNonExpired()) // 비밀번호가 아직 만료가 아닌가? false일 경우 만료.
+                .build();
+    }
 }

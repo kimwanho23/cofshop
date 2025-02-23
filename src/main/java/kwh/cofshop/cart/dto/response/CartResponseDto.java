@@ -10,7 +10,7 @@ import java.util.List;
 @Setter
 public class CartResponseDto {
 
-    private String email; // 멤버 정보
+    private Long id; // 멤버 정보
 
     private List<CartItemResponseDto> cartItems; // 장바구니 항목 리스트
 }

@@ -20,6 +20,7 @@ public class CategoryController {
 
     private final CategoryService categoryService;
 
+    // 카테고리 등록 (관리자)
     @PostMapping("/create")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<ApiResponse<CategoryResponseDto>> createCategory(
@@ -29,6 +30,7 @@ public class CategoryController {
                 .body(ApiResponse.Created(responseDto));
     }
 
+    // 카테고리 삭제 (관리자)
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteCategory(@PathVariable Long id) {
@@ -36,6 +38,7 @@ public class CategoryController {
         return ResponseEntity.ok(ApiResponse.OK(null));
     }
 
+    // 전체 카테고리 목록 (상위 카테고리와 하위 카테고리의 관계가 트리 구조와 유사함)
     @GetMapping("/tree")
     public ResponseEntity<ApiResponse<List<CategoryResponseDto>>> getCategoryTree() {
         List<CategoryResponseDto> responseDto = categoryService.getCategoryTree();

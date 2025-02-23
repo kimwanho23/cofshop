@@ -2,16 +2,15 @@ package kwh.cofshop.member.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import kwh.cofshop.global.TokenDto;
-import kwh.cofshop.member.domain.Role;
 import kwh.cofshop.member.domain.Member;
+import kwh.cofshop.member.domain.Role;
 import kwh.cofshop.member.domain.MemberState;
 import kwh.cofshop.member.dto.LoginDto;
+import kwh.cofshop.member.dto.LoginResponseDto;
 import kwh.cofshop.member.dto.MemberRequestDto;
 import kwh.cofshop.member.dto.MemberResponseDto;
 import kwh.cofshop.member.mapper.MemberMapper;
 import kwh.cofshop.member.repository.MemberRepository;
-import kwh.cofshop.security.CustomUserDetails;
 import kwh.cofshop.security.JwtTokenProvider;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
@@ -19,14 +18,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
 import org.springframework.test.annotation.Commit;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;  // POST 요청
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;  // POST 요청
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
 
 import java.time.LocalDateTime;
 
@@ -58,11 +53,12 @@ class MemberServiceTest {
     @Test
     @DisplayName("회원가입 로직 테스트")
     @Transactional
-    void signUp() throws JsonProcessingException {
+   // @Commit
+    void signUp() throws JsonProcessingException {  // 1번 테스트
 
         //DTO 생성 (프론트에서 입력)
         MemberRequestDto requestDto = new MemberRequestDto();
-        requestDto.setEmail("test3@gmail.com");
+        requestDto.setEmail("test@gmail.com");
         requestDto.setMemberName("테스트");
         requestDto.setMemberPwd("1234567890");
         requestDto.setTel("010-1234-5678");
@@ -74,7 +70,7 @@ class MemberServiceTest {
 
         // 데이터 검증
         assertThat(savedMember).isNotNull();
-        assertThat(savedMember.getEmail()).isEqualTo("test3@gmail.com");
+        assertThat(savedMember.getEmail()).isEqualTo("test@gmail.com");
         assertThat(savedMember.getMemberName()).isEqualTo("테스트");
         assertThat(savedMember.getTel()).isEqualTo("010-1234-5678");
 
@@ -93,9 +89,8 @@ class MemberServiceTest {
     @Test
     @DisplayName("멤버 Find, ResponseDto 테스트")
     @Transactional
-    void findMember(){
-        Long id = 1L; // 멤버 아이디
-        MemberResponseDto findMember = memberService.findMember(1L);
+    void findMember(){  // 2번 테스트
+        MemberResponseDto findMember = memberService.findMember(2L);
 
         assertThat(findMember.getEmail()).isEqualTo("test@gmail.com");
         assertThat(findMember.getMemberName()).isEqualTo("테스트");
@@ -105,33 +100,29 @@ class MemberServiceTest {
     }
 
     @Test
-    @DisplayName("로그인 성공 테스트")
-    void loginSuccessTest() throws Exception {
-
-        // 로그인 성공 테스트
+    @DisplayName("로그인")
+    void login(){
         LoginDto loginDto = new LoginDto();
         loginDto.setEmail("test@gmail.com");
         loginDto.setMemberPwd("1234567890");
+        LoginResponseDto login = memberService.login(loginDto);
+        log.info(login.getAccessToken());
+        log.info(login.getRefreshToken());
+        log.info(String.valueOf(login.isPasswordChangeRequired()));
 
-        mockMvc.perform(post("/login")
-                        .contentType(MediaType.APPLICATION_JSON)  // JSON 데이터 타입 설정
-                        .content(objectMapper.writeValueAsString(loginDto)))  // DTO -> JSON 변환
-                .andExpect(status().isOk())  // 성공
-                .andExpect(jsonPath("$.email").value("test@gmail.com"))  // 응답 필드 검증
-                .andExpect(jsonPath("$.accessToken").exists())  // accessToken
-                .andExpect(jsonPath("$.refreshToken").exists())  // refreshToken
-                .andDo(print());  // 요청 및 응답 출력
-/*
-        // 로그인 실패 테스트
-        LoginDto loginDto2 = new LoginDto();
-        loginDto.setEmail("test@gmail.com");
-        loginDto.setMemberPwd("123456789");
-
-        mockMvc.perform(post("/login")
-                        .contentType(MediaType.APPLICATION_JSON)  // JSON 데이터 타입 설정
-                        .content(objectMapper.writeValueAsString(loginDto2)))  // DTO -> JSON 변환
-                .andExpect(status().isUnauthorized())  // 401 에러
-                .andDo(print());  // 요청 및 응답 출력*/
     }
+
+    @Test
+    @DisplayName("멤버 상태 변경")
+    @Transactional
+    @Commit
+    void changeMemberState() throws Exception {
+        Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
+        member.changeMemberState(MemberState.ACTIVE);
+        MemberResponseDto responseDto = memberMapper.toResponseDto(member);
+        log.info(objectMapper.writeValueAsString(responseDto));
+    }
+
+
 
 }

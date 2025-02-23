@@ -7,7 +7,7 @@ import kwh.cofshop.item.dto.request.*;
 import kwh.cofshop.item.dto.response.ItemResponseDto;
 import kwh.cofshop.item.dto.response.ItemSearchResponseDto;
 import kwh.cofshop.item.service.ItemService;
-import kwh.cofshop.member.domain.Member;
+import kwh.cofshop.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -17,10 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/item")
@@ -29,14 +26,15 @@ public class ItemController {
 
     private final ItemService itemService;
 
+    // 상품 등록
     @PostMapping("/create")
     public ResponseEntity<ApiResponse<ItemResponseDto>> uploadItem(
-            @LoginMember Member member,
+            @LoginMember CustomUserDetails customUserDetails,
             @RequestPart("itemRequestDto") @Valid ItemRequestDto itemRequestDto,
             @RequestPart("images") List<MultipartFile> images) throws Exception {
 
         // 서비스 호출 (DTO + 파일 리스트 전달)
-        ItemResponseDto responseDto = itemService.saveItem(itemRequestDto, member, images);
+        ItemResponseDto responseDto = itemService.saveItem(itemRequestDto, customUserDetails.getId(), images);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.Created(responseDto));

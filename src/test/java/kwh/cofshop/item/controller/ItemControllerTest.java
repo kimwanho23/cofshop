@@ -5,8 +5,10 @@ import kwh.cofshop.item.domain.ImgType;
 import kwh.cofshop.item.dto.request.ItemImgRequestDto;
 import kwh.cofshop.item.dto.request.ItemOptionRequestDto;
 import kwh.cofshop.item.dto.request.ItemRequestDto;
+import kwh.cofshop.item.dto.request.ItemSearchRequestDto;
 import kwh.cofshop.item.service.ItemService;
 import kwh.cofshop.member.domain.Member;
+import kwh.cofshop.security.CustomUserDetails;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,10 +17,13 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -38,10 +43,6 @@ class ItemControllerTest extends ControllerTestSetting {
     @Transactional
     void addItem() throws Exception {
         // 1. 멤버 토큰
-        Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
-        Authentication authentication = new UsernamePasswordAuthenticationToken(member.getEmail(), null);
-        String accessToken = jwtTokenProvider.createAuthToken(authentication).getAccessToken();
-
 
         ItemRequestDto requestDto = getItemRequestDto();
         List<MockMultipartFile> imageFiles = getImageFiles();
@@ -63,7 +64,7 @@ class ItemControllerTest extends ControllerTestSetting {
                         .file(imageFiles.get(0))
                         .file(imageFiles.get(1))
                         .file(imageFiles.get(2))
-                        .header("Authorization", "Bearer " + accessToken)
+                        .header("Authorization", "Bearer " + getToken())
                         .contentType(MediaType.MULTIPART_FORM_DATA))
                 .andExpect(status().isCreated())
                 .andDo(print());
@@ -74,35 +75,17 @@ class ItemControllerTest extends ControllerTestSetting {
     @DisplayName("검색 테스트")
     @Transactional
     void SearchItem() throws Exception {
-        // 1. 멤버 토큰
-        Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
-        Authentication authentication = new UsernamePasswordAuthenticationToken(member.getEmail(), null);
-        String accessToken = jwtTokenProvider.createAuthToken(authentication).getAccessToken();
+        // 1. 아이템 검색
+        ItemSearchRequestDto itemSearchRequestDto = new ItemSearchRequestDto();
+        itemSearchRequestDto.setItemName("커피");
 
+        // 2. JSON 직렬화 (DTO 객체를 문자열로 변환)
+        String requestDtoJson = objectMapper.writeValueAsString(itemSearchRequestDto);
 
-        ItemRequestDto requestDto = getItemRequestDto();
-        List<MockMultipartFile> imageFiles = getImageFiles();
-        List<ItemImgRequestDto> itemImgRequestDto = getImgRequestDto();
-
-        // 3. DTO에 데이터 설정
-        requestDto.setItemImgRequestDto(itemImgRequestDto);
-        requestDto.setItemOptionRequestDto(getItemOptionRequestDto());
-
-
-        // 4. JSON 직렬화 (DTO 객체를 문자열로 변환)
-        String requestDtoJson = objectMapper.writeValueAsString(requestDto);
-        MockMultipartFile itemRequestDtoPart = new MockMultipartFile("itemRequestDto",
-                "itemRequestDto.json", "application/json", requestDtoJson.getBytes(StandardCharsets.UTF_8));
-
-        // 5. MockMvc 요청 수행 (MultipartFile 포함)
-        mockMvc.perform(multipart("/api/item/create")
-                        .file(itemRequestDtoPart)
-                        .file(imageFiles.get(0))
-                        .file(imageFiles.get(1))
-                        .file(imageFiles.get(2))
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.MULTIPART_FORM_DATA))
-                .andExpect(status().isCreated())
+        mockMvc.perform(multipart("/api/item/search")
+                        .content(requestDtoJson)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
                 .andDo(print());
     }
 

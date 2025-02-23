@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
         uniqueConstraints = {
-                @UniqueConstraint(name = "unique_member_item", columnNames = {"member_email", "item_id"})
+                @UniqueConstraint(name = "unique_member_item", columnNames = {"member_id", "item_id"})
         }
 )
 public class Review extends BaseTimeEntity { // 리뷰 엔티티 : 1명당 1개의 리뷰, 별점 설정.
@@ -33,7 +33,7 @@ public class Review extends BaseTimeEntity { // 리뷰 엔티티 : 1명당 1개�
     private String content; // 후기글
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_email", referencedColumnName = "email", nullable = false)
+    @JoinColumn(name = "member_id", nullable = false)
     private Member member; // 작성자
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -57,6 +57,15 @@ public class Review extends BaseTimeEntity { // 리뷰 엔티티 : 1명당 1개�
         review.setMember(member);
         review.setItem(item);
         return review;
+    }
+
+    public void updateContent(String content) {
+        this.content = content;
+    }
+
+    // 별점 수정
+    public void updateRating(Long rating) {
+        this.rating = rating;
     }
 
     // 연관관계 편의 메서드

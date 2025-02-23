@@ -16,6 +16,7 @@ import kwh.cofshop.item.repository.ItemOptionRepository;
 import kwh.cofshop.item.repository.ItemRepository;
 import kwh.cofshop.member.domain.Member;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,11 +24,11 @@ import java.util.*;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CartItemService {
 
 
     private final CartItemMapper cartItemMapper;
-
     private final ItemRepository itemRepository;
     private final ItemOptionRepository itemOptionRepository;
     private final CartRepository cartRepository;
@@ -36,9 +37,9 @@ public class CartItemService {
 
     // 장바구니에 상품 추가
     @Transactional
-    public List<CartItemResponseDto> addCartItem(List<CartItemRequestDto> cartItemRequestDto, Member member) {
+    public List<CartItemResponseDto> addCartItem(List<CartItemRequestDto> cartItemRequestDto, Long memberId) {
 
-        Cart cart = cartRepository.findByMember(member).orElseThrow();
+        Cart cart = cartRepository.findByMemberId(memberId).orElseThrow();
 
         List<CartItemResponseDto> responseDto = new ArrayList<>();
 

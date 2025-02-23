@@ -22,10 +22,10 @@ public class Order extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "order_id", nullable = false, updatable = false)
-    private Long orderId;  // 주문 번호 (PK)
+    private Long id;  // 주문 번호 (PK)
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "email", referencedColumnName = "email")
+    @JoinColumn(name = "member_id")
     private Member member;  // 주문자 (FK)
 
     @Column(nullable = false)
@@ -66,7 +66,7 @@ public class Order extends BaseTimeEntity {
     }
 
     // 주문 상태 변경
-    public void ChangeOrderState(OrderState orderState){
+    public void changeOrderState(OrderState orderState){
         this.orderState = orderState;
     }
 

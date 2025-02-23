@@ -20,10 +20,8 @@ import java.util.Map;
 @Service
 public class ItemImgService {
 
-    private final FileStore fileStore; // 파일 저장 클래스
+    private final FileStore fileStore;
     private final ItemImgRepository itemImgRepository;
-
-
 
     @Transactional
     public List<ItemImg> saveItemImages(Item item, Map<ItemImgRequestDto, MultipartFile> imgMap) throws IOException {
@@ -34,10 +32,10 @@ public class ItemImgService {
             MultipartFile file = entry.getValue();
 
             if (file != null && !file.isEmpty()) {
-                // ✅ 파일 저장
+                // 파일 저장
                 UploadFile uploadFile = fileStore.storeFile(file);
 
-                // ✅ 이미지 엔티티 생성 및 추가
+                // 이미지 엔티티 생성 및 추가
                 itemImgs.add(ItemImg.createImg(
                         uploadFile.getStoreFileName(),
                         uploadFile.getUploadFileName(),
@@ -48,7 +46,7 @@ public class ItemImgService {
             }
         }
 
-        // ✅ DB 저장
+        // DB 저장
         return itemImgRepository.saveAll(itemImgs);
     }
 

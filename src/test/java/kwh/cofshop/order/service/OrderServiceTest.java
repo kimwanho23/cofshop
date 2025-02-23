@@ -11,12 +11,16 @@ import kwh.cofshop.item.repository.ItemRepository;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.repository.MemberRepository;
 import kwh.cofshop.order.domain.Address;
+import kwh.cofshop.order.domain.Order;
+import kwh.cofshop.order.domain.OrderState;
 import kwh.cofshop.order.dto.request.OrderCancelRequestDto;
 import kwh.cofshop.order.dto.request.OrderItemRequestDto;
 import kwh.cofshop.order.dto.request.OrderRequestDto;
 import kwh.cofshop.order.dto.request.OrdererRequestDto;
 import kwh.cofshop.order.dto.response.OrderCancelResponseDto;
 import kwh.cofshop.order.dto.response.OrderResponseDto;
+import kwh.cofshop.order.mapper.OrderMapper;
+import kwh.cofshop.order.repository.OrderRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,7 +28,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.annotation.Commit;
+import org.springframework.test.annotation.Rollback;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
@@ -39,7 +47,13 @@ import java.util.concurrent.Executors;
 class OrderServiceTest extends ServiceTestSetting {
 
     @Autowired
+    private OrderRepository orderRepository;
+
+    @Autowired
     private OrderService orderService;
+
+    @Autowired
+    private OrderMapper orderMapper;
 
     @Autowired
     private ItemRepository itemRepository;
@@ -64,17 +78,47 @@ class OrderServiceTest extends ServiceTestSetting {
     @Test
     @DisplayName("주문 생성")
     @Transactional
+    @Rollback
     void createOrder() throws Exception {
 
-        Member member = memberRepository.findByEmail("test2@gmail.com").orElseThrow();
-        Item item = itemRepository.findById(1L).orElseThrow();
+        Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
+        Item item = itemRepository.findById(2L).orElseThrow();
 
         OrdererRequestDto ordererRequestDto = getOrdererRequestDto(member);
 
         OrderRequestDto orderRequestDto = getOrderRequestDto(item, ordererRequestDto);
 
-        OrderResponseDto order = orderService.createOrder(orderRequestDto, member);
+        OrderResponseDto order = orderService.createOrder(orderRequestDto, member.getId());
         log.info(objectMapper.writeValueAsString(order));
+
+    }
+
+
+    @Test
+    @DisplayName("주문 상태 변경")
+    @Transactional
+    void changeOrderState() throws Exception {
+        Order order = orderRepository.findById(61L).orElseThrow();
+        order.changeOrderState(OrderState.SHIPPED);
+        OrderResponseDto responseDto = orderMapper.toResponseDto(order);
+        log.info(objectMapper.writeValueAsString(responseDto));
+    }
+
+    @Test
+    @DisplayName("주문 취소")
+    @Transactional
+    void OrderCancel() throws JsonProcessingException {
+        long startTime = System.nanoTime(); //  실행 시작 시간 기록
+
+        OrderCancelRequestDto orderCancelRequestDto = new OrderCancelRequestDto();
+        orderCancelRequestDto.setCancelReason("단순 변심");
+        orderCancelRequestDto.setOrderId(61L);
+        OrderCancelResponseDto orderCancelResponseDto = orderService.cancelOrder(orderCancelRequestDto);
+
+        long endTime = System.nanoTime(); //  실행 종료 시간 기록
+        log.info("주문 취소 실행 시간: {} ms", (endTime - startTime) / 1_000_000); // 실행 시간 로깅
+
+        log.info(objectMapper.writeValueAsString(orderCancelResponseDto));
 
     }
 
@@ -83,37 +127,54 @@ class OrderServiceTest extends ServiceTestSetting {
     @Transactional
     void getMemberOrders() throws JsonProcessingException {
 
-        Member member = memberRepository.findByEmail("test2@gmail.com").orElseThrow();
+        Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
 
-        List<OrderResponseDto> orderResponseDtoList = orderService.memberOrders(member);
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<OrderResponseDto> orderResponseDtoList = orderService.memberOrders(member.getId(), pageable);
 
         log.info(objectMapper.writeValueAsString(orderResponseDtoList));
     }
 
+    @Test
+    @DisplayName("모든 주문 목록")
+    @Transactional
+    void allOrders() throws Exception {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<OrderResponseDto> orderResponseDto = orderService.allOrderList(pageable);
+        objectMapper.writeValueAsString(orderResponseDto);
+
+    }
+
+    @Test
     @DisplayName("하나의 주문 정보")
+    @Transactional
+    void OrderSummary() throws JsonProcessingException {
+        OrderResponseDto orderResponseDto = orderService.orderSummary(2L);
+        log.info(objectMapper.writeValueAsString(orderResponseDto));
+    }
+
+    @DisplayName("멤버의 주문 정보")
     @Test
     @Transactional
     void getItemInfo() throws JsonProcessingException {
 
-        Member member = memberRepository.findByEmail("test2@gmail.com").orElseThrow();
+        Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
 
-        List<OrderResponseDto> orderResponseDtoList = orderService.memberOrders(member);
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<OrderResponseDto> orderResponseDtoList = orderService.memberOrders(member.getId(), pageable);
+
         log.info(objectMapper.writeValueAsString(orderResponseDtoList));
 
-        for (OrderResponseDto orderResponseDto : orderResponseDtoList) {
-            OrderResponseDto orderResponseDtoSet = orderService.orderSummary(orderResponseDto.getOrderId());
-            log.info(objectMapper.writeValueAsString(orderResponseDtoSet));
-            log.info("가르기");
-        }
     }
 
     @DisplayName("주문 동시성 테스트")
     @Test
     @Transactional
+    @Rollback
     void testConcurrentOrderCreation() throws InterruptedException {
 
-        Member member = memberRepository.findByEmail("test2@gmail.com").orElseThrow();
-        Item item = itemRepository.findById(1L).orElseThrow();
+        Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
+        Item item = itemRepository.findById(2L).orElseThrow();
 
         OrdererRequestDto ordererRequestDto = getOrdererRequestDto(member); // 주문자
 
@@ -127,7 +188,7 @@ class OrderServiceTest extends ServiceTestSetting {
             int count = i;
             executorService.execute(() -> {
                 try {
-                    orderService.createOrder(orderRequestDto, member);
+                    orderService.createOrder(orderRequestDto, member.getId());
                     log.info("{}번 실행", count);
                 } catch (Exception e) {
                     System.err.println("Exception occurred: " + e.getMessage());
@@ -142,8 +203,7 @@ class OrderServiceTest extends ServiceTestSetting {
         // Exception occurred: could not execute statement [Deadlock found when trying to get lock; try restarting transaction] 트랜잭션 데드락 발생
         // ItemOption 조회 시 비관적 락을 적용하여 해결
     }
-
-
+    
     // 주문자 정보
     private static OrdererRequestDto getOrdererRequestDto(Member member) {
         Address address = new Address("서울", "도시", "33145");
@@ -158,12 +218,12 @@ class OrderServiceTest extends ServiceTestSetting {
         OrderItemRequestDto orderItem1 = new OrderItemRequestDto();
         orderItem1.setItem(item.getId());
         orderItem1.setQuantity(2);
-        orderItem1.setOptionId(1L);
+        orderItem1.setOptionId(3L);
 
         OrderItemRequestDto orderItem2 = new OrderItemRequestDto();
         orderItem2.setItem(item.getId());
         orderItem2.setQuantity(2);
-        orderItem2.setOptionId(2L);
+        orderItem2.setOptionId(4L);
 
         OrderRequestDto orderRequestDto = new OrderRequestDto();
 
@@ -177,24 +237,4 @@ class OrderServiceTest extends ServiceTestSetting {
         return orderRequestDto;
     }
 
-    @Test
-    @DisplayName("주문 조회")
-    @Transactional
-    void OrderSummary() {
-        orderService.orderSummary(2L);
-    }
-
-    @Test
-    @DisplayName("주문 취소")
-    @Transactional
-    @Commit
-    void OrderCancel() throws JsonProcessingException {
-        OrderCancelRequestDto orderCancelRequestDto = new OrderCancelRequestDto();
-        orderCancelRequestDto.setCancelReason("단순 변심");
-        orderCancelRequestDto.setOrderId(34L);
-        OrderCancelResponseDto orderCancelResponseDto = orderService.cancelOrder(orderCancelRequestDto);
-
-        log.info(objectMapper.writeValueAsString(orderCancelResponseDto));
-
-    }
 }

@@ -1,7 +1,10 @@
 
 package kwh.cofshop.security;
 
+import kwh.cofshop.global.exception.UnauthorizedRequestException;
+import kwh.cofshop.global.exception.errorcodes.UnauthorizedErrorCode;
 import kwh.cofshop.member.domain.Member;
+import kwh.cofshop.member.domain.MemberState;
 import kwh.cofshop.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,10 +16,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -35,7 +36,17 @@ public class CustomUserDetailsService implements UserDetailsService {
                 new SimpleGrantedAuthority("ROLE_" + member.getRole())
         );
 
-        return new CustomUserDetails(
+        // 상태별로 인증 실패 처리
+        if (member.getMemberState() == MemberState.SUSPENDED) {
+            throw new UnauthorizedRequestException(UnauthorizedErrorCode.MEMBER_SUSPENDED);
+        }
+
+        if (member.getMemberState() == MemberState.QUIT) {
+            throw new UnauthorizedRequestException(UnauthorizedErrorCode.MEMBER_QUIT);
+        }
+
+            return new CustomUserDetails(
+                member.getId(),
                 member.getEmail(),
                 member.getMemberPwd(),
                 authorities,

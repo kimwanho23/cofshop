@@ -3,7 +3,10 @@ package kwh.cofshop.global.exception;
 import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import kwh.cofshop.global.exception.errorcodes.InternalServerErrorCode;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AccountExpiredException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -30,6 +33,15 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(e.getErrorCode()));
     }
 
+    // 잘못된 요청 예외
+    @ExceptionHandler(UnauthorizedRequestException.class)
+    protected ResponseEntity<ErrorResponse> handleBadRequestException(UnauthorizedRequestException e) {
+        log.error("UnauthorizedRequestException: {}", e.getMessage());
+        return ResponseEntity
+                .status(e.getErrorCode().getHttpStatus())  // 401 UNAUTHORIZED_REQUEST
+                .body(ErrorResponse.of(e.getErrorCode()));
+    }
+
     // 유효성 에러
     @ExceptionHandler(MethodArgumentNotValidException.class)
     protected ResponseEntity<ErrorResponse> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
@@ -38,12 +50,6 @@ public class GlobalExceptionHandler {
                 .status(BadRequestErrorCode.INPUT_INVALID_VALUE.getHttpStatus())
                 .body(ErrorResponse.of(BadRequestErrorCode.INPUT_INVALID_VALUE));
     }
-
-/*    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-    public ResponseEntity<ErrorResponse> handleMethodNotSupported(HttpRequestMethodNotSupportedException e) {
-        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
-                .body(ErrorResponse.of(BadRequestErrorCode.INPUT_INVALID_VALUE));
-    }*/
 
     // 기본 예외
     @ExceptionHandler(Exception.class)

@@ -56,7 +56,7 @@ public class Item extends BaseEntity {
     private List<ItemCategory> itemCategories = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "seller_email", referencedColumnName = "email", nullable = false)
+    @JoinColumn(name = "seller_id", nullable = false)
     private Member seller;  // 판매자 정보(이메일)
 
     @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)

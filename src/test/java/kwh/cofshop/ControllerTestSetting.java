@@ -10,8 +10,13 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.Collection;
+import java.util.List;
 
 
 @SpringBootTest
@@ -30,9 +35,27 @@ public abstract class ControllerTestSetting {
     @Autowired
     protected JwtTokenProvider jwtTokenProvider;
 
+    protected Authentication createTestAuthentication(Member member) {
+        Collection<? extends GrantedAuthority> authorities = List.of(
+                new SimpleGrantedAuthority("ROLE_" + member.getRole())
+        );
+
+        CustomUserDetails userDetails = new CustomUserDetails(
+                member.getId(),
+                member.getEmail(),
+                "",
+                authorities,
+                member.getMemberState(),
+                member.getLastPasswordChange()
+        );
+        return new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+    }
+
     protected String getToken() {
         Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
-        Authentication authentication = new UsernamePasswordAuthenticationToken(member.getEmail(), null);
-        return jwtTokenProvider.createAuthToken(authentication).getAccessToken();
+        Authentication testAuthentication = createTestAuthentication(member);
+        return jwtTokenProvider.createAuthToken(testAuthentication).getAccessToken();
     }
+
+
 }

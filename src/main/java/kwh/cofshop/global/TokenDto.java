@@ -2,14 +2,13 @@ package kwh.cofshop.global;
 
 import lombok.Builder;
 import lombok.Getter;
-import lombok.Setter;
 
 @Getter
 public class TokenDto {
 
-    private String grantType;
-    private String accessToken;
-    private String refreshToken;
+    private final String grantType;
+    private final String accessToken;
+    private final String refreshToken;
 
     @Builder
     public TokenDto(String grantType, String accessToken, String refreshToken) {
@@ -17,4 +16,6 @@ public class TokenDto {
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;
     }
+
+
 }

@@ -1,6 +1,9 @@
 package kwh.cofshop.order.repository.custom;
 
+import com.querydsl.core.QueryResults;
 import com.querydsl.core.types.Projections;
+import com.querydsl.jpa.JPAExpressions;
+import com.querydsl.jpa.JPQLQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import kwh.cofshop.item.domain.QItem;
 import kwh.cofshop.item.domain.QItemOption;
@@ -17,9 +20,13 @@ import kwh.cofshop.order.dto.response.OrderResponseDto;
 import kwh.cofshop.order.dto.response.OrdererResponseDto;
 import kwh.cofshop.order.mapper.OrderMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 @RequiredArgsConstructor
@@ -30,25 +37,31 @@ public class OrderRepositoryImpl implements OrderRepositoryCustom{
 
 
     @Override
-    public List<OrderResponseDto> findOrderListByEmail(String email) {
+    public Page<OrderResponseDto> findOrderListById(Long id, Pageable pageable) {
         QOrder order = QOrder.order;
         QOrderItem orderItem = QOrderItem.orderItem;
         QMember member = QMember.member;
         QItemOption itemOption = QItemOption.itemOption;
 
-        List<Order> orders = queryFactory
-                .selectDistinct(order)
+        JPQLQuery<Order> query = queryFactory
+                .select(order)
                 .from(order)
-                .join(order.member, member).fetchJoin()
-                .leftJoin(order.orderItems, orderItem).fetchJoin()
-                .leftJoin(orderItem.itemOption, itemOption).fetchJoin()
-                .where(member.email.eq(email))
-                .orderBy(order.createDate.desc())
-                .fetch();
+                .join(order.member, member)
+                .leftJoin(order.orderItems, orderItem)
+                .leftJoin(orderItem.itemOption, itemOption)
+                .where(member.id.eq(id))
+                .orderBy(order.createDate.desc());
 
-        return orders.stream()
+        QueryResults<Order> results = query.offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetchResults();
+
+        List<OrderResponseDto> content = results.getResults()
+                .stream()
                 .map(orderMapper::toResponseDto)
                 .toList();
+
+        return new PageImpl<>(content, pageable, results.getTotal());
     }
 
     @Override
@@ -64,11 +77,35 @@ public class OrderRepositoryImpl implements OrderRepositoryCustom{
                 .join(order.orderItems, orderItem).fetchJoin()
                 .join(orderItem.itemOption, itemOption).fetchJoin()
                 .join(itemOption.item, item).fetchJoin()
-                .where(order.orderId.eq(orderId))
+                .where(order.id.eq(orderId))
                 .fetchOne();
 
         return orderMapper.toResponseDto(fetchedOrder);
 
     }
 
+    @Override
+    public Page<OrderResponseDto> findAllOrders(Pageable pageable) {
+        QOrder order = QOrder.order;
+        QOrderItem orderItem = QOrderItem.orderItem;
+
+        List<Order> orders = queryFactory
+                .selectFrom(order)
+                .leftJoin(order.orderItems, orderItem).fetchJoin()
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetch();
+
+        long total = Optional.ofNullable(queryFactory
+                        .select(order.count())
+                        .from(order)
+                        .fetchOne())
+                .orElse(0L);
+
+        List<OrderResponseDto> content = orders.stream()
+                .map(orderMapper::toResponseDto)
+                .toList();
+
+        return new PageImpl<>(content, pageable, total);
+    }
 }

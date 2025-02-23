@@ -8,15 +8,15 @@ import kwh.cofshop.item.dto.request.ReviewRequestDto;
 import kwh.cofshop.item.dto.response.ReviewResponseDto;
 import kwh.cofshop.item.service.ReviewService;
 import kwh.cofshop.member.domain.Member;
+import kwh.cofshop.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import java.io.IOException;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/review")
@@ -27,11 +27,31 @@ public class ReviewController {
 
     @PostMapping("/createReview") // 상품 리뷰 , 한 상품에 리뷰는 하나만 작성 가능
     public ResponseEntity<ApiResponse<ReviewResponseDto>> addReview(
-            @LoginMember Member member,
-            @Valid @RequestBody ReviewRequestDto reviewRequestDto) throws IOException {
+            @LoginMember CustomUserDetails customUserDetails,
+            @Valid @RequestBody ReviewRequestDto reviewRequestDto) {
 
-        ReviewResponseDto responseDto = reviewService.save(reviewRequestDto, member); // 리뷰 등록
+        ReviewResponseDto responseDto = reviewService.save(reviewRequestDto, customUserDetails.getId()); // 리뷰 등록
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.Created(responseDto));
+    }
+
+    // 리뷰 수정
+    @PutMapping("/updateReview/{reviewId}")
+    public ResponseEntity<ApiResponse<ReviewResponseDto>> updateReview(
+            @PathVariable Long reviewId,
+            @LoginMember CustomUserDetails customUserDetails,
+            @Valid @RequestBody ReviewRequestDto reviewRequestDto) {
+
+        ReviewResponseDto responseDto = reviewService.updateReview(reviewId, reviewRequestDto, customUserDetails.getId());
+        return ResponseEntity.ok(ApiResponse.OK(responseDto));
+    }
+
+    // 한 상품의 리뷰 목록
+    @GetMapping("/reviews")
+    public ResponseEntity<ApiResponse<Page<ReviewResponseDto>>> reviewList(
+            @PathVariable Long itemId,
+            @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<ReviewResponseDto> responseDto = reviewService.getReviewsByItem(itemId, pageable);
+        return ResponseEntity.ok(ApiResponse.OK(responseDto));
     }
 }

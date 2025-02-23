@@ -2,6 +2,7 @@ package kwh.cofshop.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kwh.cofshop.config.CorsConfig;
+import kwh.cofshop.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
@@ -26,6 +27,7 @@ public class SecurityConfig {
     private final JwtTokenProvider jwtTokenProvider;
     private final ObjectMapper objectMapper;
     private final CorsConfig corsConfig;
+    private final MemberRepository memberRepository;
 
     @Bean
     protected SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -35,7 +37,8 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests((authorize) -> authorize
                         .requestMatchers("/css/**", "/js/**", "/favicon.ico").permitAll()
-                        .requestMatchers("/m/signup", "/",  "/login").permitAll()
+                        .requestMatchers("/api/member/signup", "/",  "/login", "/api/item/search", "/api/member/login",
+                                "/swagger-ui/**", "/swagger-resources/**", "/v3/api-docs/**", "/api*").permitAll()
                         .requestMatchers("/api/**", "/item/**").authenticated()
                         .anyRequest().authenticated())
                 .exceptionHandling((exceptions) -> exceptions
@@ -55,19 +58,26 @@ public class SecurityConfig {
         return http.build();
     }
 
-        @Bean
-        public AuthenticationManager authenticationManager() {
-            return new ProviderManager(customAuthenticationProvider());
-        }
+    @Bean
+    public AuthenticationManager authenticationManager() {
+        return new ProviderManager(customAuthenticationProvider());
+    }
 
-        @Bean
-        public CustomAuthenticationProvider customAuthenticationProvider() {
-            return new CustomAuthenticationProvider(passwordEncoder());
-        }
+    @Bean
+    public CustomAuthenticationProvider customAuthenticationProvider() {
+        return new CustomAuthenticationProvider(passwordEncoder(), customUserDetailsService());
+    }
 
-        @Bean
-        public BCryptPasswordEncoder passwordEncoder() {
-            return new BCryptPasswordEncoder(); // 비밀번호를 암호화된 문자열로 변환
-        }
+    @Bean
+    public BCryptPasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder(); // 비밀번호를 암호화된 문자열로 변환
+    }
+
+    @Bean
+    public CustomUserDetailsService customUserDetailsService() {
+        return new CustomUserDetailsService(memberRepository); // CustomUserDetailsService 빈 등록
+    }
+
+
 
 }

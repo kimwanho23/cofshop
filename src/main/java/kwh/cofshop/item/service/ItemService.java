@@ -11,6 +11,7 @@ import kwh.cofshop.item.mapper.ItemMapper;
 import kwh.cofshop.item.mapper.ItemSearchMapper;
 import kwh.cofshop.item.repository.ItemRepository;
 import kwh.cofshop.member.domain.Member;
+import kwh.cofshop.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -38,19 +39,18 @@ public class ItemService { // 통합 Item 서비스
     private final ItemImgService itemImgService; // 이미지 서비스
     private final ItemOptionService itemOptionService; // 옵션 서비스
 
+    private final MemberRepository memberRepository;
+
 
     @Transactional
-    public ItemResponseDto saveItem(ItemRequestDto itemRequestDto, Member seller, List<MultipartFile> images) throws IOException {
+    public ItemResponseDto saveItem(ItemRequestDto itemRequestDto, Long id, List<MultipartFile> images) throws IOException {
 
+        Member member = memberRepository.findById(id).orElseThrow();
         // 1. 상품 저장
-        Item savedItem = getSavedItem(itemRequestDto, seller);
+        Item savedItem = getSavedItem(itemRequestDto, member);
 
         // 2. DTO + 파일 매칭 (서비스에서 Map 생성)
         List<ItemImgRequestDto> imgRequestDto = itemRequestDto.getItemImgRequestDto();
-
-        if (imgRequestDto.size() != images.size()) {
-            throw new IllegalArgumentException("이미지 수와 DTO 수가 일치하지 않습니다.");
-        }
 
         Map<ItemImgRequestDto, MultipartFile> imgMap = new LinkedHashMap<>();
         for (int i = 0; i < images.size(); i++) {
@@ -65,7 +65,7 @@ public class ItemService { // 통합 Item 서비스
 
         //  5. Response 생성 및 반환
         ItemResponseDto responseDto = itemMapper.toResponseDto(savedItem);
-        responseDto.setEmail(seller.getEmail());
+        responseDto.setEmail(member.getEmail());
         return responseDto;
     }
 
