@@ -54,9 +54,6 @@ public class ItemService { // 통합 Item 서비스
     private final ItemOptionRepository itemOptionRepository;
     private final ItemImgRepository itemImgRepository;
 
-    private final EntityManager entityManager;
-
-
     @Transactional
     public ItemResponseDto saveItem(ItemRequestDto itemRequestDto, Long id, List<MultipartFile> images) throws IOException {
         // 상품 등록자

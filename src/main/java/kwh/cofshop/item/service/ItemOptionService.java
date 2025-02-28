@@ -37,14 +37,63 @@ public class ItemOptionService {
         return itemOptionRepository.saveAll(itemOptions);
     }
 
-    @Transactional
+
+/*    @Transactional
+    public void updateItemOptionTest(Item item, ItemUpdateRequestDto dto) {
+        // 1) 기존 옵션 조회
+        List<ItemOption> existingOptions = itemOptionRepository.findByItemId(item.getId());
+        Map<Long, ItemOption> existingOptionMap = existingOptions.stream()
+                .collect(Collectors.toMap(ItemOption::getId, option -> option));
+
+        // 2) 삭제할 옵션 처리
+        List<Long> deleteOptionIds = dto.getDeleteOptionIds();
+        if (deleteOptionIds != null && !deleteOptionIds.isEmpty()) {
+            itemOptionRepository.deleteByItemIdAndId(item.getId(), deleteOptionIds);
+        }
+        entityManager.flush();
+        entityManager.clear();
+
+        // 3) 옵션 수정 (ID가 존재하는 경우)
+        List<ItemOptionRequestDto> existingItemOptions = dto.getExistingItemOptions();
+        if (existingItemOptions != null && !existingItemOptions.isEmpty()) {
+            for (ItemOptionRequestDto optionDto : existingItemOptions) {
+                if (optionDto.getId() != null && existingOptionMap.containsKey(optionDto.getId())) {
+                    ItemOption existingOption = itemOptionRepository.findById(optionDto.getId())
+                            .orElseThrow(() -> new EntityNotFoundException("ItemOption not found: " + optionDto.getId()));
+                    existingOption.updateOption(optionDto);
+                }
+            }
+        }
+
+        // 4) 새로운 옵션 추가 (ID 없는 경우)
+        List<ItemOptionRequestDto> addItemOptions = dto.getAddItemOptions();
+        if (addItemOptions != null && !addItemOptions.isEmpty()) {
+            List<ItemOption> newOptions = addItemOptions.stream()
+                    .filter(optionDto -> optionDto.getId() == null) // ID 없는 경우만 추가
+                    .map(dtos -> ItemOption.createOption(
+                            dtos.getDescription(),
+                            dtos.getAdditionalPrice(),
+                            dtos.getOptionNo(),
+                            dtos.getStock(),
+                            item
+                    ))
+                    .toList();
+
+            if (!newOptions.isEmpty()) {
+                itemOptionRepository.saveAll(newOptions);
+            }
+        }
+    }*/
+
+
+    // 옵션 삭제
     public void deleteItemOptions(Long itemId, List<Long> deleteOptionIds) {
         if (deleteOptionIds != null && !deleteOptionIds.isEmpty()) {
             itemOptionRepository.deleteByItemIdAndId(itemId, deleteOptionIds);
         }
     }
 
-    @Transactional
+    // 기존에 존재하는 옵션의 변경 감지
     public void updateExistingItemOptions(Item item, List<ItemOptionRequestDto> existingItemOptions) {
         if (existingItemOptions != null && !existingItemOptions.isEmpty()) {
             List<ItemOption> existingOptions = itemOptionRepository.findByItemId(item.getId());
@@ -60,7 +109,7 @@ public class ItemOptionService {
         }
     }
 
-    @Transactional
+    // 새로운 옵션 등록
     public void addNewItemOptions(Item item, List<ItemOptionRequestDto> addItemOptions) {
         if (addItemOptions != null && !addItemOptions.isEmpty()) {
             List<ItemOption> newOptions = addItemOptions.stream()
@@ -80,10 +129,11 @@ public class ItemOptionService {
         }
     }
 
+    @Transactional
     public void updateItemOptions(Item item, ItemUpdateRequestDto dto) {
+        deleteItemOptions(item.getId(), dto.getDeleteOptionIds());
         updateExistingItemOptions(item, dto.getExistingItemOptions());
-        addNewItemOptions(item, dto.getAddItemOptions()); // 등록
-        deleteItemOptions(item.getId(), dto.getDeleteOptionIds()); // 후 삭제해야 함
+        addNewItemOptions(item, dto.getAddItemOptions());
     }
 
 }

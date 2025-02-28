@@ -123,12 +123,10 @@ class ItemServiceTest {
     @Transactional
     @Commit
     void updateItem() throws Exception {
-
         Long itemId = 2L;
         Item item = itemRepository.findById(itemId).orElseThrow();
 
         ItemUpdateRequestDto itemUpdateRequestDto = getUpdateItemRequestDto();
-
 
         List<ItemOptionRequestDto> itemOptionDtos = itemOptionRepository.findByItemId(item.getId())
                 .stream()
@@ -155,18 +153,17 @@ class ItemServiceTest {
 /*        itemUpdateRequestDto.setAddItemImgs(getUpdateImgRequestDto());
         List<MultipartFile> updateImageFiles = generateUpdateImageFiles();*/
 
-               itemUpdateRequestDto.setAddItemImgs(null);
+        itemUpdateRequestDto.setAddItemImgs(null);
         List<MultipartFile> updateImageFiles = null;
 
-        itemUpdateRequestDto.setAddItemOptions(null);
+        itemUpdateRequestDto.setAddItemOptions(getUpdateItemOptionRequestDto());
         itemUpdateRequestDto.setDeleteImgIds(/*List.of(53L, 54L, 1402L, 1502L,1852L)*/null); // 기존 이미지 중 삭제할 ID
-        itemUpdateRequestDto.setDeleteOptionIds(/*List.of(59L, 60L,62L*/null); // 기존 옵션 중 삭제할 ID
+        itemUpdateRequestDto.setDeleteOptionIds(List.of(104L)); // 기존 옵션 중 삭제할 ID
         itemUpdateRequestDto.setDeleteCategoryIds(List.of());
         itemUpdateRequestDto.setAddCategoryIds(List.of(14L));
 
         ItemResponseDto itemResponseDto = itemService.updateItem(item.getId(), itemUpdateRequestDto, updateImageFiles);
         log.info(objectMapper.writeValueAsString(itemResponseDto));
-
     }
 
     @Test

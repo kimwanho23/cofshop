@@ -16,7 +16,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
@@ -49,15 +48,35 @@ public class ItemImgService {
         // DB 저장
         return itemImgRepository.saveAll(itemImgs);
     }
-    @Transactional
-    public void updateItemImages(Item item, ItemUpdateRequestDto dto, List<MultipartFile> imageFiles) throws IOException {
-        // 기존 이미지
-        List<ItemImgRequestDto> existingItemImgs = dto.getExistingItemImgs();
-        Map<Long, ItemImgRequestDto> existingImageMap = existingItemImgs.stream()
-                .collect(Collectors.toMap(ItemImgRequestDto::getId, img -> img));
 
-        // 새로운 이미지
-        List<ItemImgRequestDto> addItemImgs = dto.getAddItemImgs();
+
+    // 수정 시 삭제할 이미지 목록
+    public void deleteItemImages(Item item, List<Long> deleteImgIds) {
+        if (deleteImgIds != null && !deleteImgIds.isEmpty()) {
+            // 삭제할 이미지 조회
+            List<ItemImg> deleteItems = itemImgRepository.findByItemIdAndItemImgId(item.getId(), deleteImgIds);
+
+            // 실제 파일 삭제
+            for (ItemImg img : deleteItems) {
+                if (StringUtils.hasText(img.getImgUrl())) {
+                    try {
+                        fileStore.deleteFile(img.getImgUrl());
+                    } catch (Exception e) {
+                        log.error("파일 삭제 실패: {}", img.getImgUrl(), e);
+                    }
+                }
+            }
+
+            // DB에서 이미지 정보 삭제
+            if (!deleteItems.isEmpty()) {
+                itemImgRepository.deleteAll(deleteItems);
+            }
+        }
+    }
+
+
+    // 수정 시 새로운 이미지 등록
+    public void addItemImages(Item item, List<ItemImgRequestDto> addItemImgs, List<MultipartFile> imageFiles) throws IOException {
         if (addItemImgs != null && !addItemImgs.isEmpty() && imageFiles != null && !imageFiles.isEmpty()) {
             if (addItemImgs.size() != imageFiles.size()) {
                 throw new IllegalArgumentException("추가할 이미지 정보와 실제 파일 개수가 일치하지 않습니다.");
@@ -70,7 +89,6 @@ public class ItemImgService {
                 UploadFile uploadFile = uploadFiles.get(i);
                 ItemImgRequestDto imgRequestDto = addItemImgs.get(i);
 
-                // ID가 없는 경우 새 이미지 추가
                 if (imgRequestDto.getId() == null) {
                     newImages.add(ItemImg.createImg(
                             uploadFile.getStoreFileName(),
@@ -81,32 +99,16 @@ public class ItemImgService {
                     ));
                 }
             }
-            // 삭제할 이미지 목록
-            List<Long> deleteImgIds = dto.getDeleteImgIds();
-
-            if (deleteImgIds != null && !deleteImgIds.isEmpty()) {
-                // 삭제할 이미지 조회
-                List<ItemImg> deleteItems = itemImgRepository.findByItemIdAndItemImgId(item.getId(), deleteImgIds);
-
-                // 실제 파일 삭제
-                for (ItemImg img : deleteItems) {
-                    if (StringUtils.hasText(img.getImgUrl())) {
-                        try {
-                            fileStore.deleteFile(img.getImgUrl());
-                        } catch (Exception e) {
-                            log.error("파일 삭제 실패: {}", img.getImgUrl(), e);
-                        }
-                    }
-                }
-
-                if (!deleteItems.isEmpty()) {
-                    itemImgRepository.deleteAll(deleteItems);
-                }
-            }
 
             if (!newImages.isEmpty()) {
                 itemImgRepository.saveAll(newImages);
             }
         }
+    }
+
+    @Transactional
+    public void updateItemImages(Item item, ItemUpdateRequestDto dto, List<MultipartFile> imageFiles) throws IOException {
+        deleteItemImages(item, dto.getDeleteImgIds()); // 이미지 삭제
+        addItemImages(item, dto.getAddItemImgs(), imageFiles); // 이미지 추가
     }
 }
