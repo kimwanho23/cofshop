@@ -23,6 +23,7 @@ public class FileStore {
         return fileDir + filename;
     }
 
+    // 파일 다수 저장
     public List<UploadFile> storeFiles(List<MultipartFile> multipartFiles) throws IOException {
         List<UploadFile> storeFileResult = new ArrayList<>();
         for (MultipartFile multipartFile : multipartFiles) {
@@ -33,6 +34,7 @@ public class FileStore {
         return storeFileResult;
     }
 
+    // 파일 개별 저장
     public UploadFile storeFile(MultipartFile multipartFile) throws IOException  {
         if (multipartFile.isEmpty()) {
             return null;
@@ -43,17 +45,20 @@ public class FileStore {
         return new UploadFile(originalFilename, storeFileName);
     }
 
+    // 파일명 지정
     private String createStoreFileName(String originalFilename) {
         String ext = extractExt(originalFilename);
         String uuid = UUID.randomUUID().toString();
         return uuid + "." + ext;
     }
 
+    // 확장자 추출
     private String extractExt(String originalFilename) {
         int pos = originalFilename.lastIndexOf(".");
         return originalFilename.substring(pos + 1);
     }
 
+    // 파일 삭제
     public void deleteFile(String storeFileName) {
         if (!StringUtils.isEmpty(storeFileName)) {
             Path path = Paths.get(getFullPath(storeFileName));

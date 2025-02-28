@@ -28,6 +28,7 @@ public class CartController {
 
     private final CartItemService cartItemService;
 
+    // 장바구니 추가
     @PostMapping(value = "/addCart")
     public ResponseEntity<ApiResponse<List<CartItemResponseDto>>> addCart(
             @LoginMember CustomUserDetails customUserDetails,
@@ -39,6 +40,7 @@ public class CartController {
                 .body(ApiResponse.Created(cartItemResponseDto));
     }
 
+    // 멤버의 장바구니 목록 조회
     @GetMapping(value = "/getCart")
     public ResponseEntity<ApiResponse<CartResponseDto>> getMemberCartItem(
             @LoginMember CustomUserDetails customUserDetails){
@@ -48,12 +50,14 @@ public class CartController {
                 .body(ApiResponse.Created(memberCartItems));
     }
 
+    // 장바구니 아이템 개별 삭제
     @DeleteMapping("/item/{cartItemId}")
     public ResponseEntity<Void> deleteCartItem(@PathVariable Long cartItemId, @LoginMember CustomUserDetails customUserDetails) {
         cartService.deleteCartItem(cartItemId);
         return ResponseEntity.noContent().build();
     }
 
+    // 장바구니 아이템 일괄 삭제
     @DeleteMapping("/{cartId}/items")
     public ResponseEntity<Void> deleteAllCartItems(@PathVariable Long cartId, @LoginMember CustomUserDetails customUserDetails) {
         cartService.deleteCartItemAll(cartId);

@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -55,8 +56,6 @@ public class ItemImgService {
         Map<Long, ItemImgRequestDto> existingImageMap = existingItemImgs.stream()
                 .collect(Collectors.toMap(ItemImgRequestDto::getId, img -> img));
 
-
-
         // 새로운 이미지
         List<ItemImgRequestDto> addItemImgs = dto.getAddItemImgs();
         if (addItemImgs != null && !addItemImgs.isEmpty() && imageFiles != null && !imageFiles.isEmpty()) {
@@ -82,10 +81,27 @@ public class ItemImgService {
                     ));
                 }
             }
-            // 삭제할 이미지
+            // 삭제할 이미지 목록
             List<Long> deleteImgIds = dto.getDeleteImgIds();
+
             if (deleteImgIds != null && !deleteImgIds.isEmpty()) {
-                itemImgRepository.deleteByItemIdAndItemImgId (item.getId(), deleteImgIds);
+                // 삭제할 이미지 조회
+                List<ItemImg> deleteItems = itemImgRepository.findByItemIdAndItemImgId(item.getId(), deleteImgIds);
+
+                // 실제 파일 삭제
+                for (ItemImg img : deleteItems) {
+                    if (StringUtils.hasText(img.getImgUrl())) {
+                        try {
+                            fileStore.deleteFile(img.getImgUrl());
+                        } catch (Exception e) {
+                            log.error("파일 삭제 실패: {}", img.getImgUrl(), e);
+                        }
+                    }
+                }
+
+                if (!deleteItems.isEmpty()) {
+                    itemImgRepository.deleteAll(deleteItems);
+                }
             }
 
             if (!newImages.isEmpty()) {
@@ -93,9 +109,4 @@ public class ItemImgService {
             }
         }
     }
-
-
-
-
-
 }
