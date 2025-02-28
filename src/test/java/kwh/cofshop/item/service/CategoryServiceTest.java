@@ -11,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.Commit;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -20,7 +21,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @Slf4j
 class CategoryServiceTest {
-
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -43,28 +43,28 @@ class CategoryServiceTest {
     void createParentCategory() throws Exception {
         // 부모 카테고리 생성
         CategoryRequestDto categoryRequestDto = new CategoryRequestDto();
-        categoryRequestDto.setName("부모 카테고리 1");
+        categoryRequestDto.setName("커피");
         CategoryResponseDto parentCategory = categoryService.createCategory(categoryRequestDto);
         log.info(objectMapper.writeValueAsString(parentCategory));
 
         // 자식 카테고리 1 생성
         CategoryRequestDto childCategoryDto1 = new CategoryRequestDto();
         childCategoryDto1.setParentCategoryId(parentCategory.getId());
-        childCategoryDto1.setName("자식 카테고리 1");
+        childCategoryDto1.setName("원두커피");
         CategoryResponseDto childCategoryResponseDto1 = categoryService.createCategory(childCategoryDto1);
         log.info(objectMapper.writeValueAsString(childCategoryResponseDto1));
 
         // 자식 카테고리 2 생성
         CategoryRequestDto childCategoryDto2 = new CategoryRequestDto();
         childCategoryDto2.setParentCategoryId(parentCategory.getId());
-        childCategoryDto2.setName("자식 카테고리 2");
+        childCategoryDto2.setName("캡슐커피");
         CategoryResponseDto childCategoryResponseDto2 = categoryService.createCategory(childCategoryDto2);
         log.info(objectMapper.writeValueAsString(childCategoryResponseDto2));
 
         // 자식 카테고리 1-2 생성
         CategoryRequestDto childCategoryDto1to2 = new CategoryRequestDto();
         childCategoryDto1to2.setParentCategoryId(childCategoryResponseDto1.getId());
-        childCategoryDto1to2.setName("자식 카테고리 1-2");
+        childCategoryDto1to2.setName("에스프레소");
         CategoryResponseDto childCategoryResponseDto1to2 = categoryService.createCategory(childCategoryDto1to2);
         log.info(objectMapper.writeValueAsString(childCategoryResponseDto1to2));
 
@@ -77,7 +77,7 @@ class CategoryServiceTest {
     @DisplayName("특정 카테고리 조회")
     @Transactional
     void getIndividualCategory() throws Exception {
-        CategoryResponseDto categoryById = categoryService.getCategoryById(9L);
+        CategoryResponseDto categoryById = categoryService.getCategoryById(13L);
         log.info(objectMapper.writeValueAsString(categoryById));
     }
 

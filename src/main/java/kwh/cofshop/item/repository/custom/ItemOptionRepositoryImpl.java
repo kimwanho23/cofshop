@@ -3,10 +3,12 @@ package kwh.cofshop.item.repository.custom;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.LockModeType;
 import kwh.cofshop.item.domain.ItemOption;
+import kwh.cofshop.item.domain.QItemImg;
 import kwh.cofshop.item.domain.QItemOption;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -26,5 +28,17 @@ public class ItemOptionRepositoryImpl implements ItemOptionRepositoryCustom {
                 .fetchOne();
 
         return Optional.ofNullable(result);
+    }
+
+    @Override
+    public void deleteByItemIdAndId(Long itemId, List<Long> ids) {
+        QItemOption itemOption = QItemOption.itemOption;
+        if (ids == null || ids.isEmpty()) return;
+
+        queryFactory
+                .delete(itemOption)
+                .where(itemOption.item.id.eq(itemId)
+                        .and(itemOption.id.in(ids)))
+                .execute();
     }
 }

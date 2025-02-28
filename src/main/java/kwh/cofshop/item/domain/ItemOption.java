@@ -3,6 +3,7 @@ package kwh.cofshop.item.domain;
 import jakarta.persistence.*;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
+import kwh.cofshop.item.dto.request.ItemOptionRequestDto;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -24,7 +25,6 @@ public class ItemOption {
     @Column
     private Integer additionalPrice; // 추가금 (기본금에 더해서)
 
-
     private Integer optionNo;
 
     @Column(nullable = false)
@@ -33,6 +33,7 @@ public class ItemOption {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private OptionState optionState; // 옵션 활성화 여부
+
 
     ///////////////////////////////////////////////////////////////////////////////
 
@@ -71,6 +72,13 @@ public class ItemOption {
         return itemOption;
     }
 
+    public void updateOption(ItemOptionRequestDto dto) {
+        this.description = dto.getDescription();
+        this.additionalPrice = dto.getAdditionalPrice();
+        this.optionNo = dto.getOptionNo();
+        this.stock = dto.getStock();
+    }
+
     public void addStock(int stock){ // 재고 더하기 (주문 취소, 재고 추가)
         this.stock += stock;
     }
@@ -81,6 +89,4 @@ public class ItemOption {
         }
         this.stock -= stock;
     }
-
-
 }

@@ -8,6 +8,10 @@ import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
 
 
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
 
 
@@ -22,7 +26,17 @@ public interface ItemMapper {
 
     @Mapping(target = "imgResponseDto", source = "itemImgs")
     @Mapping(target = "optionResponseDto", source = "itemOptions")
+    @Mapping(target = "categoryNames", expression = "java(getCategoryNames(item))")
     ItemResponseDto toResponseDto(Item item);
+
+    default List<String> getCategoryNames(Item item) {
+        if (item.getItemCategories() == null) {
+            return Collections.emptyList();
+        }
+        return item.getItemCategories().stream()
+                .map(itemCategory -> itemCategory.getCategory().getName())
+                .collect(Collectors.toList());
+    }
 }
 
 

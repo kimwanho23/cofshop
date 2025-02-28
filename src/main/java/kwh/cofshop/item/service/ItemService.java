@@ -1,15 +1,22 @@
 
 package kwh.cofshop.item.service;
 
-import kwh.cofshop.item.domain.Item;
+import jakarta.persistence.EntityManager;
+import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
+import kwh.cofshop.global.exception.errorcodes.ErrorCode;
+import kwh.cofshop.item.domain.*;
 import kwh.cofshop.item.dto.request.ItemImgRequestDto;
 import kwh.cofshop.item.dto.request.ItemRequestDto;
 import kwh.cofshop.item.dto.request.ItemSearchRequestDto;
+import kwh.cofshop.item.dto.request.ItemUpdateRequestDto;
 import kwh.cofshop.item.dto.response.ItemResponseDto;
 import kwh.cofshop.item.dto.response.ItemSearchResponseDto;
+import kwh.cofshop.item.mapper.ItemImgMapper;
 import kwh.cofshop.item.mapper.ItemMapper;
+import kwh.cofshop.item.mapper.ItemOptionMapper;
 import kwh.cofshop.item.mapper.ItemSearchMapper;
-import kwh.cofshop.item.repository.ItemRepository;
+import kwh.cofshop.item.repository.*;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,9 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -34,22 +40,32 @@ public class ItemService { // 통합 Item 서비스
     // 매퍼 클래스
     private final ItemMapper itemMapper;
     private final ItemSearchMapper itemSearchMapper;
+    private final ItemOptionMapper itemOptionMapper;
+    private final ItemImgMapper itemImgMapper;
 
     // 연관관계 서비스
     private final ItemImgService itemImgService; // 이미지 서비스
     private final ItemOptionService itemOptionService; // 옵션 서비스
+    private final ItemCategoryService itemCategoryService;
 
     private final MemberRepository memberRepository;
+    private final CategoryRepository categoryRepository;
+    private final ItemCategoryRepository itemCategoryRepository;
+    private final ItemOptionRepository itemOptionRepository;
+    private final ItemImgRepository itemImgRepository;
+
+    private final EntityManager entityManager;
 
 
     @Transactional
     public ItemResponseDto saveItem(ItemRequestDto itemRequestDto, Long id, List<MultipartFile> images) throws IOException {
-
+        // 상품 등록자
         Member member = memberRepository.findById(id).orElseThrow();
+
         // 1. 상품 저장
         Item savedItem = getSavedItem(itemRequestDto, member);
 
-        // 2. DTO + 파일 매칭 (서비스에서 Map 생성)
+        // 2. DTO + 파일 매칭
         List<ItemImgRequestDto> imgRequestDto = itemRequestDto.getItemImgRequestDto();
 
         Map<ItemImgRequestDto, MultipartFile> imgMap = new LinkedHashMap<>();
@@ -57,20 +73,64 @@ public class ItemService { // 통합 Item 서비스
             imgMap.put(imgRequestDto.get(i), images.get(i));
         }
 
-        //  3. 이미지 저장 (Map 사용)
-        itemImgService.saveItemImages(savedItem, imgMap);
+        //  3. 이미지 저장
+        List<ItemImg> itemImgs = itemImgService.saveItemImages(savedItem, imgMap);
 
         //  4. 옵션 저장
-        itemOptionService.saveItemOptions(savedItem, itemRequestDto.getItemOptionRequestDto());
+        List<ItemOption> itemOptions = itemOptionService.saveItemOptions(savedItem, itemRequestDto.getItemOptionRequestDto());
 
-        //  5. Response 생성 및 반환
+        // 5. 카테고리 저장
+        List<ItemCategory> itemCategories = new ArrayList<>();
+        for (Long categoryId : itemRequestDto.getCategoryIds()) {
+            Category category = categoryRepository.findById(categoryId)
+                    .orElseThrow(() -> new BusinessException(BusinessErrorCode.CATEGORY_NOT_FOUND));
+
+            itemCategories.add(new ItemCategory(savedItem, category));
+        }
+        itemCategoryRepository.saveAll(itemCategories);
+
+        //  6. Response 생성 및 반환
         ItemResponseDto responseDto = itemMapper.toResponseDto(savedItem);
         responseDto.setEmail(member.getEmail());
         return responseDto;
     }
 
+    @Transactional
+    public ItemResponseDto updateItem(Long itemId, ItemUpdateRequestDto dto, List<MultipartFile> newImages) throws IOException {
+        // 1. 상품 조회
+        Item item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
 
+        // 2. 상품 기본 정보 업데이트
+        item.updateItem(dto);
 
+        itemCategoryService.updateItemCategories(item, dto);
+
+        // 3. 이미지 업데이트 (삭제 후 추가)
+        itemImgService.updateItemImages(item, dto, newImages);
+
+        // 4. 옵션 업데이트 (삭제 후 추가)
+        itemOptionService.updateItemOptions(item, dto);
+
+        Item updatedItem = itemRepository.save(item);
+
+        // 6. Response 반환
+        return itemMapper.toResponseDto(updatedItem);
+    }
+
+    public List<ItemImg> getItemImgs(Long id) {
+        return itemImgRepository.findByItemId(id);
+    }
+
+    public List<ItemCategory> getItemCategories(Long id) {
+        return itemCategoryRepository.findByItemId(id);
+    }
+
+    public List<ItemOption> getItemOptions(Long id) {
+        return itemOptionRepository.findByItemId(id);
+    }
+
+    // 처음 등록할 때 save
     @Transactional
     private Item getSavedItem(ItemRequestDto itemRequestDto, Member seller) {
         Item item = itemMapper.toEntity(itemRequestDto); // DTO 엔티티 변환
@@ -78,10 +138,17 @@ public class ItemService { // 통합 Item 서비스
         return itemRepository.save(item);
     }
 
+    // 아이템 검색
     @Transactional(readOnly = true)
     public Page<ItemSearchResponseDto> searchItem(ItemSearchRequestDto itemSearchRequestDto, Pageable pageable){
         Page<Item> itemPage = itemRepository.findByItemName(itemSearchRequestDto.getItemName(), pageable);
         return itemPage.map(itemSearchMapper::toResponseDto);
+    }
+
+    // 아이템 조회
+    public ItemResponseDto getItem(Long id){
+        Item item = itemRepository.findById(id).orElseThrow();
+        return itemMapper.toResponseDto(item);
     }
 
 }

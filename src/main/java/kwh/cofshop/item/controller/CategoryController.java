@@ -1,5 +1,6 @@
 package kwh.cofshop.item.controller;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import kwh.cofshop.global.response.ApiResponse;
 import kwh.cofshop.item.dto.request.CategoryRequestDto;
@@ -16,6 +17,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/categories")
+@SecurityRequirement(name = "Bearer Authentication")
 public class CategoryController {
 
     private final CategoryService categoryService;
@@ -39,7 +41,7 @@ public class CategoryController {
     }
 
     // 전체 카테고리 목록 (상위 카테고리와 하위 카테고리의 관계가 트리 구조와 유사함)
-    @GetMapping("/tree")
+    @GetMapping("/categoryList")
     public ResponseEntity<ApiResponse<List<CategoryResponseDto>>> getCategoryTree() {
         List<CategoryResponseDto> responseDto = categoryService.getCategoryTree();
         return ResponseEntity.ok(ApiResponse.OK(responseDto));

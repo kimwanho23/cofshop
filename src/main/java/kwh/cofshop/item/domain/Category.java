@@ -30,9 +30,6 @@ public class Category {
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
     private List<ItemCategory> itemCategories = new ArrayList<>(); // 연결 테이블
 
-    @OneToMany(mappedBy = "category", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    private List<Item> items = new ArrayList<>(); // 카테고리에 속한 상품들
-
     // 자기 자신과의 연관관계 (부모 카테고리)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_category_id")  // 부모를 가리키는 외래키
@@ -57,5 +54,4 @@ public class Category {
         child.parent = this;  // 부모 설정
         child.depth = this.depth + 1; // 깊이 자동 설정
     }
-
 }

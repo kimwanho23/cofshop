@@ -9,5 +9,6 @@ import lombok.Setter;
 public class ItemSearchRequestDto {
 
     private String itemName; // 상품명
-    private Category category; // 카테고리
+    private Long categoryId; // 카테고리
+
 }

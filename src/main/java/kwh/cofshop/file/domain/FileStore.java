@@ -3,9 +3,13 @@ package kwh.cofshop.file.domain;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
+import org.thymeleaf.util.StringUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -48,5 +52,16 @@ public class FileStore {
     private String extractExt(String originalFilename) {
         int pos = originalFilename.lastIndexOf(".");
         return originalFilename.substring(pos + 1);
+    }
+
+    public void deleteFile(String storeFileName) {
+        if (!StringUtils.isEmpty(storeFileName)) {
+            Path path = Paths.get(getFullPath(storeFileName));
+            try {
+                Files.deleteIfExists(path);
+            } catch (IOException e) {
+                throw new RuntimeException("파일 삭제 실패: " + path.toString(), e);
+            }
+        }
     }
 }

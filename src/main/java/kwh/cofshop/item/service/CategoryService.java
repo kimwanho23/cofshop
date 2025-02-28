@@ -40,7 +40,6 @@ public class CategoryService {
         return categoryMapper.toResponseDto(savedCategory);
     }
 
-
     //특정 카테고리 조회
     @Transactional(readOnly = true)
     public CategoryResponseDto getCategoryById(Long id) {

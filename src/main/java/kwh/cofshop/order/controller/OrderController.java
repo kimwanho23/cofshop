@@ -1,5 +1,6 @@
 package kwh.cofshop.order.controller;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import kwh.cofshop.config.argumentResolver.LoginMember;
 import kwh.cofshop.global.response.ApiResponse;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/order")
+@SecurityRequirement(name = "Bearer Authentication")
 public class OrderController {
 
     private final OrderService orderService;
@@ -67,6 +69,8 @@ public class OrderController {
                 .body(ApiResponse.OK(orderResponseDto));
     }
 
+
+    // 모든 주문 조회
     @GetMapping("/allOrderList")
     public ResponseEntity<ApiResponse<Page<OrderResponseDto>>> allOrderList(
             @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable){

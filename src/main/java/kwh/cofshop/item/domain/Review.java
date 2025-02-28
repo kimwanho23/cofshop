@@ -22,7 +22,8 @@ public class Review extends BaseTimeEntity { // 리뷰 엔티티 : 1명당 1개�
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long reviewId; // 식별자
+    @Column(name="review_id")
+    private Long id; // 식별자
 
     @Min(1)
     @Max(5)
@@ -41,8 +42,8 @@ public class Review extends BaseTimeEntity { // 리뷰 엔티티 : 1명당 1개�
     private Item item; // 아이템
 
     @Builder
-    public Review(Long reviewId, Long rating, String content, Member member, Item item) {
-        this.reviewId = reviewId;
+    public Review(Long id, Long rating, String content, Member member, Item item) {
+        this.id = id;
         this.rating = rating;
         this.content = content;
         this.member = member;

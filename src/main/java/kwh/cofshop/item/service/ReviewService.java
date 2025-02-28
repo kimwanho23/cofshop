@@ -1,6 +1,8 @@
 package kwh.cofshop.item.service;
 
+import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.UnauthorizedRequestException;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.global.exception.errorcodes.UnauthorizedErrorCode;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.Review;
@@ -82,6 +84,8 @@ public class ReviewService {
         item.updateReviewStats(averageRating, reviewCount);
     }
 
+
+    // Item의 리뷰 조회
     @Transactional(readOnly = true)
     public Page<ReviewResponseDto> getReviewsByItem(Long itemId, Pageable pageable) {
         Page<Review> reviews = reviewRepository.findByItemId(itemId, pageable);

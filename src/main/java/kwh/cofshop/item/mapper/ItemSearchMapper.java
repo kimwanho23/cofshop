@@ -18,7 +18,6 @@ public interface ItemSearchMapper {
     @Mapping(target = "price", source = "item.price")
     @Mapping(target = "discount", source = "item.discount")
     @Mapping(target = "deliveryFee", source = "item.deliveryFee")
-    @Mapping(target = "categories", source = "item.category")
     @Mapping(target = "itemState", source = "item.itemState")
     ItemSearchResponseDto toResponseDto(Item item);
 }

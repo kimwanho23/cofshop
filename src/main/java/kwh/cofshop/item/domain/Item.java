@@ -1,10 +1,17 @@
 package kwh.cofshop.item.domain;
 
 import jakarta.persistence.*;
+import kwh.cofshop.file.domain.FileStore;
+import kwh.cofshop.file.domain.UploadFile;
 import kwh.cofshop.global.domain.BaseEntity;
+import kwh.cofshop.item.dto.request.ItemOptionRequestDto;
+import kwh.cofshop.item.dto.request.ItemRequestDto;
+import kwh.cofshop.item.dto.request.ItemUpdateRequestDto;
 import kwh.cofshop.member.domain.Member;
 import lombok.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,11 +54,6 @@ public class Item extends BaseEntity {
     //연관관계
     ///////////////////////////////////////////////////////////////////////////////
 
-    // 카테고리
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id")
-    private Category category; // 상품이 카테고리(FK)
-
     @OneToMany(mappedBy = "item", cascade = CascadeType.ALL)
     private List<ItemCategory> itemCategories = new ArrayList<>();
 
@@ -69,14 +71,14 @@ public class Item extends BaseEntity {
     private List<Review> reviews = new ArrayList<>(); // 리뷰 목록
 
 
+
     @Builder
     public Item(String itemName, Integer price, Integer discount,
-                Integer deliveryFee, Category category, List<ItemCategory> itemCategories, String origin, Integer itemLimit, Member seller) {
+                Integer deliveryFee, List<ItemCategory> itemCategories, String origin, Integer itemLimit, Member seller) {
         this.itemName = itemName;
         this.price = price;
         this.discount = discount;
         this.deliveryFee = deliveryFee;
-        this.category = category;
         this.itemCategories = itemCategories;
         this.origin = origin;
         this.itemLimit = itemLimit;
@@ -95,6 +97,15 @@ public class Item extends BaseEntity {
     public void updateReviewStats(double averageRating, int reviewCount) {
         this.averageRating = averageRating;
         this.reviewCount = reviewCount;
+    }
+
+    public void updateItem(ItemUpdateRequestDto dto) {
+        this.itemName = dto.getItemName();
+        this.price = dto.getPrice();
+        this.discount = dto.getDiscount();
+        this.deliveryFee = dto.getDeliveryFee();
+        this.origin = dto.getOrigin();
+        this.itemLimit = dto.getItemLimit();
     }
 
 
@@ -121,9 +132,4 @@ public class Item extends BaseEntity {
             seller.getItemList().add(this);
         }
     }
-
-
-
-
-
 }

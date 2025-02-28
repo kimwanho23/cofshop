@@ -1,5 +1,6 @@
 package kwh.cofshop.cart.controller;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import kwh.cofshop.cart.dto.request.CartItemRequestDto;
 import kwh.cofshop.cart.dto.response.CartItemResponseDto;
 import kwh.cofshop.cart.dto.response.CartResponseDto;
@@ -20,6 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @RequestMapping("/api/cart")
 @Slf4j
+@SecurityRequirement(name = "Bearer Authentication")
 public class CartController {
 
     private final CartService cartService;

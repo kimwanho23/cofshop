@@ -1,5 +1,7 @@
 package kwh.cofshop.item.controller;
 
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import kwh.cofshop.config.argumentResolver.LoginMember;
 import kwh.cofshop.global.response.ApiResponse;
@@ -22,6 +24,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/item")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "Bearer Authentication")
 public class ItemController {
 
     private final ItemService itemService;
@@ -29,7 +32,7 @@ public class ItemController {
     // 상품 등록
     @PostMapping("/create")
     public ResponseEntity<ApiResponse<ItemResponseDto>> uploadItem(
-            @LoginMember CustomUserDetails customUserDetails,
+            @Parameter(hidden = true) @LoginMember CustomUserDetails customUserDetails,
             @RequestPart("itemRequestDto") @Valid ItemRequestDto itemRequestDto,
             @RequestPart("images") List<MultipartFile> images) throws Exception {
 
@@ -40,6 +43,18 @@ public class ItemController {
                 .body(ApiResponse.Created(responseDto));
     }
 
+    // 상품 수정
+    @PutMapping("/update/{itemId}")
+    public ResponseEntity<ApiResponse<ItemResponseDto>> updateItem(
+            @PathVariable Long itemId,
+            @Parameter(hidden = true) @LoginMember CustomUserDetails customUserDetails,
+            @RequestPart("itemRequestDto") @Valid ItemUpdateRequestDto itemRequestDto,
+            @RequestPart("images") List<MultipartFile> images) throws Exception {
+
+        ItemResponseDto updatedItem = itemService.updateItem(itemId, itemRequestDto, images);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.OK(updatedItem));
+    }
 
     // 상품 검색
     @PostMapping("/search")

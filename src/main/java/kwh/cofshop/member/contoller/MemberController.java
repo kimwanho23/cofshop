@@ -1,6 +1,8 @@
 package kwh.cofshop.member.contoller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import kwh.cofshop.config.argumentResolver.LoginMember;
 import kwh.cofshop.global.response.ApiResponse;
@@ -23,6 +25,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/member")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "Bearer Authentication")
 public class MemberController {
 
     private final MemberService memberService;
@@ -79,7 +82,7 @@ public class MemberController {
     @PatchMapping("/quit")
     @Operation(summary = "회원탈퇴", description = "회원탈퇴 기능입니다.")
     public ResponseEntity<ApiResponse<String>> quitMember(
-            @LoginMember CustomUserDetails customUserDetails) {
+            @Parameter(hidden = true) @LoginMember CustomUserDetails customUserDetails) {
         memberService.changeMemberState(customUserDetails.getId(), MemberState.QUIT);
         return ResponseEntity.ok()
                 .body(ApiResponse.OK("회원 탈퇴가 완료되었습니다."));
@@ -89,7 +92,7 @@ public class MemberController {
     @PatchMapping("/password")
     @Operation(summary = "비밀번호 변경", description = "회원의 비밀번호를 변경합니다.")
     public ResponseEntity<ApiResponse<String>> memberPasswordChange(
-            @LoginMember CustomUserDetails customUserDetails,
+            @Parameter(hidden = true) @LoginMember CustomUserDetails customUserDetails,
             @RequestParam String password) {
         memberService.updateMemberPassword(customUserDetails.getId(), password);
         return ResponseEntity.ok()

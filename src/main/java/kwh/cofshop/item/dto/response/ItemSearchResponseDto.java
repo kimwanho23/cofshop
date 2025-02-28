@@ -13,6 +13,6 @@ public class ItemSearchResponseDto {
     private Integer price; // 가격
     private Integer discount; // 할인율 (null 허용)
     private Integer deliveryFee; // 배송비 (null이면 무료)
-    private Category categories; // 상품 카테고리
+    private Long categoryId; // 상품 카테고리
     private ItemState itemState;
 }

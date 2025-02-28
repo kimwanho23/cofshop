@@ -51,6 +51,7 @@ class ItemControllerTest extends ControllerTestSetting {
         // 3. DTO에 데이터 설정
         requestDto.setItemImgRequestDto(itemImgRequestDto);
         requestDto.setItemOptionRequestDto(getItemOptionRequestDto());
+        requestDto.setCategoryIds(new ArrayList<>());
 
 
         // 4. JSON 직렬화 (DTO 객체를 문자열로 변환)
@@ -140,7 +141,6 @@ class ItemControllerTest extends ControllerTestSetting {
         ItemRequestDto requestDto = new ItemRequestDto();
         requestDto.setItemName("커피 원두");
         requestDto.setPrice(15000);
-        requestDto.setCategories("원두커피");
         requestDto.setOrigin("아르헨티나");
         requestDto.setDiscount(0); // 할인율
         requestDto.setDeliveryFee(1000); // 배송비

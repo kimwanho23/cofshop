@@ -14,7 +14,7 @@ import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
 )
 public interface ItemOptionMapper {
 
-    ItemOptionResponseDto toOptionResponseDto(ItemOption itemOption);
+    ItemOptionResponseDto toResponseDto(ItemOption itemOption);
 }
 
 
