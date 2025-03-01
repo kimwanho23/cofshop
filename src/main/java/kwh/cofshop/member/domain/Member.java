@@ -94,12 +94,15 @@ public class Member {
         this.lastPasswordChange = LocalDateTime.now();  // 비즈니스 로직에서 업데이트
     }
 
-    public void updateLastLogin() {
-        this.lastLogin = LocalDateTime.now();  // 로그인 시 자동 업데이트
+    public void updatePoint(int amount) {
+        if (amount < 0 && this.point + amount < 0) {
+            throw new IllegalStateException("보유한 포인트가 부족합니다.");
+        }
+        this.point += amount;
     }
 
-    public void memberStateActive(){
-        this.memberState = MemberState.ACTIVE;
+    public void updateLastLogin() {
+        this.lastLogin = LocalDateTime.now();  // 로그인 시 자동 업데이트
     }
 
     public void changeMemberState(MemberState newState) {

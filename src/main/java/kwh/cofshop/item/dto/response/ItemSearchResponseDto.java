@@ -14,5 +14,5 @@ public class ItemSearchResponseDto {
     private Integer discount; // 할인율 (null 허용)
     private Integer deliveryFee; // 배송비 (null이면 무료)
     private Long categoryId; // 상품 카테고리
-    private ItemState itemState;
+    private ItemState itemState; // 아이템 상태
 }

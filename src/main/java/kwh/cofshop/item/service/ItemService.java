@@ -19,6 +19,7 @@ import kwh.cofshop.item.mapper.ItemSearchMapper;
 import kwh.cofshop.item.repository.*;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.repository.MemberRepository;
+import kwh.cofshop.order.repository.OrderItemRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -53,6 +54,7 @@ public class ItemService { // 통합 Item 서비스
     private final ItemCategoryRepository itemCategoryRepository;
     private final ItemOptionRepository itemOptionRepository;
     private final ItemImgRepository itemImgRepository;
+    private final OrderItemRepository orderItemRepository;
 
     @Transactional
     public ItemResponseDto saveItem(ItemRequestDto itemRequestDto, Long id, List<MultipartFile> images) throws IOException {
@@ -138,15 +140,32 @@ public class ItemService { // 통합 Item 서비스
     // 아이템 검색
     @Transactional(readOnly = true)
     public Page<ItemSearchResponseDto> searchItem(ItemSearchRequestDto itemSearchRequestDto, Pageable pageable){
-        Page<Item> itemPage = itemRepository.findByItemName(itemSearchRequestDto.getItemName(), pageable);
+        Page<Item> itemPage = itemRepository.searchItems(itemSearchRequestDto, pageable);
         return itemPage.map(itemSearchMapper::toResponseDto);
     }
 
-    // 아이템 조회
+    // 많이 팔린 상품 조회
+    public List<ItemResponseDto> getPopularItem(int limit) {
+        List<Item> popularItems = orderItemRepository.getPopularItems(limit);
+        return popularItems.stream()
+                .map(itemMapper::toResponseDto)
+                .toList();
+    }
+
+    // 특정 아이템 조회
     public ItemResponseDto getItem(Long id){
-        Item item = itemRepository.findById(id).orElseThrow();
+        Item item = itemRepository.findById(id).orElseThrow(
+                () -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
         return itemMapper.toResponseDto(item);
     }
+
+    // 아이템 삭제
+    public void deleteItem(Long id) {
+        Item item = itemRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
+        itemRepository.delete(item);
+    }
+
 
 }
 

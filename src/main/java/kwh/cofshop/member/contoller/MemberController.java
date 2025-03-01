@@ -15,6 +15,7 @@ import kwh.cofshop.member.service.MemberService;
 import kwh.cofshop.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.coyote.Response;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -97,5 +98,16 @@ public class MemberController {
         memberService.updateMemberPassword(customUserDetails.getId(), password);
         return ResponseEntity.ok()
                 .body(ApiResponse.OK("비밀번호가 변경되었습니다."));
+    }
+
+    // 포인트 변경
+    @PostMapping("/updatePoint")
+    public ResponseEntity<ApiResponse<Integer>> updatePoint(
+            @LoginMember CustomUserDetails customUserDetails,
+            @RequestParam int amount
+    ){
+        Integer currentPoint = memberService.updatePoint(customUserDetails.getId(), amount);
+        return ResponseEntity.ok()
+                .body(ApiResponse.OK(currentPoint));
     }
 }

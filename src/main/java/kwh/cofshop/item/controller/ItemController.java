@@ -43,6 +43,14 @@ public class ItemController {
                 .body(ApiResponse.Created(responseDto));
     }
 
+    // 상품 정보 조회
+    @GetMapping("/{itemId}")
+    public ResponseEntity<ApiResponse<ItemResponseDto>> inquiryItem(@PathVariable Long itemId){
+        ItemResponseDto responseDto = itemService.getItem(itemId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.OK(responseDto));
+    }
+
     // 상품 수정
     @PutMapping("/update/{itemId}")
     public ResponseEntity<ApiResponse<ItemResponseDto>> updateItem(
@@ -59,15 +67,32 @@ public class ItemController {
     // 상품 검색
     @PostMapping("/search")
     public ResponseEntity<ApiResponse<Page<ItemSearchResponseDto>>> searchItems(
-            @Valid @RequestBody  ItemSearchRequestDto itemSearchRequestDto,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-
-        Pageable pageable = PageRequest.of(page, size);
+            @Valid @RequestBody  ItemSearchRequestDto itemSearchRequestDto) {
         Page<ItemSearchResponseDto> itemSearchResponseDto =
-                itemService.searchItem(itemSearchRequestDto, pageable);
+                itemService.searchItem(itemSearchRequestDto, itemSearchRequestDto.toPageable());
         return ResponseEntity.status(HttpStatus.OK)
                 .body(ApiResponse.OK(itemSearchResponseDto));
+    }
+
+    // 상품 삭제
+    @DeleteMapping("/delete/{itemId}")
+    public ResponseEntity<ApiResponse<Void>> deleteItems(
+            @PathVariable Long itemId) {
+        itemService.deleteItem(itemId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(null);
+    }
+
+    ///////////
+
+    // 많이 팔린 상품 조회 (기본적으로 10개씩 조회)
+    @GetMapping("/popularItem")
+    public ResponseEntity<ApiResponse<List<ItemResponseDto>>> popularItems(
+            @RequestParam(defaultValue = "10") int limit){
+        List<ItemResponseDto> popularItem = itemService.getPopularItem(limit);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(ApiResponse.OK(popularItem));
+
     }
 
 }

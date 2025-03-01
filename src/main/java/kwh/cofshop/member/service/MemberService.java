@@ -43,7 +43,7 @@ public class MemberService {
     @Transactional
     public MemberResponseDto save(MemberRequestDto memberDto){ // Save, Update 로직
         if (memberRepository.findByEmail(memberDto.getEmail()).isPresent()){
-            throw new BusinessException(BusinessErrorCode.MEMBER_ALREADY_EXIST);
+            throw new BusinessException(BusinessErrorCode.MEMBER_ALREADY_EXIST); // 이미 존재하는 이메일
         }
 
         memberDto.setMemberPwd(passwordEncoder.encode(memberDto.getMemberPwd()));
@@ -53,9 +53,7 @@ public class MemberService {
     }
 
     public MemberResponseDto findMember(Long memberId) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
-
+        Member member = getMember(memberId);
         return memberMapper.toResponseDto(member);
     }
 
@@ -68,18 +66,14 @@ public class MemberService {
     // 회원 상태 변경
     @Transactional
     public void changeMemberState(Long id, MemberState newState) {
-        Member member = memberRepository.findById(id).orElseThrow(
-                () -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND)
-        );
+        Member member = getMember(id);
         member.changeMemberState(newState);
     }
 
     // 비밀번호 변경
     @Transactional
     public void updateMemberPassword(Long id, String newPassword) {
-        Member member = memberRepository.findById(id).orElseThrow(
-                () -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND)
-        );
+        Member member = getMember(id);
         String encodePassword = passwordEncoder.encode(newPassword);
         member.changePassword(encodePassword);
     }
@@ -93,6 +87,9 @@ public class MemberService {
 
         TokenDto authToken = tokenProvider.createAuthToken(authentication);
 
+        Member member = getMember(userDetails.getId());
+        member.updateLastLogin(); // 마지막 로그인 시간 업데이트
+
         return LoginResponseDto.builder()
                 .email(userDetails.getEmail())
                 .accessToken(authToken.getAccessToken())
@@ -100,4 +97,19 @@ public class MemberService {
                 .passwordChangeRequired(userDetails.isCredentialsNonExpired()) // 비밀번호가 아직 만료가 아닌가? false일 경우 만료.
                 .build();
     }
+
+    @Transactional
+    public Integer updatePoint(Long id, int amount) { // 포인트 증가
+        Member member = getMember(id);
+        member.updatePoint(amount);
+        return member.getPoint();
+    }
+
+    private Member getMember(Long id) {
+        return memberRepository.findByMemberIdWithPessimisticLock(id).orElseThrow(
+                () -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND)
+        );
+    }
+
+
 }
