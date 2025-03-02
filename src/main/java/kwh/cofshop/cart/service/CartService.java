@@ -45,27 +45,10 @@ public class CartService {
             cartRepository.save(newCart);
         }
     }
-
-    // 장바구니에 아이템 등록
-    @Transactional
-    public CartItemResponseDto addCartItem(CartItemRequestDto cartItemRequestDto){
-        Optional<CartItem> existingCartItem = cartItemRepository.findByItemOptionIdAndItemId(
-                cartItemRequestDto.getOptionId(), cartItemRequestDto.getItemId());
-        if (existingCartItem.isPresent()) {
-            // 이미 존재하는 경우 수량 증가
-            CartItem cartItem = existingCartItem.get();
-            cartItem.addQuantity(cartItemRequestDto.getQuantity());
-            return cartItemMapper.toResponseDto(cartItem);
-        }
-        CartItem save = cartItemRepository.save(cartItemMapper.toEntity(cartItemRequestDto));
-        return cartItemMapper.toResponseDto(save);
-    }
-
-
     // 회원 장바구니 조회 ( 장바구니에 있는 물건 )
     @Transactional(readOnly = true)
     public CartResponseDto getMemberCartItems(Long id){
-        List<CartItemResponseDto> cartItemsByMember = cartRepository.findCartItemsByMember(id);
+        List<CartItemResponseDto> cartItemsByMember = cartItemRepository.findCartItemsByMember(id);
 
         CartResponseDto cartResponseDto = new CartResponseDto();
         cartResponseDto.setId(id);
@@ -73,18 +56,11 @@ public class CartService {
         return cartResponseDto;
     }
 
-    // 장바구니 아이템 삭제
-    @Transactional
-    public void deleteCartItem(Long cartItemId) {
-        CartItem cartItem = cartItemRepository.findById(cartItemId)
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
-        cartItemRepository.delete(cartItem);
-    }
 
     // 장바구니 전체 삭제
     @Transactional
     public void deleteCartItemAll(Long cartId) {
-        cartRepository.deleteAllByCartId(cartId);
+        cartItemRepository.deleteAllByCartId(cartId);
     }
 
 }

@@ -2,7 +2,6 @@ package kwh.cofshop.member.mapper;
 
 import javax.annotation.processing.Generated;
 import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.member.dto.MemberRequestDto;
 import kwh.cofshop.member.dto.MemberResponseDto;
 import org.springframework.stereotype.Component;
 

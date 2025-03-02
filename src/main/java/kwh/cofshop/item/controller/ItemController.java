@@ -82,7 +82,6 @@ public class ItemController {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(null);
     }
-
     ///////////
 
     // 많이 팔린 상품 조회 (기본적으로 10개씩 조회)

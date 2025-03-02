@@ -19,8 +19,9 @@ public interface CartItemMapper {
     CartItem toEntity(CartItemRequestDto cartItemRequestDto);
 
 
-    @Mapping(target = "item", source = "item")
-    @Mapping(target = "itemOption", source = "itemOption")
+    @Mapping(target = "cartId", source = "cart.id")
+    @Mapping(target = "itemId", source = "item.id")
+    @Mapping(target = "optionId", source = "itemOption.id")
     CartItemResponseDto toResponseDto(CartItem cartItem);
 
 

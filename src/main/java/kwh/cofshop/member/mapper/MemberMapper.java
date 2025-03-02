@@ -2,8 +2,8 @@ package kwh.cofshop.member.mapper;
 
 
 import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.member.dto.MemberRequestDto;
-import kwh.cofshop.member.dto.MemberResponseDto;
+import kwh.cofshop.member.dto.request.MemberRequestDto;
+import kwh.cofshop.member.dto.response.MemberResponseDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.ReportingPolicy;
 

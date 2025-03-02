@@ -53,7 +53,7 @@ public class CartController {
     // 장바구니 아이템 개별 삭제
     @DeleteMapping("/item/{cartItemId}")
     public ResponseEntity<Void> deleteCartItem(@PathVariable Long cartItemId, @LoginMember CustomUserDetails customUserDetails) {
-        cartService.deleteCartItem(cartItemId);
+        cartItemService.deleteCartItem(cartItemId);
         return ResponseEntity.noContent().build();
     }
 

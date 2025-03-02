@@ -1,12 +1,11 @@
 package kwh.cofshop.member.contoller;
 
 import kwh.cofshop.ControllerTestSetting;
-import kwh.cofshop.member.dto.LoginDto;
+import kwh.cofshop.member.dto.request.LoginDto;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -15,7 +14,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;  // POST 요청
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;  // POST 요청
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 class MemberControllerTest extends ControllerTestSetting {
 

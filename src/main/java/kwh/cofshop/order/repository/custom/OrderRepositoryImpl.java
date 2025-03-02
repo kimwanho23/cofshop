@@ -1,23 +1,15 @@
 package kwh.cofshop.order.repository.custom;
 
 import com.querydsl.core.QueryResults;
-import com.querydsl.core.types.Projections;
-import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.JPQLQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import kwh.cofshop.item.domain.QItem;
 import kwh.cofshop.item.domain.QItemOption;
-import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.domain.QMember;
-import kwh.cofshop.member.dto.MemberResponseDto;
 import kwh.cofshop.order.domain.Order;
-import kwh.cofshop.order.domain.OrderItem;
 import kwh.cofshop.order.domain.QOrder;
 import kwh.cofshop.order.domain.QOrderItem;
-import kwh.cofshop.order.dto.request.OrdererRequestDto;
-import kwh.cofshop.order.dto.response.OrderItemResponseDto;
 import kwh.cofshop.order.dto.response.OrderResponseDto;
-import kwh.cofshop.order.dto.response.OrdererResponseDto;
 import kwh.cofshop.order.mapper.OrderMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;

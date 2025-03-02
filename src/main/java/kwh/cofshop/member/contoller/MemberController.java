@@ -7,15 +7,14 @@ import jakarta.validation.Valid;
 import kwh.cofshop.config.argumentResolver.LoginMember;
 import kwh.cofshop.global.response.ApiResponse;
 import kwh.cofshop.member.domain.MemberState;
-import kwh.cofshop.member.dto.LoginDto;
-import kwh.cofshop.member.dto.LoginResponseDto;
-import kwh.cofshop.member.dto.MemberRequestDto;
-import kwh.cofshop.member.dto.MemberResponseDto;
+import kwh.cofshop.member.dto.request.MemberRequestDto;
+import kwh.cofshop.member.dto.request.LoginDto;
+import kwh.cofshop.member.dto.response.LoginResponseDto;
+import kwh.cofshop.member.dto.response.MemberResponseDto;
 import kwh.cofshop.member.service.MemberService;
 import kwh.cofshop.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.coyote.Response;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -36,6 +35,7 @@ public class MemberController {
     @Operation(summary = "회원가입", description = "회원가입 기능입니다.")
     public ResponseEntity<ApiResponse<MemberResponseDto>> save(@Valid @RequestBody MemberRequestDto memberSaveDto) {
         MemberResponseDto memberSaveResponseDto = memberService.save(memberSaveDto);
+
         return ResponseEntity.ok()
                 .body(ApiResponse.Created(memberSaveResponseDto)); // 메서드 체이닝 패턴
     }

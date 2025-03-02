@@ -9,8 +9,8 @@ import lombok.Setter;
 @Setter
 public class CartItemResponseDto {
 
-    private Long cartItemId;
+    private Long cartId;
     private int quantity;
-    private ItemResponseDto item;
-    private ItemOptionResponseDto itemOption;
+    private Long itemId;
+    private Long optionId;
 }

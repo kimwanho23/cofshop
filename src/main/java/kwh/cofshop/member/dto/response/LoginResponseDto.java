@@ -1,4 +1,4 @@
-package kwh.cofshop.member.dto;
+package kwh.cofshop.member.dto.response;
 
 import lombok.Builder;
 import lombok.Getter;

@@ -92,5 +92,19 @@ public class CartItemService {
         return responseDto;
     }
 
+    // 장바구니 아이템 삭제
+    @Transactional
+    public void deleteCartItem(Long cartItemId) {
+        CartItem cartItem = cartItemRepository.findById(cartItemId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
+        cartItemRepository.delete(cartItem);
+    }
+    // 장바구니 전체 삭제
+    @Transactional
+    public void deleteCartItemAll(Long cartId) {
+        cartItemRepository.deleteAllByCartId(cartId);
+    }
+
+
 
 }
