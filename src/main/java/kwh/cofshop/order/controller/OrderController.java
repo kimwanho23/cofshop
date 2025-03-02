@@ -18,6 +18,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -40,9 +41,9 @@ public class OrderController {
 
 
     // 주문 취소
-    @PatchMapping("/{orderId}/cancel")
+    @PatchMapping("/cancel")
+    @PreAuthorize("hasAuthority('ROLE_USER')")
     public ResponseEntity<ApiResponse<OrderCancelResponseDto>> cancelOrder(
-            @PathVariable Long orderId,
             @Valid @RequestBody OrderCancelRequestDto orderCancelRequestDto){
         OrderCancelResponseDto orderCancelResponseDto = orderService.cancelOrder(orderCancelRequestDto);
         return ResponseEntity.status(HttpStatus.OK)

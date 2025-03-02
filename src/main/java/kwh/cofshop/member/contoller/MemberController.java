@@ -81,6 +81,7 @@ public class MemberController {
 
     // 회원 탈퇴
     @PatchMapping("/quit")
+    @PreAuthorize("hasAuthority('ROLE_USER')")
     @Operation(summary = "회원탈퇴", description = "회원탈퇴 기능입니다.")
     public ResponseEntity<ApiResponse<String>> quitMember(
             @Parameter(hidden = true) @LoginMember CustomUserDetails customUserDetails) {
@@ -91,6 +92,7 @@ public class MemberController {
 
     // 회원 비밀 번호 변경
     @PatchMapping("/password")
+    @PreAuthorize("hasAuthority('ROLE_USER')")
     @Operation(summary = "비밀번호 변경", description = "회원의 비밀번호를 변경합니다.")
     public ResponseEntity<ApiResponse<String>> memberPasswordChange(
             @Parameter(hidden = true) @LoginMember CustomUserDetails customUserDetails,
