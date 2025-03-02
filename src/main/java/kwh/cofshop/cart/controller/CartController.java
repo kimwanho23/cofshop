@@ -51,16 +51,22 @@ public class CartController {
     }
 
     // 장바구니 아이템 개별 삭제
-    @DeleteMapping("/item/{cartItemId}")
-    public ResponseEntity<Void> deleteCartItem(@PathVariable Long cartItemId, @LoginMember CustomUserDetails customUserDetails) {
-        cartItemService.deleteCartItem(cartItemId);
+    @DeleteMapping("/cart/{cartId}/item/{itemId}/option/{optionId}")
+    public ResponseEntity<Void> deleteCartItem(
+            @PathVariable Long cartId,
+            @PathVariable Long itemId,
+            @PathVariable Long optionId,
+            @LoginMember CustomUserDetails customUserDetails) {
+
+        cartItemService.deleteCartItem(customUserDetails.getId(), cartId, itemId, optionId);
         return ResponseEntity.noContent().build();
     }
+
 
     // 장바구니 아이템 일괄 삭제
     @DeleteMapping("/{cartId}/items")
     public ResponseEntity<Void> deleteAllCartItems(@PathVariable Long cartId, @LoginMember CustomUserDetails customUserDetails) {
-        cartService.deleteCartItemAll(cartId);
+        cartItemService.deleteCartItemAll(cartId);
         return ResponseEntity.noContent().build();
     }
 

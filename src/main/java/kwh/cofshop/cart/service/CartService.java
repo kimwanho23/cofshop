@@ -56,11 +56,4 @@ public class CartService {
         return cartResponseDto;
     }
 
-
-    // 장바구니 전체 삭제
-    @Transactional
-    public void deleteCartItemAll(Long cartId) {
-        cartItemRepository.deleteAllByCartId(cartId);
-    }
-
 }

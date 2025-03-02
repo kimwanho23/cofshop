@@ -16,9 +16,10 @@ public enum BusinessErrorCode implements ErrorCode {
     ORDER_NOT_FOUND("I-5", HttpStatus.NOT_FOUND, "주문을 찾을 수 없습니다."),
     MEMBER_NOT_FOUND("I-6", HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."),
     ITEM_NOT_FOUND("I-7", HttpStatus.NOT_FOUND, "상품을 찾을 수 없습니다."),
-    CATEGORY_NOT_FOUND("I-8", HttpStatus.NOT_FOUND, "카테고리를 찾을 수 없습니다."),
+    CART_NOT_FOUND("I-8", HttpStatus.NOT_FOUND, "장바구니를 찾을 수 없습니다."),
+    CATEGORY_NOT_FOUND("I-9", HttpStatus.NOT_FOUND, "카테고리를 찾을 수 없습니다."),
 
-    MEMBER_ALREADY_EXIST("I-9", HttpStatus.CONFLICT, "이미 존재하는 회원 이메일입니다.");
+    MEMBER_ALREADY_EXIST("I-10", HttpStatus.CONFLICT, "이미 존재하는 회원 이메일입니다.");
 
     private final String code;
     private final HttpStatus httpStatus;
