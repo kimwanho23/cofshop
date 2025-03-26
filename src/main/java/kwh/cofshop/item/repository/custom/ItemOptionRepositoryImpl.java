@@ -3,7 +3,6 @@ package kwh.cofshop.item.repository.custom;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.LockModeType;
 import kwh.cofshop.item.domain.ItemOption;
-import kwh.cofshop.item.domain.QItemImg;
 import kwh.cofshop.item.domain.QItemOption;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;

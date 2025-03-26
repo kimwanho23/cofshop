@@ -42,8 +42,8 @@ public class CategoryController {
 
     // 전체 카테고리 목록 (상위 카테고리와 하위 카테고리의 관계가 트리 구조와 유사함)
     @GetMapping("/categoryList")
-    public ResponseEntity<ApiResponse<List<CategoryResponseDto>>> getCategoryTree() {
-        List<CategoryResponseDto> responseDto = categoryService.getCategoryTree();
+    public ResponseEntity<ApiResponse<List<CategoryResponseDto>>> getAllCategories() {
+        List<CategoryResponseDto> responseDto = categoryService.getAllCategory();
         return ResponseEntity.ok(ApiResponse.OK(responseDto));
     }
 }

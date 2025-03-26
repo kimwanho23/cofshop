@@ -73,6 +73,7 @@ public class MemberService {
         member.changePassword(encodePassword);
     }
 
+    @Transactional
     public LoginResponseDto login(LoginDto loginDto) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginDto.getEmail(), loginDto.getMemberPwd())
@@ -86,6 +87,7 @@ public class MemberService {
         member.updateLastLogin(); // 마지막 로그인 시간 업데이트
 
         return LoginResponseDto.builder()
+                .memberId(userDetails.getId())
                 .email(userDetails.getEmail())
                 .accessToken(authToken.getAccessToken())
                 .refreshToken(authToken.getRefreshToken())
@@ -101,7 +103,7 @@ public class MemberService {
     }
 
     private Member getMember(Long id) {
-        return memberRepository.findByMemberIdWithPessimisticLock(id).orElseThrow(
+        return memberRepository.findById(id).orElseThrow(
                 () -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND)
         );
     }

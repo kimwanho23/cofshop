@@ -1,15 +1,11 @@
 package kwh.cofshop.order.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.persistence.LockModeType;
 import kwh.cofshop.ServiceTestSetting;
 import kwh.cofshop.item.domain.Item;
-import kwh.cofshop.item.domain.ItemOption;
 import kwh.cofshop.item.repository.ItemOptionRepository;
 import kwh.cofshop.item.repository.ItemRepository;
 import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.member.repository.MemberRepository;
 import kwh.cofshop.order.domain.Address;
 import kwh.cofshop.order.domain.Order;
 import kwh.cofshop.order.domain.OrderState;
@@ -31,7 +27,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.test.annotation.Commit;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -191,7 +186,7 @@ class OrderServiceTest extends ServiceTestSetting {
                     orderService.createOrder(orderRequestDto, member.getId());
                     log.info("{}번 실행", count);
                 } catch (Exception e) {
-                    System.err.println("Exception occurred: " + e.getMessage());
+                    System.err.println("에러 발생: " + e.getMessage());
                 } finally {
                     latch.countDown();
                 }

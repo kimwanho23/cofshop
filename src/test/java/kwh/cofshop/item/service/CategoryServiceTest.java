@@ -6,6 +6,8 @@ import kwh.cofshop.item.dto.request.CategoryRequestDto;
 import kwh.cofshop.item.dto.response.CategoryResponseDto;
 import kwh.cofshop.item.mapper.CategoryMapper;
 import kwh.cofshop.item.repository.CategoryRepository;
+import kwh.cofshop.order.dto.request.OrderCancelRequestDto;
+import kwh.cofshop.order.dto.response.OrderCancelResponseDto;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -85,8 +87,11 @@ class CategoryServiceTest {
     @DisplayName("전체 카테고리 목록")
     @Transactional
     void getAllCategory() throws Exception {
-        List<CategoryResponseDto> categoryTree = categoryService.getCategoryTree();
-        log.info(objectMapper.writeValueAsString(categoryTree));
+        long startTime = System.nanoTime(); //  실행 시작 시간 기록
+        List<CategoryResponseDto> allCategory = categoryService.getAllCategory();
+        log.info(objectMapper.writeValueAsString(allCategory));
+        long endTime = System.nanoTime(); //  실행 종료 시간 기록
+        log.info("실행 시간: {} ms", (endTime - startTime) / 1_000_000); // 실행 시간 로깅
     }
 
 }

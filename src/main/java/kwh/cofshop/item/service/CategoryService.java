@@ -8,14 +8,18 @@ import kwh.cofshop.item.dto.response.CategoryResponseDto;
 import kwh.cofshop.item.mapper.CategoryMapper;
 import kwh.cofshop.item.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CategoryService {
 
     private final CategoryRepository categoryRepository;
@@ -48,14 +52,43 @@ public class CategoryService {
         return categoryMapper.toResponseDto(category);
     }
 
+/*
+    public List<CategoryResponseDto> getAllCategoryTest() {
+        List<Category> allCategory = categoryRepository.findAllCategoryWithChild();
 
-    // 모든 부모 카테코리 조회 - 계층형 구조로 자식 카테고리까지 가져온다
-    @Transactional(readOnly = true)
-    public List<CategoryResponseDto> getCategoryTree() {
-        List<Category> rootCategories = categoryRepository.findAllByParentIsNull();
-        return rootCategories.stream()
-                .map(categoryMapper::toResponseDto)
-                .collect(Collectors.toList());
+        return allCategory.stream().
+                map(categoryMapper::toResponseDto).toList();
+    }
+*/
+
+    // 모든 카테고리 조회
+    public List<CategoryResponseDto> getAllCategory() {
+        List<Category> allCategory = categoryRepository.findAll();
+
+        Map<Long, CategoryResponseDto> categoryMap = new HashMap<>();
+        List<CategoryResponseDto> allCategoryResponseDto = new ArrayList<>(); // 담기 위한 DTO
+
+        for (Category category : allCategory) {
+            CategoryResponseDto dto = new CategoryResponseDto();
+            dto.setId(category.getId());
+            dto.setParentCategoryId(category.getParent() != null ? category.getParent().getId() : null);
+            dto.setName(category.getName());
+            dto.setDepth(category.getDepth());
+            dto.setChildren(new ArrayList<>());
+            categoryMap.put(dto.getId(), dto);
+        }
+
+        for (CategoryResponseDto dto : categoryMap.values()) {
+            if (dto.getParentCategoryId() == null) {
+                allCategoryResponseDto.add(dto);
+            } else {
+                CategoryResponseDto parent = categoryMap.get(dto.getParentCategoryId());
+                if (parent != null) {
+                    parent.getChildren().add(dto);
+                }
+            }
+        }
+        return allCategoryResponseDto;
     }
 
     @Transactional

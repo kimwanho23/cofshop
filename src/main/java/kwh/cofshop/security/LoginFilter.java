@@ -54,7 +54,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         response.setHeader("Authorization", "Bearer " + token.getAccessToken());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
-        response.setStatus(HttpServletResponse.SC_OK);  // ✅ 명시적으로 200 OK 설정
+        response.setStatus(HttpServletResponse.SC_OK);  //  명시적으로 200 OK 설정
 
         Map<String, String> tokenResponse = Map.of(
                 "accessToken", token.getAccessToken(),

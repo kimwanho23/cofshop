@@ -8,7 +8,6 @@ import java.util.List;
 @Getter
 @Setter
 public class CategoryResponseDto {
-
     private Long id;
     private Long parentCategoryId;
     private String name;

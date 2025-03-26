@@ -19,5 +19,4 @@ public record ApiResponse<T>(ApiHeader header, ApiBody<T> body) {
                 new ApiBody<>(data, "CREATED SUCCESSFUL")
         );
     }
-
 }
