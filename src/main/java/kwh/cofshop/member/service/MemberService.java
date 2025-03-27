@@ -1,6 +1,7 @@
 package kwh.cofshop.member.service;
 
-import kwh.cofshop.global.TokenDto;
+import kwh.cofshop.security.domain.RefreshToken;
+import kwh.cofshop.security.dto.TokenDto;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.member.domain.Member;
@@ -13,6 +14,7 @@ import kwh.cofshop.member.mapper.MemberMapper;
 import kwh.cofshop.member.repository.MemberRepository;
 import kwh.cofshop.security.CustomUserDetails;
 import kwh.cofshop.security.JwtTokenProvider;
+import kwh.cofshop.security.repository.RefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -22,6 +24,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -30,10 +33,10 @@ import java.util.List;
 public class MemberService {
 
     private final MemberRepository memberRepository;
+
     private final MemberMapper memberMapper;
     private final BCryptPasswordEncoder passwordEncoder;
-    private final JwtTokenProvider tokenProvider;
-    private final AuthenticationManager authenticationManager;
+
 
     @Transactional
     public MemberResponseDto save(MemberRequestDto memberDto){ // Save, Update 로직
@@ -73,27 +76,6 @@ public class MemberService {
         member.changePassword(encodePassword);
     }
 
-    @Transactional
-    public LoginResponseDto login(LoginDto loginDto) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginDto.getEmail(), loginDto.getMemberPwd())
-        );
-
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-
-        TokenDto authToken = tokenProvider.createAuthToken(authentication);
-
-        Member member = getMember(userDetails.getId());
-        member.updateLastLogin(); // 마지막 로그인 시간 업데이트
-
-        return LoginResponseDto.builder()
-                .memberId(userDetails.getId())
-                .email(userDetails.getEmail())
-                .accessToken(authToken.getAccessToken())
-                .refreshToken(authToken.getRefreshToken())
-                .passwordChangeRequired(userDetails.isCredentialsNonExpired()) // 비밀번호가 아직 만료가 아닌가? false일 경우 만료.
-                .build();
-    }
 
     @Transactional
     public Integer updatePoint(Long id, int amount) { // 포인트 증가

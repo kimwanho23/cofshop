@@ -12,6 +12,7 @@ import kwh.cofshop.member.dto.response.MemberResponseDto;
 import kwh.cofshop.member.mapper.MemberMapper;
 import kwh.cofshop.member.repository.MemberRepository;
 import kwh.cofshop.security.JwtTokenProvider;
+import kwh.cofshop.security.service.AuthService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,9 @@ class MemberServiceTest {
 
     @Autowired
     MemberService memberService;
+
+    @Autowired
+    AuthService authService;
 
     @Autowired
     MemberRepository memberRepository;
@@ -105,7 +109,7 @@ class MemberServiceTest {
         LoginDto loginDto = new LoginDto();
         loginDto.setEmail("test@gmail.com");
         loginDto.setMemberPwd("1234567890");
-        LoginResponseDto login = memberService.login(loginDto);
+        LoginResponseDto login = authService.login(loginDto);
         log.info(login.getAccessToken());
         log.info(login.getRefreshToken());
         log.info(String.valueOf(login.isPasswordChangeRequired()));

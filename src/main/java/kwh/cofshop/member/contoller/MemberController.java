@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -38,17 +39,6 @@ public class MemberController {
 
         return ResponseEntity.ok()
                 .body(ApiResponse.Created(memberSaveResponseDto)); // 메서드 체이닝 패턴
-    }
-
-    // 로그인
-    @PostMapping("/login")
-    @Operation(summary = "로그인", description = "로그인 기능입니다.")
-    public ResponseEntity<ApiResponse<LoginResponseDto>> login(
-            @Valid @RequestBody LoginDto loginDto) {
-        LoginResponseDto loginResponseDto = memberService.login(loginDto);
-
-        return ResponseEntity.ok()
-                .body(ApiResponse.OK(loginResponseDto));
     }
 
     // 관리자의 멤버 상태 변경

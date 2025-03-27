@@ -3,7 +3,9 @@ package kwh.cofshop.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
-import kwh.cofshop.global.TokenDto;
+import kwh.cofshop.member.domain.Member;
+import kwh.cofshop.member.domain.Role;
+import kwh.cofshop.security.dto.TokenDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -15,6 +17,7 @@ import java.security.Key;
 import java.time.Duration;
 import java.util.*;
 import java.nio.charset.StandardCharsets;
+import java.util.stream.Collectors;
 
 @Component
 @Slf4j
@@ -56,12 +59,38 @@ public class JwtTokenProvider {
         return new UsernamePasswordAuthenticationToken(principal, "", authorities);
     }
 
+    public Authentication getAuthenticationByRefreshToken(String refreshToken) {
+
+        Claims claims = getClaims(refreshToken);
+        Long memberId = claims.get("memberId", Long.class);
+
+        CustomUserDetails principal = CustomUserDetails.builder()
+                .id(memberId)
+                .email(claims.getSubject())
+                .authorities(List.of())
+                .build();
+
+        return new UsernamePasswordAuthenticationToken(principal, "", List.of());
+    }
+
+    public Long getTokenExpirationTime(String token){ // 만료 시간
+        return getClaims(token).getExpiration().getTime();
+    }
+
+    // 권한 가져오기
+
+
     public Claims getClaims(String accessToken) {
-        return Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(accessToken)
-                .getBody();
+        try {
+            return Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(accessToken)
+                    .getBody();
+        } catch (ExpiredJwtException e) {
+            return e.getClaims();
+        }
+
     }
 
     // Access Token 생성
@@ -82,7 +111,8 @@ public class JwtTokenProvider {
                 .compact();
 
         String refreshToken = Jwts.builder()
-                .setSubject(authentication.getName())  // 사용자 식별자만 포함
+                .setSubject(authentication.getName())
+                .claim("memberId", userDetails.getId())
                 .setExpiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS512)
                 .compact();
@@ -92,6 +122,29 @@ public class JwtTokenProvider {
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .build();
+    }
+
+    public String createAccessToken(Long memberId, String email, List<Role> roles) {
+        List<String> authorities = roles.stream()
+                .map(Enum::name)
+                .toList();
+
+        return Jwts.builder()
+                .setSubject(email)
+                .claim(AUTHORITIES_KEY, authorities)
+                .claim("memberId", memberId)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + AUTH_TOKEN_EXPIRATION))
+                .signWith(getSigningKey(), SignatureAlgorithm.HS512)
+                .compact();
+    }
+
+    public Long getMemberId(String token) {
+        return getClaims(token).get("memberId", Long.class);
+    }
+
+    public String getSubject(String token) {
+        return getClaims(token).getSubject();
     }
 
     // 토큰 검증

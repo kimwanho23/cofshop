@@ -1,4 +1,4 @@
-package kwh.cofshop.global;
+package kwh.cofshop.security.dto;
 
 import lombok.Builder;
 import lombok.Getter;

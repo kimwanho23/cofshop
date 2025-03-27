@@ -3,6 +3,7 @@ package kwh.cofshop.security;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kwh.cofshop.config.CorsConfig;
 import kwh.cofshop.member.repository.MemberRepository;
+import kwh.cofshop.security.repository.RefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
@@ -16,6 +17,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.logout.LogoutFilter;
 
 
 @Configuration
@@ -28,6 +30,7 @@ public class SecurityConfig {
     private final ObjectMapper objectMapper;
     private final CorsConfig corsConfig;
     private final MemberRepository memberRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     @Bean
     protected SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -37,8 +40,8 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests((authorize) -> authorize
                         .requestMatchers("/css/**", "/js/**", "/favicon.ico").permitAll()
-                        .requestMatchers("/api/member/signup", "/",  "/login", "/api/item/search", "/api/member/login",
-                                "/api/review/**",
+                        .requestMatchers("/api/member/signup", "/",  "/login", "/api/item/search",
+                                "/api/review/**",  "/api/auth/login", "/api/auth/reissue", "/api/auth/logout",
                                 "/swagger-ui/**", "/swagger-resources/**", "/v3/api-docs/**", "/api*").permitAll()
                         .requestMatchers("/api/**", "/item/**").authenticated()
                         .anyRequest().authenticated())
@@ -47,15 +50,13 @@ public class SecurityConfig {
                         .accessDeniedHandler(new CustomAccessDeniedHandler())  // 권한 부족 처리
                 )
                 .logout((logout) -> logout
-                        .logoutSuccessUrl("/login")
+                        .logoutSuccessUrl("/logout")
                         .invalidateHttpSession(true))
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // 무상태
-                .addFilter(corsConfig.corsFilter())
-                .addFilterBefore(new JwtFilter(jwtTokenProvider), LoginFilter.class)
-                .addFilterAt(new LoginFilter(authenticationManager(), jwtTokenProvider, objectMapper), UsernamePasswordAuthenticationFilter.class);
-
-
+                .addFilterBefore(new CustomLogoutFilter(refreshTokenRepository, jwtTokenProvider), LogoutFilter.class)
+                .addFilterBefore(new JwtFilter(jwtTokenProvider), CustomLoginFilter.class)
+                .addFilterAt(new CustomLoginFilter(authenticationManager(), jwtTokenProvider, objectMapper, refreshTokenRepository), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
