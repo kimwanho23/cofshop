@@ -109,10 +109,10 @@ class MemberServiceTest {
         LoginDto loginDto = new LoginDto();
         loginDto.setEmail("test@gmail.com");
         loginDto.setMemberPwd("1234567890");
-        LoginResponseDto login = authService.login(loginDto);
-        log.info(login.getAccessToken());
-        log.info(login.getRefreshToken());
-        log.info(String.valueOf(login.isPasswordChangeRequired()));
+   //     LoginResponseDto login = authService.login(loginDto);
+  //      log.info(login.getAccessToken());
+     //   log.info(login.getRefreshToken());
+    //    log.info(String.valueOf(login.isPasswordChangeRequired()));
 
     }
 

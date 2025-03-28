@@ -3,6 +3,7 @@ package kwh.cofshop.item.service;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.item.domain.Category;
+import kwh.cofshop.item.dto.request.CategoryPathRequestDto;
 import kwh.cofshop.item.dto.request.CategoryRequestDto;
 import kwh.cofshop.item.dto.response.CategoryResponseDto;
 import kwh.cofshop.item.mapper.CategoryMapper;
@@ -12,10 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -46,11 +44,33 @@ public class CategoryService {
 
     //특정 카테고리 조회
     @Transactional(readOnly = true)
-    public CategoryResponseDto getCategoryById(Long id) {
-        Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.BUSINESS_ERROR_CODE));
+    public CategoryResponseDto getCategoryById(Long categoryId) {
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.CATEGORY_NOT_FOUND));
         return categoryMapper.toResponseDto(category);
     }
+    
+    //자식 카테고리 백트래킹
+    public List<CategoryPathRequestDto> getCategoryPath(Long categoryId){
+        List<CategoryPathRequestDto> categoryPath = categoryRepository.findCategoryPath(categoryId);
+        Collections.reverse(categoryPath);
+        return categoryPath;
+    }
+
+    // 해당 카테고리가 마지막인가? 아니면 선택 옵션 제공
+    public List<CategoryResponseDto> getCategoryChild(Long categoryId) {
+        if (hasChildCategory(categoryId)) {
+            List<Category> categories = categoryRepository.findByParent_Id(categoryId);
+            return categories.stream().map(categoryMapper::toResponseDto).toList();
+        }
+        else return null;
+    }
+
+
+    public boolean hasChildCategory(Long categoryId){
+        return categoryRepository.existsByParent_Id(categoryId);
+    }
+
 
 /*
     public List<CategoryResponseDto> getAllCategoryTest() {

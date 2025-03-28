@@ -2,6 +2,7 @@ package kwh.cofshop.item.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kwh.cofshop.item.domain.Category;
+import kwh.cofshop.item.dto.request.CategoryPathRequestDto;
 import kwh.cofshop.item.dto.request.CategoryRequestDto;
 import kwh.cofshop.item.dto.response.CategoryResponseDto;
 import kwh.cofshop.item.mapper.CategoryMapper;
@@ -79,9 +80,27 @@ class CategoryServiceTest {
     @DisplayName("특정 카테고리 조회")
     @Transactional
     void getIndividualCategory() throws Exception {
-        CategoryResponseDto categoryById = categoryService.getCategoryById(13L);
+        CategoryResponseDto categoryById = categoryService.getCategoryById(15L);
         log.info(objectMapper.writeValueAsString(categoryById));
     }
+
+    @Test
+    @DisplayName("특정 카테고리 경로 조회")
+    @Transactional
+    void getCategoryPath() throws Exception {
+        List<CategoryPathRequestDto> categoryPath = categoryService.getCategoryPath(15L);
+        log.info(objectMapper.writeValueAsString(categoryPath));
+    }
+
+    @Test
+    @DisplayName("특정 카테고리의 자식 조회")
+    @Transactional
+    void getCategoryChild() throws Exception {
+        List<CategoryResponseDto> childCategories = categoryService.getCategoryChild(13L);
+        log.info(objectMapper.writeValueAsString(childCategories));
+    }
+
+
 
     @Test
     @DisplayName("전체 카테고리 목록")
