@@ -3,6 +3,7 @@ package kwh.cofshop.item.controller;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import kwh.cofshop.global.response.ApiResponse;
+import kwh.cofshop.item.dto.CategoryPathDto;
 import kwh.cofshop.item.dto.request.CategoryRequestDto;
 import kwh.cofshop.item.dto.response.CategoryResponseDto;
 import kwh.cofshop.item.service.CategoryService;
@@ -45,5 +46,18 @@ public class CategoryController {
     public ResponseEntity<ApiResponse<List<CategoryResponseDto>>> getAllCategories() {
         List<CategoryResponseDto> responseDto = categoryService.getAllCategory();
         return ResponseEntity.ok(ApiResponse.OK(responseDto));
+    }
+
+    // 특정 카테고리의 자식 카테고리
+    @GetMapping("/{id}/children")
+    public ResponseEntity<List<CategoryResponseDto>> getCategoryChildren(@PathVariable Long id) {
+        List<CategoryResponseDto> children = categoryService.getCategoryChild(id);
+        return ResponseEntity.ok(children);
+    }
+
+    // 카테고리 경로
+    @GetMapping("/{id}/path")
+    public ResponseEntity<List<CategoryPathDto>> getCategoryPath(@PathVariable Long id) {
+        return ResponseEntity.ok(categoryService.getCategoryPath(id));
     }
 }

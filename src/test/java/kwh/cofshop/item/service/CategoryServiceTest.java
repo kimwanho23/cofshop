@@ -1,25 +1,19 @@
 package kwh.cofshop.item.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import kwh.cofshop.item.domain.Category;
-import kwh.cofshop.item.dto.request.CategoryPathRequestDto;
+import kwh.cofshop.item.dto.CategoryPathDto;
 import kwh.cofshop.item.dto.request.CategoryRequestDto;
 import kwh.cofshop.item.dto.response.CategoryResponseDto;
 import kwh.cofshop.item.mapper.CategoryMapper;
 import kwh.cofshop.item.repository.CategoryRepository;
-import kwh.cofshop.order.dto.request.OrderCancelRequestDto;
-import kwh.cofshop.order.dto.response.OrderCancelResponseDto;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.annotation.Commit;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @Slf4j
@@ -88,7 +82,7 @@ class CategoryServiceTest {
     @DisplayName("특정 카테고리 경로 조회")
     @Transactional
     void getCategoryPath() throws Exception {
-        List<CategoryPathRequestDto> categoryPath = categoryService.getCategoryPath(15L);
+        List<CategoryPathDto> categoryPath = categoryService.getCategoryPath(15L);
         log.info(objectMapper.writeValueAsString(categoryPath));
     }
 

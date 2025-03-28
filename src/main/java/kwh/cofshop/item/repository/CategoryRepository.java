@@ -1,7 +1,7 @@
 package kwh.cofshop.item.repository;
 
 import kwh.cofshop.item.domain.Category;
-import kwh.cofshop.item.dto.request.CategoryPathRequestDto;
+import kwh.cofshop.item.dto.CategoryPathDto;
 import kwh.cofshop.item.repository.custom.CategoryRepositoryCustom;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -26,7 +26,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long>, Categ
         SELECT id, name, parent_category_id AS parentCategoryId
         FROM category_path
         """, nativeQuery = true)
-    List<CategoryPathRequestDto> findCategoryPath(@Param("categoryId") Long categoryId);
+    List<CategoryPathDto> findCategoryPath(@Param("categoryId") Long categoryId);
 
     boolean existsByParent_Id(Long parentId); // isLeafCategory 용
 
