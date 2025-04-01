@@ -25,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -153,6 +154,7 @@ public class ItemService { // 통합 Item 서비스
     }
 
     // 특정 아이템 조회
+    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     public ItemResponseDto getItem(Long id){
         Item item = itemRepository.findById(id).orElseThrow(
                 () -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
