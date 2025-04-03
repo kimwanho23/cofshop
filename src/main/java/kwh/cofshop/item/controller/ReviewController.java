@@ -28,12 +28,13 @@ public class ReviewController {
 
     private final ReviewService reviewService;
 
-    @PostMapping("/createReview") // 상품 리뷰 , 한 상품에 리뷰는 하나만 작성 가능
+    @PostMapping("/createReview/{itemId}") // 상품 리뷰 , 한 상품에 리뷰는 하나만 작성 가능
     public ResponseEntity<ApiResponse<ReviewResponseDto>> addReview(
+            @PathVariable Long itemId,
             @Parameter(hidden = true) @LoginMember CustomUserDetails customUserDetails,
             @Valid @RequestBody ReviewRequestDto reviewRequestDto) {
 
-        ReviewResponseDto responseDto = reviewService.save(reviewRequestDto, customUserDetails.getId()); // 리뷰 등록
+        ReviewResponseDto responseDto = reviewService.save(itemId, reviewRequestDto, customUserDetails.getId()); // 리뷰 등록
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.Created(responseDto));
     }
@@ -47,6 +48,16 @@ public class ReviewController {
 
         ReviewResponseDto responseDto = reviewService.updateReview(reviewId, reviewRequestDto, customUserDetails.getId());
         return ResponseEntity.ok(ApiResponse.OK(responseDto));
+    }
+
+    // 리뷰 삭제
+    @DeleteMapping("/deleteReview/{reviewId}")
+    public ResponseEntity<ApiResponse<ReviewResponseDto>> deleteReview(
+            @PathVariable Long reviewId,
+            @Parameter(hidden = true) @LoginMember CustomUserDetails customUserDetails) {
+
+        reviewService.deleteReview(reviewId, customUserDetails.getId());
+        return ResponseEntity.noContent().build();
     }
 
     // 한 상품의 리뷰 목록

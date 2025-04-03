@@ -34,10 +34,16 @@ public class ReviewService {
     private final ItemRepository itemRepository;
     private final MemberRepository memberRepository;
 
+    // 리뷰 생성
     @Transactional
-    public ReviewResponseDto save(ReviewRequestDto requestDto, Long id) {
-        Member member = memberRepository.findById(id).orElseThrow();
-        Item item = itemRepository.findById(requestDto.getItem()).orElseThrow();
+    public ReviewResponseDto save(Long itemId, ReviewRequestDto requestDto, Long memberId) {
+        Member member = memberRepository.findById(memberId).orElseThrow();
+        Item item = itemRepository.findById(itemId).orElseThrow();
+
+        if (reviewRepository.existsByItemIdAndMemberId(itemId, memberId)) {
+            throw new BusinessException(BusinessErrorCode.REVIEW_ALERADY_EXIST); // 해당 회원의 리뷰 존재
+        }
+
         Review review = Review.createReview(
                 requestDto.getRating(),
                 requestDto.getContent(),
@@ -50,6 +56,7 @@ public class ReviewService {
         return reviewMapper.toResponseDto(review);
     }
 
+    // 리뷰 수정
     @Transactional
     public ReviewResponseDto updateReview(Long reviewId, ReviewRequestDto reviewRequestDto, Long memberId) {
         // 1. 리뷰 조회
@@ -82,6 +89,18 @@ public class ReviewService {
                 .orElse(0.0);
 
         item.updateReviewStats(averageRating, reviewCount);
+    }
+
+    // 리뷰 삭제
+    @Transactional
+    public void deleteReview(Long reviewId, Long memberId) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.BUSINESS_ERROR_CODE));
+
+        if (!review.getMember().getId().equals(memberId)) {
+            throw new BusinessException(UnauthorizedErrorCode.MEMBER_UNAUTHORIZED);
+        }
+        reviewRepository.delete(review);
     }
 
 

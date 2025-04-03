@@ -27,14 +27,11 @@ import java.util.*;
 @RequiredArgsConstructor
 @Slf4j
 public class CartItemService {
-
-
     private final CartItemMapper cartItemMapper;
     private final ItemRepository itemRepository;
     private final ItemOptionRepository itemOptionRepository;
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
-
 
     // 장바구니에 상품 추가
     @Transactional
@@ -64,10 +61,10 @@ public class CartItemService {
         // 병합된 요청 처리
         for (CartItemRequestDto requestDto : mergedCartItems.values()) {
             Item item = itemRepository.findById(requestDto.getItemId())
-                    .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND)); // 회원을 찾기 못한 경우
+                    .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
 
             ItemOption itemOption = itemOptionRepository.findById(requestDto.getOptionId())
-                    .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND)); // 아이템을 찾지 못한 경우
+                    .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
 
             // 기존 장바구니 아이템 조회
             CartItem cartItem = cart.getCartItems().stream()

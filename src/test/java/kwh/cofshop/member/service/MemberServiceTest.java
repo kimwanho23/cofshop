@@ -62,7 +62,7 @@ class MemberServiceTest {
 
         //DTO 생성 (프론트에서 입력)
         MemberRequestDto requestDto = new MemberRequestDto();
-        requestDto.setEmail("test@gmail.com");
+        requestDto.setEmail("test2@gmail.com");
         requestDto.setMemberName("테스트");
         requestDto.setMemberPwd("1234567890");
         requestDto.setTel("010-1234-5678");
@@ -74,7 +74,7 @@ class MemberServiceTest {
 
         // 데이터 검증
         assertThat(savedMember).isNotNull();
-        assertThat(savedMember.getEmail()).isEqualTo("test@gmail.com");
+        assertThat(savedMember.getEmail()).isEqualTo("test2@gmail.com");
         assertThat(savedMember.getMemberName()).isEqualTo("테스트");
         assertThat(savedMember.getTel()).isEqualTo("010-1234-5678");
 

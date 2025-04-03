@@ -1,6 +1,7 @@
 package kwh.cofshop.item.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import kwh.cofshop.TestSettingUtils;
 import kwh.cofshop.item.dto.CategoryPathDto;
 import kwh.cofshop.item.dto.request.CategoryRequestDto;
 import kwh.cofshop.item.dto.response.CategoryResponseDto;
@@ -14,13 +15,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @SpringBootTest
 @Slf4j
-class CategoryServiceTest {
-
-    @Autowired
-    private ObjectMapper objectMapper;
+class CategoryServiceTest extends TestSettingUtils {
 
     @Autowired
     private CategoryMapper categoryMapper;
@@ -39,29 +38,33 @@ class CategoryServiceTest {
     @Transactional
     void createParentCategory() throws Exception {
         // 부모 카테고리 생성
+        String unique = UUID.randomUUID().toString().substring(0, 6);
+
         CategoryRequestDto categoryRequestDto = new CategoryRequestDto();
-        categoryRequestDto.setName("커피");
+        categoryRequestDto.setName("커피" + unique);
+
         CategoryResponseDto parentCategory = categoryService.createCategory(categoryRequestDto);
         log.info(objectMapper.writeValueAsString(parentCategory));
 
         // 자식 카테고리 1 생성
         CategoryRequestDto childCategoryDto1 = new CategoryRequestDto();
         childCategoryDto1.setParentCategoryId(parentCategory.getId());
-        childCategoryDto1.setName("원두커피");
+        childCategoryDto1.setName("원두커피" + unique);
+
         CategoryResponseDto childCategoryResponseDto1 = categoryService.createCategory(childCategoryDto1);
         log.info(objectMapper.writeValueAsString(childCategoryResponseDto1));
 
         // 자식 카테고리 2 생성
         CategoryRequestDto childCategoryDto2 = new CategoryRequestDto();
         childCategoryDto2.setParentCategoryId(parentCategory.getId());
-        childCategoryDto2.setName("캡슐커피");
+        childCategoryDto2.setName("캡슐커피" + unique);
         CategoryResponseDto childCategoryResponseDto2 = categoryService.createCategory(childCategoryDto2);
         log.info(objectMapper.writeValueAsString(childCategoryResponseDto2));
 
         // 자식 카테고리 1-2 생성
         CategoryRequestDto childCategoryDto1to2 = new CategoryRequestDto();
         childCategoryDto1to2.setParentCategoryId(childCategoryResponseDto1.getId());
-        childCategoryDto1to2.setName("에스프레소");
+        childCategoryDto1to2.setName("에스프레소" + unique);
         CategoryResponseDto childCategoryResponseDto1to2 = categoryService.createCategory(childCategoryDto1to2);
         log.info(objectMapper.writeValueAsString(childCategoryResponseDto1to2));
 

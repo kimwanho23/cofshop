@@ -22,4 +22,6 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     // 특정 사용자의 해당 아이템의 리뷰 조회
     Review findByItemAndMember(Item item, Member member);
+
+    boolean existsByItemIdAndMemberId(Long itemId, Long memberId);
 }

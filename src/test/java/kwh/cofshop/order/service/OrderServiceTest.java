@@ -1,7 +1,7 @@
 package kwh.cofshop.order.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import kwh.cofshop.ServiceTestSetting;
+import kwh.cofshop.TestSettingUtils;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.repository.ItemOptionRepository;
 import kwh.cofshop.item.repository.ItemRepository;
@@ -39,7 +39,7 @@ import java.util.concurrent.Executors;
 
 @SpringBootTest
 @Slf4j
-class OrderServiceTest extends ServiceTestSetting {
+class OrderServiceTest extends TestSettingUtils {
 
     @Autowired
     private OrderRepository orderRepository;

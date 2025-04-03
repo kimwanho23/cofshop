@@ -8,6 +8,7 @@ import java.util.List;
 @Getter
 @Setter
 public class ItemResponseDto {
+    private Long Id;
     private String itemName; // 상품명
     private Integer price; // 가격
     private Integer discount; // 할인율 (null 허용)

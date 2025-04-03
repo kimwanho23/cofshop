@@ -1,6 +1,6 @@
 package kwh.cofshop.cart.controller;
 
-import kwh.cofshop.ControllerTestSetting;
+import kwh.cofshop.TestSettingUtils;
 import kwh.cofshop.cart.dto.request.CartItemRequestDto;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.repository.ItemRepository;
@@ -15,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -24,7 +23,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
 @Slf4j
-class CartControllerTest extends ControllerTestSetting {
+class CartControllerTest extends TestSettingUtils {
 
     @Autowired
     private ItemRepository itemRepository;
@@ -33,7 +32,7 @@ class CartControllerTest extends ControllerTestSetting {
     @DisplayName("장바구니에 항목 추가")
     @Transactional
     public void addCart() throws Exception {
-        Item item = itemRepository.findById(2L).orElseThrow();
+        Item item = createTestItem();
         List<CartItemRequestDto> requestDto = getCartItemRequestDto(item);
 
         MvcResult result = mockMvc.perform(post("/api/cart/addCart")

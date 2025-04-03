@@ -1,6 +1,6 @@
 package kwh.cofshop.item.controller;
 
-import kwh.cofshop.ControllerTestSetting;
+import kwh.cofshop.TestSettingUtils;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.dto.request.ReviewRequestDto;
 import kwh.cofshop.item.repository.ItemRepository;
@@ -15,10 +15,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 @Slf4j
-class ReviewControllerTest extends ControllerTestSetting {
+class ReviewControllerTest extends TestSettingUtils {
 
     @Autowired
     private ItemRepository itemRepository;
@@ -27,13 +25,13 @@ class ReviewControllerTest extends ControllerTestSetting {
     @DisplayName("리뷰 등록 통합 테스트")
     @Transactional
     void addReview_success() throws Exception {
-        Item item = itemRepository.findById(2L).orElseThrow();
+        Item item = createTestItem();
         ReviewRequestDto requestDto = getReviewRequestDto(item);
         String requestJson = objectMapper.writeValueAsString(requestDto);
 
         log.info(requestJson);
         // 2. 요청 수행
-        mockMvc.perform(post("/api/review/createReview")
+        mockMvc.perform(post("/api/review/createReview/{itemId}", item.getId())
                         .header("Authorization", "Bearer " + getToken())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson))

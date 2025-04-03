@@ -1,39 +1,30 @@
 package kwh.cofshop.item.controller;
 
-import kwh.cofshop.ControllerTestSetting;
+import kwh.cofshop.TestSettingUtils;
 import kwh.cofshop.item.domain.ImgType;
 import kwh.cofshop.item.dto.request.ItemImgRequestDto;
 import kwh.cofshop.item.dto.request.ItemOptionRequestDto;
 import kwh.cofshop.item.dto.request.ItemRequestDto;
 import kwh.cofshop.item.dto.request.ItemSearchRequestDto;
 import kwh.cofshop.item.service.ItemService;
-import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.security.CustomUserDetails;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @Slf4j
-class ItemControllerTest extends ControllerTestSetting {
+class ItemControllerTest extends TestSettingUtils {
 
     @Autowired
     private ItemService itemService;
