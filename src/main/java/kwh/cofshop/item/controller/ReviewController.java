@@ -20,27 +20,43 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
+
 @RestController
-@RequestMapping("/api/review")
+@RequestMapping("/api/reviews")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "Bearer Authentication")
 public class ReviewController {
 
     private final ReviewService reviewService;
 
-    @PostMapping("/createReview/{itemId}") // 상품 리뷰 , 한 상품에 리뷰는 하나만 작성 가능
+    //////////// @GET
+    // 한 상품의 리뷰 목록
+    @GetMapping("/items/{itemId}")
+    public ResponseEntity<ApiResponse<Page<ReviewResponseDto>>> reviewList(
+            @PathVariable Long itemId,
+            @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        Page<ReviewResponseDto> responseDto = reviewService.getReviewsByItem(itemId, pageable);
+        return ResponseEntity.ok(ApiResponse.OK(responseDto));
+    }
+
+    //////////// @POST
+    // 리뷰 등록
+    @PostMapping("/items/{itemId}")
     public ResponseEntity<ApiResponse<ReviewResponseDto>> addReview(
             @PathVariable Long itemId,
             @Parameter(hidden = true) @LoginMember CustomUserDetails customUserDetails,
             @Valid @RequestBody ReviewRequestDto reviewRequestDto) {
 
-        ReviewResponseDto responseDto = reviewService.save(itemId, reviewRequestDto, customUserDetails.getId()); // 리뷰 등록
-        return ResponseEntity.status(HttpStatus.CREATED)
+        ReviewResponseDto responseDto = reviewService.save(itemId, reviewRequestDto, customUserDetails.getId());
+        return ResponseEntity.created(URI.create("/api/reviews/" + responseDto.getReviewId()))
                 .body(ApiResponse.Created(responseDto));
     }
 
+    //////////// @PUT, PATCH
     // 리뷰 수정
-    @PutMapping("/updateReview/{reviewId}")
+    @PutMapping("/{reviewId}")
     public ResponseEntity<ApiResponse<ReviewResponseDto>> updateReview(
             @PathVariable Long reviewId,
             @Parameter(hidden = true) @LoginMember CustomUserDetails customUserDetails,
@@ -50,9 +66,10 @@ public class ReviewController {
         return ResponseEntity.ok(ApiResponse.OK(responseDto));
     }
 
+    //////////// @DELETE
     // 리뷰 삭제
-    @DeleteMapping("/deleteReview/{reviewId}")
-    public ResponseEntity<ApiResponse<ReviewResponseDto>> deleteReview(
+    @DeleteMapping("/{reviewId}")
+    public ResponseEntity<Void> deleteReview(
             @PathVariable Long reviewId,
             @Parameter(hidden = true) @LoginMember CustomUserDetails customUserDetails) {
 
@@ -60,12 +77,5 @@ public class ReviewController {
         return ResponseEntity.noContent().build();
     }
 
-    // 한 상품의 리뷰 목록
-    @GetMapping("/reviews/{itemId}")
-    public ResponseEntity<ApiResponse<Page<ReviewResponseDto>>> reviewList(
-            @PathVariable Long itemId,
-            @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<ReviewResponseDto> responseDto = reviewService.getReviewsByItem(itemId, pageable);
-        return ResponseEntity.ok(ApiResponse.OK(responseDto));
-    }
+
 }

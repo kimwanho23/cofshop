@@ -89,7 +89,7 @@ public class ItemOptionService {
     // 옵션 삭제
     public void deleteItemOptions(Long itemId, List<Long> deleteOptionIds) {
         if (deleteOptionIds != null && !deleteOptionIds.isEmpty()) {
-            itemOptionRepository.deleteByItemIdAndId(itemId, deleteOptionIds);
+            itemOptionRepository.deleteByItemIdAndItemOptionId(itemId, deleteOptionIds);
         }
     }
 

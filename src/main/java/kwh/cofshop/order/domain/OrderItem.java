@@ -17,7 +17,7 @@ public class OrderItem extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "order_item_id", nullable = false, updatable = false)
-    private Long orderDetailId;  // 주문 상세 ID (PK)
+    private Long id;  // 주문 상세 ID (PK)
 
     @Column(nullable = false)
     private int quantity;  // 수량

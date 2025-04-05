@@ -16,7 +16,8 @@ public class MemberLoginHistory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    @Column(name = "member_login_history_id")
+    private Long id;
 
     @Column(nullable = false, unique = true)
     private String email;

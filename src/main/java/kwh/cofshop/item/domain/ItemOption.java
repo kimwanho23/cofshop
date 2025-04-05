@@ -17,6 +17,7 @@ public class ItemOption {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "item_option_id")
     private Long id;
 
     @Column

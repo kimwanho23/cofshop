@@ -92,22 +92,17 @@ public class CartItemService {
     }
 
     @Transactional
-    public void deleteCartItem(Long memberId, Long cartId, Long itemId, Long optionId) {
-        // 현재 로그인한 사용자의 장바구니인지 검증
-        Cart cart = cartRepository.findById(cartId)
+    public void deleteCartItemByOptionId(Long memberId, Long itemOptionId) {
+        // 현재 로그인한 사용자의 장바구니 가져오기
+        Cart cart = cartRepository.findByMemberId(memberId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.CART_NOT_FOUND));
 
-        // 만약 로그인 된 사용자가 다르다면 오류 -> 로그아웃하고 다른 아이디로 로그인 해서 삭제한다면? 삭제당할 위험 존재
-        if (!cart.getMember().getId().equals(memberId)) {
-            throw new BusinessException(UnauthorizedErrorCode.MEMBER_UNAUTHORIZED);
-        }
-
-        CartItem cartItem = cartItemRepository.findByItemOptionIdAndItemIdAndCartId(
-                        cartId, itemId, optionId)
+        CartItem cartItem = cartItemRepository.findByCartIdAndItemOptionId(cart.getId(), itemOptionId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
 
         cartItemRepository.delete(cartItem);
     }
+
 
     // 장바구니 전체 삭제
     @Transactional

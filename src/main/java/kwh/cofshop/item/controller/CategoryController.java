@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.util.List;
 
 @RestController
@@ -23,41 +24,58 @@ public class CategoryController {
 
     private final CategoryService categoryService;
 
-    // 카테고리 등록 (관리자)
-    @PostMapping("/create")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    public ResponseEntity<ApiResponse<CategoryResponseDto>> createCategory(
-            @RequestBody @Valid CategoryRequestDto requestDto) {
-        CategoryResponseDto responseDto = categoryService.createCategory(requestDto);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.Created(responseDto));
+    //////////// @GET
+
+
+    // 특정 카테고리의 자식 카테고리
+    @GetMapping("/{categoryId}/children")
+    public ResponseEntity<ApiResponse<List<CategoryResponseDto>>> getCategoryChildren(@PathVariable Long categoryId) {
+        List<CategoryResponseDto> children = categoryService.getCategoryChild(categoryId);
+        return ResponseEntity.ok(ApiResponse.OK(children));
     }
 
-    // 카테고리 삭제 (관리자)
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> deleteCategory(@PathVariable Long id) {
-        categoryService.deleteCategory(id);
-        return ResponseEntity.ok(ApiResponse.OK(null));
+    // 카테고리 경로
+    @GetMapping("/{categoryId}/path")
+    public ResponseEntity<ApiResponse<List<CategoryPathDto>>> getCategoryPath(@PathVariable Long categoryId) {
+        List<CategoryPathDto> categoryPath = categoryService.getCategoryPath(categoryId);
+        return ResponseEntity.ok(ApiResponse.OK(categoryPath));
     }
 
     // 전체 카테고리 목록 (상위 카테고리와 하위 카테고리의 관계가 트리 구조와 유사함)
-    @GetMapping("/categoryList")
+    @GetMapping
     public ResponseEntity<ApiResponse<List<CategoryResponseDto>>> getAllCategories() {
         List<CategoryResponseDto> responseDto = categoryService.getAllCategory();
         return ResponseEntity.ok(ApiResponse.OK(responseDto));
     }
 
-    // 특정 카테고리의 자식 카테고리
-    @GetMapping("/{id}/children")
-    public ResponseEntity<List<CategoryResponseDto>> getCategoryChildren(@PathVariable Long id) {
-        List<CategoryResponseDto> children = categoryService.getCategoryChild(id);
-        return ResponseEntity.ok(children);
+    //////////// @POST
+
+
+    // 카테고리 등록 (관리자)
+    @PostMapping
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<ApiResponse<CategoryResponseDto>> createCategory(
+            @RequestBody @Valid CategoryRequestDto requestDto) {
+        CategoryResponseDto responseDto = categoryService.createCategory(requestDto);
+
+        return ResponseEntity
+                .created(URI.create("/api/categories/" + responseDto.getId()))
+                .body(ApiResponse.Created(responseDto));
     }
 
-    // 카테고리 경로
-    @GetMapping("/{id}/path")
-    public ResponseEntity<List<CategoryPathDto>> getCategoryPath(@PathVariable Long id) {
-        return ResponseEntity.ok(categoryService.getCategoryPath(id));
+    //////////// @PUT, PATCH
+
+
+
+    //////////// @DELETE
+
+    // 카테고리 삭제 (관리자)
+    @DeleteMapping("/{categoryId}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<Void> deleteCategory(@PathVariable Long categoryId) {
+        categoryService.deleteCategory(categoryId);
+        return ResponseEntity.noContent().build();
     }
+
+
 }

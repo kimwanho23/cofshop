@@ -9,9 +9,9 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
+
 @Repository
 public interface ItemCategoryRepository extends JpaRepository<ItemCategory, Long>, ItemCategoryRepositoryCustom {
-
-    @Lock(LockModeType.OPTIMISTIC)
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<ItemCategory> findByItemId(Long id);
 }

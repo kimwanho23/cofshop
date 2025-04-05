@@ -41,7 +41,7 @@ public class ReviewService {
         Item item = itemRepository.findById(itemId).orElseThrow();
 
         if (reviewRepository.existsByItemIdAndMemberId(itemId, memberId)) {
-            throw new BusinessException(BusinessErrorCode.REVIEW_ALERADY_EXIST); // 해당 회원의 리뷰 존재
+            throw new BusinessException(BusinessErrorCode.REVIEW_ALREADY_EXIST); // 해당 회원의 리뷰 존재
         }
 
         Review review = Review.createReview(

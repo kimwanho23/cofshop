@@ -1,6 +1,7 @@
 package kwh.cofshop.cart.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import kwh.cofshop.TestSettingUtils;
 import kwh.cofshop.cart.dto.request.CartItemRequestDto;
 import kwh.cofshop.cart.dto.response.CartItemResponseDto;
 import kwh.cofshop.item.domain.Item;
@@ -23,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @Slf4j
-class CartItemServiceTest {
+class CartItemServiceTest extends TestSettingUtils {
 
     @Autowired
     private MemberRepository memberRepository;
@@ -44,35 +45,11 @@ class CartItemServiceTest {
         Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
         Item item = itemRepository.findById(2L).orElseThrow();
 
-        List<CartItemRequestDto> cartItemRequestDtoList = getCartItemRequestDtos(item);
+        List<CartItemRequestDto> cartItemRequestDtoList = getCartItemRequestDto(item);
 
 
         List<CartItemResponseDto> cartItemResponseDto = cartItemService.addCartItem(cartItemRequestDtoList, member.getId());
         log.info(objectMapper.writeValueAsString(cartItemResponseDto));
     }
-
-    private List<CartItemRequestDto> getCartItemRequestDtos(Item item) {
-        List<CartItemRequestDto> cartItemRequestDtoList = new ArrayList<>();
-
-        CartItemRequestDto cartItemRequestDto1 = new CartItemRequestDto();
-        cartItemRequestDto1.setItemId(item.getId());
-        cartItemRequestDto1.setOptionId(3L);
-        cartItemRequestDto1.setQuantity(1);
-        cartItemRequestDtoList.add(cartItemRequestDto1);
-
-        CartItemRequestDto cartItemRequestDto2 = new CartItemRequestDto();
-        cartItemRequestDto2.setItemId(item.getId());
-        cartItemRequestDto2.setOptionId(3L);
-        cartItemRequestDto2.setQuantity(2);
-        cartItemRequestDtoList.add(cartItemRequestDto2);
-
-        CartItemRequestDto cartItemRequestDto3 = new CartItemRequestDto();
-        cartItemRequestDto3.setItemId(item.getId());
-        cartItemRequestDto3.setOptionId(4L);
-        cartItemRequestDto3.setQuantity(2);
-        cartItemRequestDtoList.add(cartItemRequestDto3);
-        return cartItemRequestDtoList;
-    }
-
 
 }

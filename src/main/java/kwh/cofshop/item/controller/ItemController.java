@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.net.URI;
 import java.util.List;
 
 @RestController
@@ -28,9 +29,28 @@ import java.util.List;
 public class ItemController {
 
     private final ItemService itemService;
+    //////////// @GET
+
+    // 상품 정보 조회
+    @GetMapping("/{itemId}")
+    public ResponseEntity<ApiResponse<ItemResponseDto>> inquiryItem(@PathVariable Long itemId){
+        ItemResponseDto responseDto = itemService.getItem(itemId);
+        return ResponseEntity.ok(ApiResponse.OK(responseDto));
+    }
+
+    // 많이 팔린 상품 조회 (기본적으로 10개씩 조회)
+    @GetMapping("/populars")
+    public ResponseEntity<ApiResponse<List<ItemResponseDto>>> popularItems(
+            @RequestParam(defaultValue = "10") int limit) {
+        List<ItemResponseDto> popularItem = itemService.getPopularItem(limit);
+        return ResponseEntity.ok(ApiResponse.OK(popularItem));
+    }
+
+
+    //////////// @POST
 
     // 상품 등록
-    @PostMapping("/create")
+    @PostMapping("")
     public ResponseEntity<ApiResponse<ItemResponseDto>> uploadItem(
             @Parameter(hidden = true) @LoginMember CustomUserDetails customUserDetails,
             @RequestPart("itemRequestDto") @Valid ItemRequestDto itemRequestDto,
@@ -39,30 +59,10 @@ public class ItemController {
         // 서비스 호출 (DTO + 파일 리스트 전달)
         ItemResponseDto responseDto = itemService.saveItem(itemRequestDto, customUserDetails.getId(), images);
 
-        return ResponseEntity.status(HttpStatus.CREATED)
+        return ResponseEntity.created(URI.create("/api/item/" + responseDto.getId()))
                 .body(ApiResponse.Created(responseDto));
     }
 
-    // 상품 정보 조회
-    @GetMapping("/{itemId}")
-    public ResponseEntity<ApiResponse<ItemResponseDto>> inquiryItem(@PathVariable Long itemId){
-        ItemResponseDto responseDto = itemService.getItem(itemId);
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.OK(responseDto));
-    }
-
-    // 상품 수정
-    @PutMapping("/update/{itemId}")
-    public ResponseEntity<ApiResponse<ItemResponseDto>> updateItem(
-            @PathVariable Long itemId,
-            @Parameter(hidden = true) @LoginMember CustomUserDetails customUserDetails,
-            @RequestPart("itemRequestDto") @Valid ItemUpdateRequestDto itemRequestDto,
-            @RequestPart("images") List<MultipartFile> images) throws Exception {
-
-        ItemResponseDto updatedItem = itemService.updateItem(itemId, itemRequestDto, images);
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.OK(updatedItem));
-    }
 
     // 상품 검색
     @PostMapping("/search")
@@ -70,28 +70,28 @@ public class ItemController {
             @Valid @RequestBody  ItemSearchRequestDto itemSearchRequestDto) {
         Page<ItemSearchResponseDto> itemSearchResponseDto =
                 itemService.searchItem(itemSearchRequestDto, itemSearchRequestDto.toPageable());
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.OK(itemSearchResponseDto));
+        return ResponseEntity.ok(ApiResponse.OK(itemSearchResponseDto));
     }
 
+
+    //////////// @PUT, PATCH
+    // 상품 수정
+    @PutMapping("/{itemId}")
+    public ResponseEntity<ApiResponse<ItemResponseDto>> updateItem(
+            @PathVariable Long itemId,
+            @Parameter(hidden = true) @LoginMember CustomUserDetails customUserDetails,
+            @RequestPart("itemRequestDto") @Valid ItemUpdateRequestDto itemRequestDto,
+            @RequestPart("images") List<MultipartFile> images) throws Exception {
+
+        ItemResponseDto updatedItem = itemService.updateItem(itemId, itemRequestDto, images);
+        return ResponseEntity.ok(ApiResponse.OK(updatedItem));
+    }
+
+    //////////// @DELETE
     // 상품 삭제
-    @DeleteMapping("/delete/{itemId}")
-    public ResponseEntity<ApiResponse<Void>> deleteItems(
-            @PathVariable Long itemId) {
+    @DeleteMapping("/{itemId}")
+    public ResponseEntity<Void> deleteItem(@PathVariable Long itemId) {
         itemService.deleteItem(itemId);
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(null);
+        return ResponseEntity.noContent().build(); // 204 No Content
     }
-    ///////////
-
-    // 많이 팔린 상품 조회 (기본적으로 10개씩 조회)
-    @GetMapping("/popularItem")
-    public ResponseEntity<ApiResponse<List<ItemResponseDto>>> popularItems(
-            @RequestParam(defaultValue = "10") int limit){
-        List<ItemResponseDto> popularItem = itemService.getPopularItem(limit);
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.OK(popularItem));
-
-    }
-
 }

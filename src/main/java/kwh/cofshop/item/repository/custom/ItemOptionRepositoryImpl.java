@@ -17,7 +17,7 @@ public class ItemOptionRepositoryImpl implements ItemOptionRepositoryCustom {
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public Optional<ItemOption> findByIdWithLock(Long optionId) {
+    public Optional<ItemOption> findByItemOptionIdWithLock(Long optionId) {
         QItemOption itemOption = QItemOption.itemOption;
 
         ItemOption result = queryFactory
@@ -30,14 +30,24 @@ public class ItemOptionRepositoryImpl implements ItemOptionRepositoryCustom {
     }
 
     @Override
-    public void deleteByItemIdAndId(Long itemId, List<Long> ids) {
+    public void deleteByItemIdAndItemOptionId(Long itemId, List<Long> optionIdList) {
         QItemOption itemOption = QItemOption.itemOption;
-        if (ids == null || ids.isEmpty()) return;
+        if (optionIdList == null || optionIdList.isEmpty()) return;
 
         queryFactory
                 .delete(itemOption)
                 .where(itemOption.item.id.eq(itemId)
-                        .and(itemOption.id.in(ids)))
+                        .and(itemOption.id.in(optionIdList)))
                 .execute();
+    }
+
+    @Override
+    public List<ItemOption> findByItemIdWithLock(Long itemId) {
+        QItemOption itemOption = QItemOption.itemOption;
+        return queryFactory
+                .selectFrom(itemOption)
+                .where(itemOption.item.id.eq(itemId))
+                .setLockMode(LockModeType.PESSIMISTIC_WRITE)
+                .fetch();
     }
 }

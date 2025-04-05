@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Repository
@@ -23,7 +24,7 @@ public class CartItemRepositoryImpl implements CartItemRepositoryCustom{
     private final CartItemMapper cartItemMapper;
 
     @Override
-    public List<CartItemResponseDto> findCartItemsByMember(Long id) { // Member Cart 조회, Item, ItemOption 등 조인
+    public List<CartItemResponseDto> findCartItemsByMember(Long memberId) { // Member Cart 조회, Item, ItemOption 등 조인
         QCartItem cartItem = QCartItem.cartItem;
         QItem item = QItem.item;
         QItemImg itemImg = QItemImg.itemImg;
@@ -34,7 +35,7 @@ public class CartItemRepositoryImpl implements CartItemRepositoryCustom{
                 .join(cartItem.item, item).fetchJoin()
                 .join(cartItem.itemOption, itemOption).fetchJoin()
                 .leftJoin(item.itemImgs, itemImg).fetchJoin()
-                .where(cartItem.cart.member.id.eq(id)
+                .where(cartItem.cart.member.id.eq(memberId)
                         .and(itemImg.imgType.eq(ImgType.REPRESENTATIVE)))
                 .fetch();
 
@@ -50,5 +51,20 @@ public class CartItemRepositoryImpl implements CartItemRepositoryCustom{
                 .delete(cartItem)
                 .where(cartItem.cart.id.eq(cartId))
                 .execute();
+    }
+
+    @Override
+    public Optional<CartItem> findByItemAndOptionAndCart(Long itemId, Long optionId, Long cartId) {
+        QCartItem cartItem = QCartItem.cartItem;
+
+        return Optional.ofNullable(
+                queryFactory.selectFrom(cartItem)
+                        .where(
+                                cartItem.item.id.eq(itemId),
+                                cartItem.itemOption.id.eq(optionId),
+                                cartItem.cart.id.eq(cartId)
+                        )
+                        .fetchOne()
+        );
     }
 }

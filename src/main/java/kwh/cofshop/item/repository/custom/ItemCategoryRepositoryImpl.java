@@ -1,7 +1,10 @@
 package kwh.cofshop.item.repository.custom;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import jakarta.persistence.LockModeType;
+import kwh.cofshop.item.domain.ItemCategory;
 import kwh.cofshop.item.domain.QItemCategory;
+import kwh.cofshop.item.domain.QItemOption;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -24,6 +27,16 @@ public class ItemCategoryRepositoryImpl implements ItemCategoryRepositoryCustom 
                 .where(itemCategory.item.id.eq(itemId)
                         .and(itemCategory.category.id.in(categoryIds)))
                 .execute();
+    }
+
+    @Override
+    public List<ItemCategory> findByItemIdWithLock(Long itemId) {
+        QItemCategory itemCategory = QItemCategory.itemCategory;
+        return queryFactory
+                .selectFrom(itemCategory)
+                .where(itemCategory.item.id.eq(itemId))
+                .setLockMode(LockModeType.PESSIMISTIC_WRITE)
+                .fetch();
     }
 
 }

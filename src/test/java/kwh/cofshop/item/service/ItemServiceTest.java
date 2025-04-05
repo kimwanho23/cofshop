@@ -128,11 +128,11 @@ class ItemServiceTest {
 
         ItemUpdateRequestDto itemUpdateRequestDto = getUpdateItemRequestDto();
 
-        List<ItemOptionRequestDto> itemOptionDtos = itemOptionRepository.findByItemId(item.getId())
+        List<ItemOptionRequestDto> itemOptionDto = itemOptionRepository.findByItemId(item.getId())
                 .stream()
                 .map(option -> new ItemOptionRequestDto(option.getId(), option.getDescription(), option.getAdditionalPrice(), option.getOptionNo(), option.getStock()))
                 .toList();
-        itemUpdateRequestDto.setExistingItemOptions(itemOptionDtos);
+        itemUpdateRequestDto.setExistingItemOptions(itemOptionDto);
 
         // 기존 이미지 정보
         List<ItemImgRequestDto> itemImgDto = itemImgRepository.findByItemId(item.getId())

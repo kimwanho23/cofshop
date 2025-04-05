@@ -60,7 +60,7 @@ public class CategoryService {
     // 해당 카테고리가 마지막인가? 아니면 선택 옵션 제공
     public List<CategoryResponseDto> getCategoryChild(Long categoryId) {
         if (hasChildCategory(categoryId)) {
-            List<Category> categories = categoryRepository.findByParent_Id(categoryId);
+            List<Category> categories = categoryRepository.findByParentCategoryId(categoryId);
             return categories.stream().map(categoryMapper::toResponseDto).toList();
         }
         else return null;
@@ -68,7 +68,7 @@ public class CategoryService {
 
 
     public boolean hasChildCategory(Long categoryId){
-        return categoryRepository.existsByParent_Id(categoryId);
+        return categoryRepository.existsByParentCategoryId(categoryId);
     }
 
 

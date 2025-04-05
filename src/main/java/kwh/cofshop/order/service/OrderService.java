@@ -55,7 +55,7 @@ public class OrderService {
                 .toList();
 
         Map<Long, ItemOption> itemOptionMap = optionIds.stream()
-                .map(optionId -> itemOptionRepository.findByIdWithLock(optionId)
+                .map(optionId -> itemOptionRepository.findByItemOptionIdWithLock(optionId)
                         .orElseThrow(() -> new EntityNotFoundException("옵션을 찾을 수 없습니다.")))
                 .collect(Collectors.toMap(ItemOption::getId, Function.identity()));
 

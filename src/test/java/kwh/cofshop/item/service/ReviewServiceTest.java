@@ -71,7 +71,7 @@ class ReviewServiceTest extends TestSettingUtils {
 
         Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
 
-        Review byItem = reviewRepository.findByItemAndMember(item, member);
+        Review byItem = reviewRepository.findByItemAndMember(item.getId(), member.getId());
 
         reviewRepository.delete(byItem);
 

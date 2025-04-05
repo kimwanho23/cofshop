@@ -27,8 +27,4 @@ public interface CategoryRepository extends JpaRepository<Category, Long>, Categ
         FROM category_path
         """, nativeQuery = true)
     List<CategoryPathDto> findCategoryPath(@Param("categoryId") Long categoryId);
-
-    boolean existsByParent_Id(Long parentId); // isLeafCategory 용
-
-    List<Category> findByParent_Id(Long parentId);
 }

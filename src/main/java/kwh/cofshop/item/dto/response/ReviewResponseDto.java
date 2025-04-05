@@ -8,6 +8,7 @@ import lombok.Setter;
 @Setter
 public class ReviewResponseDto {
 
+    private Long reviewId;
     private Long rating; // 별점
     private String content; // 후기글
     private Long item; // 상품

@@ -21,62 +21,67 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
+
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/order")
+@RequestMapping("/api/orders")
 @SecurityRequirement(name = "Bearer Authentication")
 public class OrderController {
 
     private final OrderService orderService;
 
-    // 주문 생성
-    @PostMapping("/create")
-    public ResponseEntity<ApiResponse<OrderResponseDto>> createOrder(
-            @LoginMember CustomUserDetails customUserDetails,
-            @Valid @RequestBody OrderRequestDto orderRequestDto){
-        OrderResponseDto orderCreateResponseDto = orderService.createOrder(orderRequestDto, customUserDetails.getId());
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.Created(orderCreateResponseDto));
-    }
-
-
-    // 주문 취소
-    @PatchMapping("/cancel")
-    @PreAuthorize("hasAuthority('ROLE_USER')")
-    public ResponseEntity<ApiResponse<OrderCancelResponseDto>> cancelOrder(
-            @Valid @RequestBody OrderCancelRequestDto orderCancelRequestDto){
-        OrderCancelResponseDto orderCancelResponseDto = orderService.cancelOrder(orderCancelRequestDto);
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.OK(orderCancelResponseDto));
-    }
-
+    //////////// @GET
     // 하나의 상품 주문 정보 조회
-    @GetMapping("/{orderId}/info")
-    public ResponseEntity<ApiResponse<OrderResponseDto>> orderInfo(
-            @PathVariable Long orderId){
-        OrderResponseDto orderResponseDto = orderService.orderSummary(orderId);
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.OK(orderResponseDto));
+    @GetMapping("/{orderId}")
+    public ResponseEntity<ApiResponse<OrderResponseDto>> getOrderInfo(@PathVariable Long orderId) {
+        return ResponseEntity.ok(ApiResponse.OK(orderService.orderSummary(orderId)));
     }
 
-    // 한 사람의 전체 주문 조회
-    @GetMapping("/memberOrderList")
-    public ResponseEntity<ApiResponse<Page<OrderResponseDto>>> memberOrderList(
-            @Valid @LoginMember CustomUserDetails customUserDetails,
-            @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable
-    ){
-        Page<OrderResponseDto> orderResponseDto = orderService.memberOrders(customUserDetails.getId(), pageable);
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.OK(orderResponseDto));
+    // 현재 자신의 전체 주문 조회
+    @GetMapping("/me")
+    @PreAuthorize("hasRole('ROLE_USER')")
+    public ResponseEntity<ApiResponse<Page<OrderResponseDto>>> getMyOrders(
+            @LoginMember CustomUserDetails user,
+            @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        Page<OrderResponseDto> responseDto = orderService.memberOrders(user.getId(), pageable);
+        return ResponseEntity.ok(ApiResponse.OK(responseDto));
     }
 
 
     // 모든 주문 조회
-    @GetMapping("/allOrderList")
-    public ResponseEntity<ApiResponse<Page<OrderResponseDto>>> allOrderList(
-            @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable){
-        Page<OrderResponseDto> orderResponseDto = orderService.allOrderList(pageable);
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.OK(orderResponseDto));
+    @GetMapping
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    public ResponseEntity<ApiResponse<Page<OrderResponseDto>>> getAllOrders(
+            @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<OrderResponseDto> responseDto = orderService.allOrderList(pageable);
+        return ResponseEntity.ok(ApiResponse.OK(responseDto));
     }
+
+    //////////// @POST
+    // 주문 생성
+    @PostMapping
+    public ResponseEntity<ApiResponse<OrderResponseDto>> createOrder(
+            @LoginMember CustomUserDetails user,
+            @Valid @RequestBody OrderRequestDto dto) {
+
+        OrderResponseDto responseDto = orderService.createOrder(dto, user.getId());
+        return ResponseEntity.created(URI.create("/api/orders/" + responseDto.getOrderId()))
+                .body(ApiResponse.Created(responseDto));
+    }
+
+    //////////// @PUT, PATCH
+    // 주문 취소
+    @PatchMapping("/{orderId}/cancel")
+    @PreAuthorize("hasRole('ROLE_USER')")
+    public ResponseEntity<ApiResponse<OrderCancelResponseDto>> cancelOrder(
+            @PathVariable Long orderId,
+            @Valid @RequestBody OrderCancelRequestDto dto) {
+
+        OrderCancelResponseDto responseDto = orderService.cancelOrder(dto);
+        return ResponseEntity.ok(ApiResponse.OK(responseDto));
+    }
+
+    //////////// @DELETE
 }

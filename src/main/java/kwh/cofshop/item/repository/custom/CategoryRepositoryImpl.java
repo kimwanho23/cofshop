@@ -24,4 +24,25 @@ public class CategoryRepositoryImpl implements CategoryRepositoryCustom {
                     .fetch();
     }
 
+    @Override
+    public boolean existsByParentCategoryId(Long parentId) {
+        QCategory category = QCategory.category;
+        Integer fetchOne = queryFactory
+                .selectOne()
+                .from(category)
+                .where(category.parent.id.eq(parentId))
+                .fetchFirst(); // limit 1
+
+        return fetchOne != null;
+    }
+
+    @Override
+    public List<Category> findByParentCategoryId(Long parentId) {
+        QCategory category = QCategory.category;
+        return queryFactory
+                .selectFrom(category)
+                .where(category.parent.id.eq(parentId))
+                .fetch();
+    }
+
 }

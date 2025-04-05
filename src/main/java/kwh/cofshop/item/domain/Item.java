@@ -23,7 +23,7 @@ public class Item extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(nullable = false, updatable = false)
+    @Column(name = "item_id", nullable = false, updatable = false)
     private Long id; // 상품 코드 (기본 키)
 
     @Column(name = "item_name", nullable = false)

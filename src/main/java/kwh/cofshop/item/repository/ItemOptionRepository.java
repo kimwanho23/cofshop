@@ -6,15 +6,13 @@ import kwh.cofshop.item.repository.custom.ItemOptionRepositoryCustom;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.stereotype.Repository;
+
 import java.util.List;
 
 @Repository
 public interface ItemOptionRepository extends JpaRepository<ItemOption, Long>, ItemOptionRepositoryCustom {
 
-    @Lock(LockModeType.OPTIMISTIC)
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<ItemOption> findByItemId(Long id);
-
-
-
 
 }

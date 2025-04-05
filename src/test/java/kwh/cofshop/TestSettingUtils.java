@@ -1,6 +1,7 @@
 package kwh.cofshop;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import kwh.cofshop.cart.dto.request.CartItemRequestDto;
 import kwh.cofshop.item.domain.ImgType;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.dto.request.ItemImgRequestDto;
@@ -10,6 +11,7 @@ import kwh.cofshop.item.dto.response.ItemResponseDto;
 import kwh.cofshop.item.repository.ItemRepository;
 import kwh.cofshop.item.service.ItemService;
 import kwh.cofshop.member.domain.Member;
+import kwh.cofshop.member.domain.MemberState;
 import kwh.cofshop.member.repository.MemberRepository;
 import kwh.cofshop.security.CustomUserDetails;
 import kwh.cofshop.security.JwtTokenProvider;
@@ -88,6 +90,16 @@ public abstract class TestSettingUtils {
         return itemRepository.findById(responseDto.getId()).orElseThrow();
     }
 
+    protected Member createMember(String email) {
+        Member customer = Member.builder()
+                .email(email)
+                .memberName("테스트용")
+                .memberPwd("password1234")
+                .tel("010-1234-5678")
+                .build();
+        return memberRepository.save(customer);
+    }
+
 
     // 이미지 파일
     private List<MultipartFile> generateImageFiles() {
@@ -145,6 +157,29 @@ public abstract class TestSettingUtils {
         requestDto.setDeliveryFee(1000); // 배송비
         requestDto.setItemLimit(5); // 수량 제한
         return requestDto;
+    }
+
+    protected List<CartItemRequestDto> getCartItemRequestDto(Item item) {
+        List<CartItemRequestDto> cartItemRequestDtoList = new ArrayList<>();
+
+        CartItemRequestDto cartItemRequestDto1 = new CartItemRequestDto();
+        cartItemRequestDto1.setItemId(item.getId());
+        cartItemRequestDto1.setOptionId(3L);
+        cartItemRequestDto1.setQuantity(1);
+        cartItemRequestDtoList.add(cartItemRequestDto1);
+
+        CartItemRequestDto cartItemRequestDto2 = new CartItemRequestDto();
+        cartItemRequestDto2.setItemId(item.getId());
+        cartItemRequestDto2.setOptionId(3L);
+        cartItemRequestDto2.setQuantity(2);
+        cartItemRequestDtoList.add(cartItemRequestDto2);
+
+        CartItemRequestDto cartItemRequestDto3 = new CartItemRequestDto();
+        cartItemRequestDto3.setItemId(item.getId());
+        cartItemRequestDto3.setOptionId(4L);
+        cartItemRequestDto3.setQuantity(2);
+        cartItemRequestDtoList.add(cartItemRequestDto3);
+        return cartItemRequestDtoList;
     }
 
 }

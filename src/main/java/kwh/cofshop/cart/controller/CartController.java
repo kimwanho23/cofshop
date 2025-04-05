@@ -15,11 +15,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/cart")
+@RequestMapping("/api/carts")
 @Slf4j
 @SecurityRequirement(name = "Bearer Authentication")
 public class CartController {
@@ -28,45 +29,48 @@ public class CartController {
 
     private final CartItemService cartItemService;
 
+    //////////// @GET
+    // 자신의 장바구니 목록 조회
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<CartResponseDto>> getMyCart(
+            @LoginMember CustomUserDetails user) {
+
+        CartResponseDto cart = cartService.getMemberCartItems(user.getId());
+        return ResponseEntity.ok(ApiResponse.OK(cart));
+    }
+
+    //////////// @POST
+
     // 장바구니 추가
-    @PostMapping(value = "/addCart")
-    public ResponseEntity<ApiResponse<List<CartItemResponseDto>>> addCart(
-            @LoginMember CustomUserDetails customUserDetails,
-            @RequestBody List<CartItemRequestDto> cartItemRequestDto) {
-        List<CartItemResponseDto> cartItemResponseDto =
-                cartItemService.addCartItem(cartItemRequestDto, customUserDetails.getId());
+    @PostMapping("/me/items")
+    public ResponseEntity<ApiResponse<List<CartItemResponseDto>>> addCartItem(
+            @LoginMember CustomUserDetails user,
+            @RequestBody List<CartItemRequestDto> request) {
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.Created(cartItemResponseDto));
+        List<CartItemResponseDto> response = cartItemService.addCartItem(request, user.getId());
+        return ResponseEntity.created(URI.create("/api/carts/me/items"))
+                .body(ApiResponse.Created(response));
     }
 
-    // 멤버의 장바구니 목록 조회
-    @GetMapping(value = "/getCart")
-    public ResponseEntity<ApiResponse<CartResponseDto>> getMemberCartItem(
-            @LoginMember CustomUserDetails customUserDetails){
-        CartResponseDto memberCartItems = cartService.getMemberCartItems(customUserDetails.getId());
+    //////////// @PUT, PATCH
 
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(ApiResponse.Created(memberCartItems));
-    }
 
+    //////////// @DELETE
     // 장바구니 아이템 개별 삭제
-    @DeleteMapping("/cart/{cartId}/item/{itemId}/option/{optionId}")
+    @DeleteMapping("/me/items/{itemOptionId}")
     public ResponseEntity<Void> deleteCartItem(
-            @PathVariable Long cartId,
-            @PathVariable Long itemId,
-            @PathVariable Long optionId,
-            @LoginMember CustomUserDetails customUserDetails) {
+            @PathVariable Long itemOptionId,
+            @LoginMember CustomUserDetails user) {
 
-        cartItemService.deleteCartItem(customUserDetails.getId(), cartId, itemId, optionId);
+        cartItemService.deleteCartItemByOptionId(user.getId(), itemOptionId);
         return ResponseEntity.noContent().build();
     }
 
 
     // 장바구니 아이템 일괄 삭제
-    @DeleteMapping("/{cartId}/items")
-    public ResponseEntity<Void> deleteAllCartItems(@PathVariable Long cartId, @LoginMember CustomUserDetails customUserDetails) {
-        cartItemService.deleteCartItemAll(cartId);
+    @DeleteMapping("/me/items")
+    public ResponseEntity<Void> deleteAllCartItems(@LoginMember CustomUserDetails user) {
+        cartItemService.deleteCartItemAll(user.getId());
         return ResponseEntity.noContent().build();
     }
 }
