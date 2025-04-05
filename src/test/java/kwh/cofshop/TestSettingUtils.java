@@ -11,7 +11,6 @@ import kwh.cofshop.item.dto.response.ItemResponseDto;
 import kwh.cofshop.item.repository.ItemRepository;
 import kwh.cofshop.item.service.ItemService;
 import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.member.domain.MemberState;
 import kwh.cofshop.member.repository.MemberRepository;
 import kwh.cofshop.security.CustomUserDetails;
 import kwh.cofshop.security.JwtTokenProvider;
@@ -90,9 +89,9 @@ public abstract class TestSettingUtils {
         return itemRepository.findById(responseDto.getId()).orElseThrow();
     }
 
-    protected Member createMember(String email) {
+    protected Member createMember() {
         Member customer = Member.builder()
-                .email(email)
+                .email("testEmail@test.com")
                 .memberName("테스트용")
                 .memberPwd("password1234")
                 .tel("010-1234-5678")

@@ -11,8 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 @SpringBootTest
 @Slf4j
 class ChatRoomServiceTest extends TestSettingUtils {
@@ -24,7 +22,7 @@ class ChatRoomServiceTest extends TestSettingUtils {
     @DisplayName("채팅방 생성")
     @Transactional
     public void createChatTest() throws JsonProcessingException {
-        Member member = createMember("testEmail@test.com");
+        Member member = createMember();
 
         ChatRoomResponseDto chatRoom = chatRoomService.createChatRoom(member.getId());
 

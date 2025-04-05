@@ -5,9 +5,6 @@ import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.QItem;
 
 import kwh.cofshop.order.domain.QOrderItem;
-import kwh.cofshop.order.dto.response.OrderItemResponseDto;
-import kwh.cofshop.order.dto.response.OrderResponseDto;
-import kwh.cofshop.order.mapper.OrderMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 

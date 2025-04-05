@@ -1,11 +1,8 @@
 package kwh.cofshop.item.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kwh.cofshop.item.domain.*;
 import kwh.cofshop.item.dto.request.*;
-import kwh.cofshop.item.dto.response.ItemImgResponseDto;
-import kwh.cofshop.item.dto.response.ItemOptionResponseDto;
 import kwh.cofshop.item.dto.response.ItemResponseDto;
 import kwh.cofshop.item.dto.response.ItemSearchResponseDto;
 import kwh.cofshop.item.mapper.CategoryMapper;
@@ -30,7 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;

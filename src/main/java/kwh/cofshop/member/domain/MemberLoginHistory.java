@@ -1,6 +1,7 @@
 package kwh.cofshop.member.domain;
 
 import jakarta.persistence.*;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
@@ -28,4 +29,13 @@ public class MemberLoginHistory {
     private String ipAddress; // 로그인 IP
 
     private String device; // 로그인 디바이스
+
+    @Builder
+    public MemberLoginHistory(Long id, String email, LocalDateTime loginDt, String ipAddress, String device) {
+        this.id = id;
+        this.email = email;
+        this.loginDt = loginDt;
+        this.ipAddress = ipAddress;
+        this.device = device;
+    }
 }

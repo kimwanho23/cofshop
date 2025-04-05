@@ -1,7 +1,6 @@
 package kwh.cofshop.item.service;
 
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityNotFoundException;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemOption;
 import kwh.cofshop.item.dto.request.ItemOptionRequestDto;
@@ -21,7 +20,6 @@ import java.util.stream.Collectors;
 public class ItemOptionService {
 
     private final ItemOptionRepository itemOptionRepository;
-    private final EntityManager entityManager;
 
     @Transactional
     public List<ItemOption> saveItemOptions(Item item, List<ItemOptionRequestDto> optionRequestDto) {

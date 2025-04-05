@@ -1,17 +1,11 @@
 package kwh.cofshop.item.domain;
 
 import jakarta.persistence.*;
-import kwh.cofshop.file.domain.FileStore;
-import kwh.cofshop.file.domain.UploadFile;
 import kwh.cofshop.global.domain.BaseEntity;
-import kwh.cofshop.item.dto.request.ItemOptionRequestDto;
-import kwh.cofshop.item.dto.request.ItemRequestDto;
 import kwh.cofshop.item.dto.request.ItemUpdateRequestDto;
 import kwh.cofshop.member.domain.Member;
 import lombok.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 

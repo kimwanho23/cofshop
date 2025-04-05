@@ -26,6 +26,7 @@ public class OrderItem extends BaseTimeEntity {
     private int orderPrice;  // 개별 금액 (상품 + 옵션 가격)
 
     /////////////////////////////////////////////////////////////////
+    @Setter
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;  // 주문 번호 (FK)
@@ -45,10 +46,6 @@ public class OrderItem extends BaseTimeEntity {
         this.order = order;
         this.item = item;
         this.itemOption = itemOption;
-    }
-
-    public void setOrder(Order order){
-        this.order = order;
     }
 
     public static OrderItem createOrderItem(Item item, ItemOption itemOption, int quantity) {

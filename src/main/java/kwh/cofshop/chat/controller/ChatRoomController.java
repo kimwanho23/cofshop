@@ -4,7 +4,6 @@ import kwh.cofshop.chat.dto.response.ChatRoomResponseDto;
 import kwh.cofshop.chat.service.ChatRoomService;
 import kwh.cofshop.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

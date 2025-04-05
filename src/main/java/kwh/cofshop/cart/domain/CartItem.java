@@ -56,11 +56,6 @@ public class CartItem {
         this.quantity = newQuantity;
     }
 
-    // 옵션 번호
-    public int getOptionNo() {
-        return itemOption.getOptionNo();
-    }
-
     // 총 가격
     public int getTotalPrice() {
         return (item.getPrice() + itemOption.getAdditionalPrice()) * quantity;
