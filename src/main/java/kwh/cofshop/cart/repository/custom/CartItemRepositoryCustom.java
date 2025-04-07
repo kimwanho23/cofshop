@@ -8,7 +8,7 @@ import java.util.Optional;
 
 public interface CartItemRepositoryCustom {
 
-    List<CartItemResponseDto> findCartItemsByMember(Long id);
+    List<CartItemResponseDto> findCartItemsByMemberId(Long id);
 
     void deleteAllByCartId(Long cartId);
 

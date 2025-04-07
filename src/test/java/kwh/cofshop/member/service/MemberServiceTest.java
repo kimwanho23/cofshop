@@ -57,7 +57,6 @@ class MemberServiceTest {
     @Test
     @DisplayName("회원가입 로직 테스트")
     @Transactional
-   // @Commit
     void signUp() throws JsonProcessingException {  // 1번 테스트
 
         //DTO 생성 (프론트에서 입력)
@@ -68,7 +67,7 @@ class MemberServiceTest {
         requestDto.setTel("010-1234-5678");
 
         // 저장
-        MemberResponseDto savedMember = memberService.save(requestDto);
+        MemberResponseDto savedMember = memberService.signUp(requestDto);
 
         log.info(objectMapper.writeValueAsString(savedMember));
 
@@ -109,17 +108,12 @@ class MemberServiceTest {
         LoginDto loginDto = new LoginDto();
         loginDto.setEmail("test@gmail.com");
         loginDto.setMemberPwd("1234567890");
-   //     LoginResponseDto login = authService.login(loginDto);
-  //      log.info(login.getAccessToken());
-     //   log.info(login.getRefreshToken());
-    //    log.info(String.valueOf(login.isPasswordChangeRequired()));
-
     }
 
     @Test
     @DisplayName("멤버 상태 변경")
     @Transactional
-    @Commit
+ //   @Commit
     void changeMemberState() throws Exception {
         Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
         member.changeMemberState(MemberState.ACTIVE);

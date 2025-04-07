@@ -7,6 +7,7 @@ import kwh.cofshop.item.domain.ItemOption;
 import kwh.cofshop.item.repository.ItemOptionRepository;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.repository.MemberRepository;
+import kwh.cofshop.order.domain.Address;
 import kwh.cofshop.order.domain.Order;
 import kwh.cofshop.order.domain.OrderItem;
 import kwh.cofshop.order.domain.OrderState;
@@ -38,42 +39,26 @@ public class OrderService {
     private final OrderMapper orderMapper;
     private final MemberRepository memberRepository;
 
-    private final ItemOptionRepository itemOptionRepository;
+    private final OrderItemService orderItemService;
 
-    @Transactional // 상품 주문
-    public OrderResponseDto createOrder(OrderRequestDto orderRequestDto, Long id) {
+    @Transactional
+    public OrderResponseDto createOrder(Long memberId, Address address, List<OrderItemRequestDto> itemRequestDtoList) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
 
-        Member member = memberRepository.findById(id).orElseThrow();
+        // 옵션 조회
+        List<ItemOption> itemOptions = orderItemService.getItemOptionsWithLock(itemRequestDtoList);
 
-        List<Long> optionIds = orderRequestDto.getOrderItemRequestDtoList()
-                .stream()
-                .map(OrderItemRequestDto::getOptionId)
-                .toList();
+        // 주문 항목 생성
+        List<OrderItem> orderItems = orderItemService.createOrderItems(itemRequestDtoList, itemOptions);
 
-        Map<Long, ItemOption> itemOptionMap = optionIds.stream()
-                .map(optionId -> itemOptionRepository.findByItemOptionIdWithLock(optionId)
-                        .orElseThrow(() -> new EntityNotFoundException("옵션을 찾을 수 없습니다.")))
-                .collect(Collectors.toMap(ItemOption::getId, Function.identity()));
+        // 주문 생성
+        Order order = Order.createOrder(member, address, orderItems);
 
-
-        List<OrderItem> orderItems = orderRequestDto.getOrderItemRequestDtoList().stream()
-                .map(dto -> {
-                    ItemOption itemOption = itemOptionMap.get(dto.getOptionId());
-                    itemOption.removeStock(dto.getQuantity());
-                    return OrderItem.createOrderItem(itemOption.getItem(), itemOption, dto.getQuantity());
-                }).toList();
-
-        // Order 생성
-        Order order = Order.createOrder(
-                member,
-                orderRequestDto.getOrdererRequestDto().getAddress(),
-                orderItems
-        );
-
-        // Order 저장 및 DTO 변환 후 반환
-        Order saveOrder = orderRepository.save(order);
-        return orderMapper.toResponseDto(saveOrder);
+        // 저장 및 반환
+        return orderMapper.toResponseDto(orderRepository.save(order));
     }
+
 
     @Transactional // 주문 취소
     public OrderCancelResponseDto cancelOrder(OrderCancelRequestDto orderCancelRequestDto) {
@@ -82,14 +67,7 @@ public class OrderService {
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND)); // 주문 정보
 
         // 2. 주문 상태 변경 (취소 처리)
-        order.changeOrderState(OrderState.CANCELLED);
-
-        // 3. 재고 복구
-
-        for (OrderItem orderItem : order.getOrderItems()) {
-            ItemOption itemOption = orderItem.getItemOption();
-            itemOption.addStock(orderItem.getQuantity());
-        }
+        order.cancel();
 
         OrderCancelResponseDto orderCancelResponseDto = new OrderCancelResponseDto();
         orderCancelResponseDto.setOrderId(orderCancelRequestDto.getOrderId());

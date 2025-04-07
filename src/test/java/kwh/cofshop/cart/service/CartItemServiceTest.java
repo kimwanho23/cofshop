@@ -1,9 +1,11 @@
 package kwh.cofshop.cart.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kwh.cofshop.TestSettingUtils;
 import kwh.cofshop.cart.dto.request.CartItemRequestDto;
 import kwh.cofshop.cart.dto.response.CartItemResponseDto;
+import kwh.cofshop.cart.dto.response.CartResponseDto;
 import kwh.cofshop.item.domain.Item;
 
 import kwh.cofshop.item.repository.ItemRepository;
@@ -45,8 +47,16 @@ class CartItemServiceTest extends TestSettingUtils {
         List<CartItemRequestDto> cartItemRequestDtoList = getCartItemRequestDto(item);
 
 
-        List<CartItemResponseDto> cartItemResponseDto = cartItemService.addCartItem(cartItemRequestDtoList, member.getId());
+        List<CartItemResponseDto> cartItemResponseDto = cartItemService.addCartItemList(cartItemRequestDtoList, member.getId());
         log.info(objectMapper.writeValueAsString(cartItemResponseDto));
+    }
+    @Test
+    @DisplayName("장바구니 조회")
+    @Transactional
+    void getCart() throws JsonProcessingException {
+        Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
+        List<CartItemResponseDto> cartItemResponseDtoList = cartItemService.getCartItemsByMemberId(member.getId());
+        log.info(objectMapper.writeValueAsString(cartItemResponseDtoList));
     }
 
 }

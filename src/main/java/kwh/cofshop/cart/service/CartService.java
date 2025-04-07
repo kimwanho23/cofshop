@@ -31,29 +31,32 @@ public class CartService {
     private final MemberRepository memberRepository;
     private final CartItemRepository cartItemRepository;
 
-    private final CartItemMapper cartItemMapper;
+    private final CartMapper cartMapper;
 
-    // 장바구니 시스템이 없는 유저에게 장바구니를 추가했다.
+    // 장바구니가 없다면 생성을 해준다.
     @Transactional
-    public void initializeCartsForExistingMembers() {
-        List<Member> membersWithoutCart = memberRepository.findAll().stream()
-                .filter(member -> member.getCart() == null)
-                .toList();
+    public CartResponseDto createCart(Long memberId) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
 
-        for (Member member : membersWithoutCart) {
-            Cart newCart = member.createCart();
-            cartRepository.save(newCart);
+        Cart cart = member.getCart();
+
+        if (cart == null) {
+            cart = cartRepository.save(member.createCart());
         }
+        return cartMapper.toResponseDto(cart);
     }
-    // 회원 장바구니 조회 ( 장바구니에 있는 물건 )
+
+    // 장바구니의 존재 여부 확인
     @Transactional(readOnly = true)
-    public CartResponseDto getMemberCartItems(Long id){
-        List<CartItemResponseDto> cartItemsByMember = cartItemRepository.findCartItemsByMember(id);
-
-        CartResponseDto cartResponseDto = new CartResponseDto();
-        cartResponseDto.setId(id);
-        cartResponseDto.setCartItems(cartItemsByMember);
-        return cartResponseDto;
+    public boolean checkCartExistByMemberId(Long memberId) {
+        return cartRepository.existsByMemberId(memberId);
     }
 
+    @Transactional
+    public void deleteByMemberId(Long memberId) {
+        Cart cart = cartRepository.findByMemberId(memberId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.CART_NOT_FOUND));
+        cartRepository.delete(cart);
+    }
 }

@@ -1,5 +1,6 @@
 package kwh.cofshop.member.service;
 
+import kwh.cofshop.member.event.MemberCreatedEvent;
 import kwh.cofshop.security.domain.RefreshToken;
 import kwh.cofshop.security.dto.TokenDto;
 import kwh.cofshop.global.exception.BusinessException;
@@ -17,6 +18,7 @@ import kwh.cofshop.security.JwtTokenProvider;
 import kwh.cofshop.security.repository.RefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -33,13 +35,13 @@ import java.util.List;
 public class MemberService {
 
     private final MemberRepository memberRepository;
-
     private final MemberMapper memberMapper;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final ApplicationEventPublisher eventPublisher;
 
 
     @Transactional
-    public MemberResponseDto save(MemberRequestDto memberDto){ // Save, Update 로직
+    public MemberResponseDto signUp(MemberRequestDto memberDto){ // Save, Update 로직
         if (memberRepository.findByEmail(memberDto.getEmail()).isPresent()){
             throw new BusinessException(BusinessErrorCode.MEMBER_ALREADY_EXIST); // 이미 존재하는 이메일
         }
@@ -47,6 +49,7 @@ public class MemberService {
         memberDto.setMemberPwd(passwordEncoder.encode(memberDto.getMemberPwd()));
 
         Member member = memberRepository.save(memberMapper.toEntity(memberDto));// DTO 엔티티로 변환해서 저장
+        eventPublisher.publishEvent(new MemberCreatedEvent(member.getId()));
         return memberMapper.toResponseDto(member);
     }
 

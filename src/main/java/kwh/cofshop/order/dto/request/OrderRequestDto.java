@@ -1,5 +1,6 @@
 package kwh.cofshop.order.dto.request;
 
+import kwh.cofshop.order.domain.Address;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -9,6 +10,6 @@ import java.util.List;
 @Setter
 public class OrderRequestDto {
 
-    private OrdererRequestDto ordererRequestDto;             // 주문 정보
+    private Address address; // 주문
     private List<OrderItemRequestDto> orderItemRequestDtoList;  // 주문 항목 리스트
 }

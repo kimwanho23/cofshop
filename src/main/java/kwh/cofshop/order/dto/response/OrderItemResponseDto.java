@@ -20,7 +20,5 @@ public class OrderItemResponseDto {
     private String origin; // 원산지
     private Integer quantity;  // 수량
 
-    private OrderItemOptionResponseDto itemOption;
-
 
 }

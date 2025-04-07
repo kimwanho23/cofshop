@@ -48,17 +48,18 @@ public class OrderItem extends BaseTimeEntity {
         this.itemOption = itemOption;
     }
 
-    public static OrderItem createOrderItem(Item item, ItemOption itemOption, int quantity) {
+    public static OrderItem createOrderItem(ItemOption itemOption, int quantity) {
+        itemOption.removeStock(quantity);
         return OrderItem.builder()
-                .item(item)
+                .item(itemOption.getItem())
                 .itemOption(itemOption)
                 .quantity(quantity)
-                .orderPrice(item.getPrice() + itemOption.getAdditionalPrice())
+                .orderPrice(itemOption.getTotalPrice() * quantity)
                 .build();
     }
 
-
-    public int getTotalPrice() { // 총 가격
-        return orderPrice * quantity;
+    // 재고 복구
+    public void restoreStock() {
+        this.itemOption.addStock(this.quantity);
     }
 }

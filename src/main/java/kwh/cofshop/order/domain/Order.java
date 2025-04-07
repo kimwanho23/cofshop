@@ -4,6 +4,8 @@ package kwh.cofshop.order.domain;
 
 import jakarta.persistence.*;
 import kwh.cofshop.global.domain.BaseTimeEntity;
+import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.member.domain.Member;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -78,4 +80,17 @@ public class Order extends BaseTimeEntity {
             orderItem.setOrder(this);
         }
     }
+
+    public void cancel() {
+        if (this.orderState == OrderState.CANCELLED) {
+            throw new BusinessException(BusinessErrorCode.BUSINESS_ERROR_CODE);
+        }
+
+        this.orderState = OrderState.CANCELLED;
+
+        for (OrderItem orderItem : this.orderItems) {
+            orderItem.restoreStock();
+        }
+    }
+
 }

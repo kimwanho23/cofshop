@@ -62,12 +62,17 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<ApiResponse<OrderResponseDto>> createOrder(
             @LoginMember CustomUserDetails user,
-            @Valid @RequestBody OrderRequestDto dto) {
+            @Valid @RequestBody OrderRequestDto requestDto) {
 
-        OrderResponseDto responseDto = orderService.createOrder(dto, user.getId());
+        OrderResponseDto responseDto = orderService.createOrder(
+                user.getId(),
+                requestDto.getAddress(),
+                requestDto.getOrderItemRequestDtoList());
+
         return ResponseEntity.created(URI.create("/api/orders/" + responseDto.getOrderId()))
                 .body(ApiResponse.Created(responseDto));
     }
+
 
     //////////// @PUT, PATCH
     // 주문 취소

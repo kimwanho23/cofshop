@@ -11,8 +11,6 @@ import kwh.cofshop.order.domain.Order;
 import kwh.cofshop.order.domain.OrderState;
 import kwh.cofshop.order.dto.request.OrderCancelRequestDto;
 import kwh.cofshop.order.dto.request.OrderItemRequestDto;
-import kwh.cofshop.order.dto.request.OrderRequestDto;
-import kwh.cofshop.order.dto.request.OrdererRequestDto;
 import kwh.cofshop.order.dto.response.OrderCancelResponseDto;
 import kwh.cofshop.order.dto.response.OrderResponseDto;
 import kwh.cofshop.order.mapper.OrderMapper;
@@ -27,7 +25,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.test.annotation.Rollback;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
@@ -50,14 +47,9 @@ class OrderServiceTest extends TestSettingUtils {
     @Autowired
     private OrderMapper orderMapper;
 
-    @Autowired
-    private ItemRepository itemRepository;
-
-    @Autowired
-    private ItemOptionRepository itemOptionRepository;
-
 
     private ExecutorService executorService;
+
 
     @BeforeEach
     void setUp() {
@@ -73,19 +65,24 @@ class OrderServiceTest extends TestSettingUtils {
     @Test
     @DisplayName("주문 생성")
     @Transactional
-    @Rollback
     void createOrder() throws Exception {
 
         Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
         Item item = itemRepository.findById(2L).orElseThrow();
 
-        OrdererRequestDto ordererRequestDto = getOrdererRequestDto(member);
-
-        OrderRequestDto orderRequestDto = getOrderRequestDto(item, ordererRequestDto);
-
-        OrderResponseDto order = orderService.createOrder(orderRequestDto, member.getId());
+        OrderResponseDto order = orderService.createOrder(member.getId(),
+                getAddress(),
+                getOrderRequestDto(item));
         log.info(objectMapper.writeValueAsString(order));
 
+    }
+
+    private Address getAddress() {
+        return Address.builder()
+                .city("도시")
+                .street("길거리")
+                .zipCode("11334")
+                .build();
     }
 
 
@@ -126,7 +123,6 @@ class OrderServiceTest extends TestSettingUtils {
 
         Pageable pageable = PageRequest.of(0, 10);
         Page<OrderResponseDto> orderResponseDtoList = orderService.memberOrders(member.getId(), pageable);
-
         log.info(objectMapper.writeValueAsString(orderResponseDtoList));
     }
 
@@ -164,16 +160,10 @@ class OrderServiceTest extends TestSettingUtils {
 
     @DisplayName("주문 동시성 테스트")
     @Test
-    @Transactional
-    @Rollback
     void testConcurrentOrderCreation() throws InterruptedException {
 
         Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
         Item item = itemRepository.findById(2L).orElseThrow();
-
-        OrdererRequestDto ordererRequestDto = getOrdererRequestDto(member); // 주문자
-
-        OrderRequestDto orderRequestDto = getOrderRequestDto(item, ordererRequestDto); // 주문
 
         int threadCount = 10; //스레드 개수
         CountDownLatch latch = new CountDownLatch(threadCount);
@@ -183,7 +173,7 @@ class OrderServiceTest extends TestSettingUtils {
             int count = i;
             executorService.execute(() -> {
                 try {
-                    orderService.createOrder(orderRequestDto, member.getId());
+                    orderService.createOrder(member.getId(), getAddress(), getOrderRequestDto(item));
                     log.info("{}번 실행", count);
                 } catch (Exception e) {
                     System.err.println("에러 발생: " + e.getMessage());
@@ -198,18 +188,12 @@ class OrderServiceTest extends TestSettingUtils {
         // Exception occurred: could not execute statement [Deadlock found when trying to get lock; try restarting transaction] 트랜잭션 데드락 발생
         // ItemOption 조회 시 비관적 락을 적용하여 해결
     }
-    
-    // 주문자 정보
-    private static OrdererRequestDto getOrdererRequestDto(Member member) {
-        Address address = new Address("서울", "도시", "33145");
-        OrdererRequestDto ordererRequestDto = new OrdererRequestDto();
-        ordererRequestDto.setEmail(member.getEmail());
-        ordererRequestDto.setAddress(address);
-        return ordererRequestDto;
-    }
+
 
     // 주문 상품 정보
-    private static OrderRequestDto getOrderRequestDto(Item item, OrdererRequestDto ordererRequestDto) {
+    private static List<OrderItemRequestDto> getOrderRequestDto(Item item) {
+        List<OrderItemRequestDto> dtoList = new ArrayList<>();
+
         OrderItemRequestDto orderItem1 = new OrderItemRequestDto();
         orderItem1.setItem(item.getId());
         orderItem1.setQuantity(2);
@@ -220,16 +204,9 @@ class OrderServiceTest extends TestSettingUtils {
         orderItem2.setQuantity(2);
         orderItem2.setOptionId(4L);
 
-        OrderRequestDto orderRequestDto = new OrderRequestDto();
-
-        orderRequestDto.setOrdererRequestDto(ordererRequestDto);
-
-        List<OrderItemRequestDto> orderItemRequestDto = new ArrayList<>();
-        orderItemRequestDto.add(orderItem1);
-        orderItemRequestDto.add(orderItem2);
-        orderRequestDto.setOrderItemRequestDtoList(orderItemRequestDto);
-
-        return orderRequestDto;
+        dtoList.add(orderItem1);
+        dtoList.add(orderItem2);
+        return dtoList;
     }
 
 }

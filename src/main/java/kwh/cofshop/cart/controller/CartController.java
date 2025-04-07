@@ -1,10 +1,7 @@
 package kwh.cofshop.cart.controller;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import kwh.cofshop.cart.dto.request.CartItemRequestDto;
-import kwh.cofshop.cart.dto.response.CartItemResponseDto;
 import kwh.cofshop.cart.dto.response.CartResponseDto;
-import kwh.cofshop.cart.service.CartItemService;
 import kwh.cofshop.cart.service.CartService;
 import kwh.cofshop.config.argumentResolver.LoginMember;
 import kwh.cofshop.global.response.ApiResponse;
@@ -15,7 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -26,50 +22,32 @@ public class CartController {
 
     private final CartService cartService;
 
-    private final CartItemService cartItemService;
-
-    //////////// @GET
-    // 자신의 장바구니 목록 조회
-    @GetMapping("/me")
-    public ResponseEntity<ApiResponse<CartResponseDto>> getMyCart(
-            @LoginMember CustomUserDetails user) {
-
-        CartResponseDto cart = cartService.getMemberCartItems(user.getId());
-        return ResponseEntity.ok(ApiResponse.OK(cart));
+    // 장바구니의 존재 여부 확인
+    @GetMapping("/me/exists")
+    public ResponseEntity<ApiResponse<Boolean>> checkCartExists(@LoginMember CustomUserDetails user) {
+        boolean exists = cartService.checkCartExistByMemberId(user.getId());
+        return ResponseEntity.ok(ApiResponse.OK(exists));
     }
 
-    //////////// @POST
+    // 장바구니 생성
+    // Case 1. 최초 회원 가입 시 Listener를 통해서 장바구니 생성
+    // Case 2. 장바구니 확인 시, 장바구니가 없다면 생성
 
-    // 장바구니 추가
-    @PostMapping("/me/items")
-    public ResponseEntity<ApiResponse<List<CartItemResponseDto>>> addCartItem(
-            @LoginMember CustomUserDetails user,
-            @RequestBody List<CartItemRequestDto> request) {
-
-        List<CartItemResponseDto> response = cartItemService.addCartItem(request, user.getId());
-        return ResponseEntity.created(URI.create("/api/carts/me/items"))
-                .body(ApiResponse.Created(response));
+    @PostMapping("/me")
+    public ResponseEntity<ApiResponse<CartResponseDto>> createCart(@LoginMember CustomUserDetails user) {
+        CartResponseDto cart = cartService.createCart(user.getId());
+        return ResponseEntity.created(URI.create("/api/carts/" + cart.getId()))
+                .body(ApiResponse.Created(cart));
     }
 
-    //////////// @PUT, PATCH
 
-
-    //////////// @DELETE
-    // 장바구니 아이템 개별 삭제
-    @DeleteMapping("/me/items/{itemOptionId}")
-    public ResponseEntity<Void> deleteCartItem(
-            @PathVariable Long itemOptionId,
-            @LoginMember CustomUserDetails user) {
-
-        cartItemService.deleteCartItemByOptionId(user.getId(), itemOptionId);
+    // 장바구니 삭제
+    //
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> deleteCart(@LoginMember CustomUserDetails user) {
+        cartService.deleteByMemberId(user.getId());
         return ResponseEntity.noContent().build();
     }
 
 
-    // 장바구니 아이템 일괄 삭제
-    @DeleteMapping("/me/items")
-    public ResponseEntity<Void> deleteAllCartItems(@LoginMember CustomUserDetails user) {
-        cartItemService.deleteCartItemAll(user.getId());
-        return ResponseEntity.noContent().build();
-    }
 }

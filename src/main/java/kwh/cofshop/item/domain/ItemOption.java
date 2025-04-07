@@ -91,4 +91,8 @@ public class ItemOption {
         }
         this.stock -= stock;
     }
+
+    public int getTotalPrice() {
+        return this.getItem().getPrice() + this.additionalPrice;
+    }
 }

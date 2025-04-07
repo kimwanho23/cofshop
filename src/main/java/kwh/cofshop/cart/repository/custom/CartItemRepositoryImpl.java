@@ -24,7 +24,7 @@ public class CartItemRepositoryImpl implements CartItemRepositoryCustom{
     private final CartItemMapper cartItemMapper;
 
     @Override
-    public List<CartItemResponseDto> findCartItemsByMember(Long memberId) { // Member Cart 조회, Item, ItemOption 등 조인
+    public List<CartItemResponseDto> findCartItemsByMemberId(Long memberId) { // Member Cart 조회, Item, ItemOption 등 조인
         QCartItem cartItem = QCartItem.cartItem;
         QItem item = QItem.item;
         QItemImg itemImg = QItemImg.itemImg;

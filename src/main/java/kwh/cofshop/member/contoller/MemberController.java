@@ -52,7 +52,7 @@ public class MemberController {
     @Operation(summary = "회원가입", description = "회원가입 기능입니다.")
     @PostMapping(value = "/signup")
     public ResponseEntity<ApiResponse<MemberResponseDto>> signup(@Valid @RequestBody MemberRequestDto memberSaveDto) {
-        MemberResponseDto responseDto = memberService.save(memberSaveDto);
+        MemberResponseDto responseDto = memberService.signUp(memberSaveDto);
         return ResponseEntity.created(URI.create("/api/members/" + responseDto.getMemberId()))
                 .body(ApiResponse.Created(responseDto));
     }

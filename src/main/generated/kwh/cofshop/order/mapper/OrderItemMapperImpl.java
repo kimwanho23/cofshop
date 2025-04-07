@@ -5,7 +5,6 @@ import kwh.cofshop.item.domain.Category;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemOption;
 import kwh.cofshop.order.domain.OrderItem;
-import kwh.cofshop.order.dto.response.OrderItemOptionResponseDto;
 import kwh.cofshop.order.dto.response.OrderItemResponseDto;
 import org.springframework.stereotype.Component;
 
