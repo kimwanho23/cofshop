@@ -30,6 +30,7 @@ public class ItemImg extends BaseTimeEntity {
     ///////////////////////////////////////////////////////////////////////////////
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "item_id", nullable = false)
     private Item item; // 연관된 상품 ID
 
     @Builder

@@ -27,4 +27,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long>, Categ
         FROM category_path
         """, nativeQuery = true)
     List<CategoryPathDto> findCategoryPath(@Param("categoryId") Long categoryId);
+
+    @Query(value = "SELECT * FROM category WHERE parent_category_id = :parentId", nativeQuery = true)
+    List<Category> findImmediateChildrenNative(@Param("parentId") Long parentId);
 }

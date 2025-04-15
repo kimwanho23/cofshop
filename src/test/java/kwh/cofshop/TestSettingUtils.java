@@ -132,18 +132,17 @@ public abstract class TestSettingUtils {
     // 옵션 DTO
     private List<ItemOptionRequestDto> getItemOptionRequestDto() {
         return List.of(
-                createOption("Small Size", 0, 100, 1),
-                createOption("Large Size", 500, 50, 2)
+                createOption("Small Size", 0, 100),
+                createOption("Large Size", 500, 50)
         );
     }
 
     // 옵션 만들기
-    private ItemOptionRequestDto createOption(String description, int additionalPrice, int stock, int optionNo) {
+    private ItemOptionRequestDto createOption(String description, int additionalPrice, int stock) {
         ItemOptionRequestDto option = new ItemOptionRequestDto();
         option.setDescription(description);
         option.setAdditionalPrice(additionalPrice);
         option.setStock(stock);
-        option.setOptionNo(optionNo);
         return option;
     }
 

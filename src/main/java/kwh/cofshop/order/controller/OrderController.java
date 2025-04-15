@@ -64,10 +64,7 @@ public class OrderController {
             @LoginMember CustomUserDetails user,
             @Valid @RequestBody OrderRequestDto requestDto) {
 
-        OrderResponseDto responseDto = orderService.createOrder(
-                user.getId(),
-                requestDto.getAddress(),
-                requestDto.getOrderItemRequestDtoList());
+        OrderResponseDto responseDto = orderService.createInstanceOrder(user.getId(), requestDto);
 
         return ResponseEntity.created(URI.create("/api/orders/" + responseDto.getOrderId()))
                 .body(ApiResponse.Created(responseDto));
@@ -84,6 +81,13 @@ public class OrderController {
 
         OrderCancelResponseDto responseDto = orderService.cancelOrder(dto);
         return ResponseEntity.ok(ApiResponse.OK(responseDto));
+    }
+
+    // 구매 확정
+    @PatchMapping("/{orderId}/confirm")
+    public ResponseEntity<ApiResponse<Void>> confirmPurchase(@PathVariable Long orderId) {
+        orderService.PurchaseConfirmation(orderId);
+        return ResponseEntity.ok().build();
     }
 
     //////////// @DELETE

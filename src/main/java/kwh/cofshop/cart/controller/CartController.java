@@ -40,14 +40,10 @@ public class CartController {
                 .body(ApiResponse.Created(cart));
     }
 
-
     // 장바구니 삭제
-    //
-    @DeleteMapping("/me")
-    public ResponseEntity<Void> deleteCart(@LoginMember CustomUserDetails user) {
-        cartService.deleteByMemberId(user.getId());
+    @DeleteMapping("/{memberId}")
+    public ResponseEntity<Void> deleteCart(@PathVariable Long memberId) {
+        cartService.deleteByMemberId(memberId);
         return ResponseEntity.noContent().build();
     }
-
-
 }

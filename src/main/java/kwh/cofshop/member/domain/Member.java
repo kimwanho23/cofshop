@@ -64,7 +64,7 @@ public class Member {
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Review> reviews = new ArrayList<>();
 
-    @OneToOne(mappedBy = "member", orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToOne(mappedBy = "member", orphanRemoval = true, fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
     @OnDelete(action = OnDeleteAction.CASCADE)
     private Cart cart;
 
@@ -94,21 +94,22 @@ public class Member {
 
     public void changePassword(String newPassword) {
         this.memberPwd = newPassword;
-        this.lastPasswordChange = LocalDateTime.now();  // 비즈니스 로직에서 업데이트
+        this.lastPasswordChange = LocalDateTime.now();
     }
 
-    public void updatePoint(int amount) {
+    // 포인트 사용
+    public void usePoint(int amount) {
         if (amount < 0 && this.point + amount < 0) {
             throw new IllegalStateException("보유한 포인트가 부족합니다.");
         }
+        this.point -= amount;
+    }
+
+    public void updatePoint(int amount) {
         this.point += amount;
     }
 
-    public void updateLastLogin() {
-        this.lastLogin = LocalDateTime.now();  // 로그인 시 자동 업데이트
-    }
-
-    public void changeMemberState(MemberState newState) {
+    public void changeMemberState(MemberState newState) { // 멤버 상태 변경
         this.memberState = newState;
     }
 

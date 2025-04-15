@@ -1,6 +1,5 @@
 package kwh.cofshop.item.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import kwh.cofshop.TestSettingUtils;
 import kwh.cofshop.item.dto.CategoryPathDto;
 import kwh.cofshop.item.dto.request.CategoryRequestDto;
@@ -98,16 +97,17 @@ class CategoryServiceTest extends TestSettingUtils {
     }
 
 
-
     @Test
     @DisplayName("전체 카테고리 목록")
     @Transactional
     void getAllCategory() throws Exception {
-        long startTime = System.nanoTime(); //  실행 시작 시간 기록
+        List<CategoryResponseDto> childCategories = categoryService.getCategoryChild(13L);
+
+        List<CategoryResponseDto> allCategoryTest = categoryService.getAllCategoryTest();
         List<CategoryResponseDto> allCategory = categoryService.getAllCategory();
+
+        log.info(objectMapper.writeValueAsString(allCategoryTest));
         log.info(objectMapper.writeValueAsString(allCategory));
-        long endTime = System.nanoTime(); //  실행 종료 시간 기록
-        log.info("실행 시간: {} ms", (endTime - startTime) / 1_000_000); // 실행 시간 로깅
     }
 
 }

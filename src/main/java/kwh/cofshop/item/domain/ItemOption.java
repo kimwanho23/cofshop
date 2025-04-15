@@ -20,14 +20,11 @@ public class ItemOption {
     @Column(name = "item_option_id")
     private Long id;
 
-    @Column
     private String description; // 옵션 내용
 
-    @Column
     private Integer additionalPrice; // 추가금 (기본금에 더해서)
 
-    @Column
-    private Integer optionNo;
+    private Integer discountRate; // 할인율
 
     @Column(nullable = false)
     private Integer stock; // 옵션별 재고
@@ -35,7 +32,6 @@ public class ItemOption {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private OptionState optionState; // 옵션 활성화 여부
-
 
     ///////////////////////////////////////////////////////////////////////////////
 
@@ -49,22 +45,21 @@ public class ItemOption {
     }
 
     @Builder
-    public ItemOption(Long id, String description, Integer additionalPrice, Integer optionNo, Integer stock, OptionState optionState, Item item) {
+    public ItemOption(Long id, String description, Integer additionalPrice, Integer discountRate, Integer stock, OptionState optionState, Item item) {
         this.id = id;
         this.description = description;
         this.additionalPrice = additionalPrice;
-        this.optionNo = optionNo;
+        this.discountRate = discountRate;
         this.stock = stock;
         this.optionState = optionState;
         this.item = item;
     }
 
     // 정적 팩토리 메서드
-    public static ItemOption createOption(String description, Integer additionalPrice, Integer optionNo, Integer stock, Item item) {
+    public static ItemOption createOption(String description, Integer additionalPrice, Integer stock, Item item) {
         ItemOption itemOption = ItemOption.builder()
                 .description(description)
                 .additionalPrice(additionalPrice)
-                .optionNo(optionNo)
                 .stock(stock)
                 .optionState(OptionState.SELL) // 기본 상태 설정
                 .item(item) // 연관 관계 설정
@@ -77,7 +72,6 @@ public class ItemOption {
     public void updateOption(ItemOptionRequestDto dto) {
         this.description = dto.getDescription();
         this.additionalPrice = dto.getAdditionalPrice();
-        this.optionNo = dto.getOptionNo();
         this.stock = dto.getStock();
     }
 
@@ -87,12 +81,28 @@ public class ItemOption {
 
     public void removeStock(int stock){ // 재고 감소 (주문, 재고 조정)
         if (this.stock < stock) {
-            throw new BusinessException(BusinessErrorCode.OUT_OF_STOCK);
+            throw new BusinessException(BusinessErrorCode.ITEM_OUT_OF_STOCK);
         }
         this.stock -= stock;
     }
 
-    public int getTotalPrice() {
+    public int getBasePrice() {
         return this.getItem().getPrice() + this.additionalPrice;
     }
+
+    public int getTotalPrice() {
+        if (discountRate == null || discountRate == 0)
+            return getBasePrice();
+        return getBasePrice() * (100 - discountRate) / 100;
+    }
+
+    public void validatePurchasable() {
+        if (this.optionState != OptionState.SELL) {
+            throw new BusinessException(BusinessErrorCode.ITEM_OUT_OF_STOCK);
+        }
+        if (this.stock <= 0) {
+            throw new BusinessException(BusinessErrorCode.ITEM_OUT_OF_STOCK);
+        }
+    }
+
 }

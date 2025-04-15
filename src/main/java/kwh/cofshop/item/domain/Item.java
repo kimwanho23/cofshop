@@ -30,8 +30,6 @@ public class Item extends BaseEntity {
     @Column(name = "item_state", nullable = false)
     private ItemState itemState; // 상품 상태 (1: 판매중, 0: 판매 중단)
 
-    private Integer discount; // 할인율 (%)
-
     @Column(name = "delivery_fee")
     private Integer deliveryFee; // 배송비
 
@@ -43,7 +41,7 @@ public class Item extends BaseEntity {
 
     private Double averageRating; // 초기값
 
-    private Integer reviewCount; // 초기값
+    private Long reviewCount; // 초기값
 
     //연관관계
     ///////////////////////////////////////////////////////////////////////////////
@@ -64,14 +62,11 @@ public class Item extends BaseEntity {
     @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<Review> reviews = new ArrayList<>(); // 리뷰 목록
 
-
-
     @Builder
-    public Item(String itemName, Integer price, Integer discount,
+    public Item(String itemName, Integer price,
                 Integer deliveryFee, List<ItemCategory> itemCategories, String origin, Integer itemLimit, Member seller) {
         this.itemName = itemName;
         this.price = price;
-        this.discount = discount;
         this.deliveryFee = deliveryFee;
         this.itemCategories = itemCategories;
         this.origin = origin;
@@ -84,11 +79,11 @@ public class Item extends BaseEntity {
     public void prePersist() {
         this.itemState = ItemState.SELL;
         this.averageRating = 0.0;
-        this.reviewCount = 0;
+        this.reviewCount = 0L;
     }
 
     // 평균 평점과 리뷰 개수 업데이트 메서드
-    public void updateReviewStats(double averageRating, int reviewCount) {
+    public void updateReviewStats(double averageRating, long reviewCount) {
         this.averageRating = averageRating;
         this.reviewCount = reviewCount;
     }
@@ -96,18 +91,10 @@ public class Item extends BaseEntity {
     public void updateItem(ItemUpdateRequestDto dto) {
         this.itemName = dto.getItemName();
         this.price = dto.getPrice();
-        this.discount = dto.getDiscount();
         this.deliveryFee = dto.getDeliveryFee();
         this.origin = dto.getOrigin();
         this.itemLimit = dto.getItemLimit();
     }
-
-
-    // 옵션 인덱스
-    public Integer setNextOptionNo() {
-        return this.itemOptions.size() + 1;
-    }
-
     ///// 연관관계 편의 메서드
 
     // 이미지

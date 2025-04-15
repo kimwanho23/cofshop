@@ -11,6 +11,7 @@ import kwh.cofshop.order.domain.Order;
 import kwh.cofshop.order.domain.OrderState;
 import kwh.cofshop.order.dto.request.OrderCancelRequestDto;
 import kwh.cofshop.order.dto.request.OrderItemRequestDto;
+import kwh.cofshop.order.dto.request.OrderRequestDto;
 import kwh.cofshop.order.dto.response.OrderCancelResponseDto;
 import kwh.cofshop.order.dto.response.OrderResponseDto;
 import kwh.cofshop.order.mapper.OrderMapper;
@@ -70,21 +71,11 @@ class OrderServiceTest extends TestSettingUtils {
         Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
         Item item = itemRepository.findById(2L).orElseThrow();
 
-        OrderResponseDto order = orderService.createOrder(member.getId(),
-                getAddress(),
+        OrderResponseDto order = orderService.createInstanceOrder(member.getId(),
                 getOrderRequestDto(item));
         log.info(objectMapper.writeValueAsString(order));
 
     }
-
-    private Address getAddress() {
-        return Address.builder()
-                .city("도시")
-                .street("길거리")
-                .zipCode("11334")
-                .build();
-    }
-
 
     @Test
     @DisplayName("주문 상태 변경")
@@ -140,7 +131,7 @@ class OrderServiceTest extends TestSettingUtils {
     @DisplayName("하나의 주문 정보")
     @Transactional
     void OrderSummary() throws JsonProcessingException {
-        OrderResponseDto orderResponseDto = orderService.orderSummary(2L);
+        OrderResponseDto orderResponseDto = orderService.orderSummary(61L);
         log.info(objectMapper.writeValueAsString(orderResponseDto));
     }
 
@@ -173,7 +164,7 @@ class OrderServiceTest extends TestSettingUtils {
             int count = i;
             executorService.execute(() -> {
                 try {
-                    orderService.createOrder(member.getId(), getAddress(), getOrderRequestDto(item));
+                    orderService.createInstanceOrder(member.getId(), getOrderRequestDto(item));
                     log.info("{}번 실행", count);
                 } catch (Exception e) {
                     System.err.println("에러 발생: " + e.getMessage());
@@ -189,9 +180,19 @@ class OrderServiceTest extends TestSettingUtils {
         // ItemOption 조회 시 비관적 락을 적용하여 해결
     }
 
+    private static OrderRequestDto getOrderRequestDto(Item item){
+        OrderRequestDto orderRequestDto = new OrderRequestDto();
+        orderRequestDto.setAddress(new Address("도시", "주소","우편번호"));
+        orderRequestDto.setDeliveryRequest("배송 요청사항");
+        orderRequestDto.setOrderItemRequestDtoList(getOrderItemRequestDto(item));
+        orderRequestDto.setUsePoint(1200);
+        orderRequestDto.setMemberCouponId(1L);
+        return orderRequestDto;
+    }
+
 
     // 주문 상품 정보
-    private static List<OrderItemRequestDto> getOrderRequestDto(Item item) {
+    private static List<OrderItemRequestDto> getOrderItemRequestDto(Item item) {
         List<OrderItemRequestDto> dtoList = new ArrayList<>();
 
         OrderItemRequestDto orderItem1 = new OrderItemRequestDto();

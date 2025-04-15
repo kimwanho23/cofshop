@@ -43,7 +43,7 @@ public class MemberService {
     @Transactional
     public MemberResponseDto signUp(MemberRequestDto memberDto){ // Save, Update 로직
         if (memberRepository.findByEmail(memberDto.getEmail()).isPresent()){
-            throw new BusinessException(BusinessErrorCode.MEMBER_ALREADY_EXIST); // 이미 존재하는 이메일
+            throw new BusinessException(BusinessErrorCode.MEMBER_ALREADY_EXISTS); // 이미 존재하는 이메일
         }
 
         memberDto.setMemberPwd(passwordEncoder.encode(memberDto.getMemberPwd()));

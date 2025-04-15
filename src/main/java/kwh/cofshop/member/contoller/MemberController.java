@@ -8,6 +8,8 @@ import kwh.cofshop.global.response.ApiResponse;
 import kwh.cofshop.member.domain.MemberState;
 import kwh.cofshop.member.dto.request.MemberRequestDto;
 import kwh.cofshop.member.dto.response.MemberResponseDto;
+import kwh.cofshop.member.event.MemberLoginEvent;
+import kwh.cofshop.member.service.MemberLoginHistoryService;
 import kwh.cofshop.member.service.MemberService;
 import kwh.cofshop.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +29,7 @@ import java.util.List;
 public class MemberController {
 
     private final MemberService memberService;
+    private final MemberLoginHistoryService memberLoginHistoryService;
 
     //////////// @GET
 
@@ -45,9 +48,14 @@ public class MemberController {
         return ResponseEntity.ok(ApiResponse.OK(memberService.memberLists()));
     }
 
+    // 멤버의 로그인 기록 열람
+    @GetMapping("/history/{memberId}")
+    public ResponseEntity<ApiResponse<List<MemberLoginEvent>>> getLoginMemberHistory(@PathVariable Long memberId){
+        return ResponseEntity.ok(ApiResponse.OK(memberLoginHistoryService.getUserLoginHistory(memberId)));
+    }
+
 
     //////////// @POST
-
     // 회원가입
     @Operation(summary = "회원가입", description = "회원가입 기능입니다.")
     @PostMapping(value = "/signup")

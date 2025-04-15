@@ -51,7 +51,7 @@ class ItemControllerTest extends TestSettingUtils {
                 "itemRequestDto.json", "application/json", requestDtoJson.getBytes(StandardCharsets.UTF_8));
 
         // 5. MockMvc 요청 수행 (MultipartFile 포함)
-        mockMvc.perform(multipart("/api/item/create")
+        mockMvc.perform(multipart("/api/item")
                         .file(itemRequestDtoPart)
                         .file(imageFiles.get(0))
                         .file(imageFiles.get(1))
@@ -124,7 +124,6 @@ class ItemControllerTest extends TestSettingUtils {
         option.setDescription(description);
         option.setAdditionalPrice(additionalPrice);
         option.setStock(stock);
-        option.setOptionNo(optionNo);
         return option;
     }
 

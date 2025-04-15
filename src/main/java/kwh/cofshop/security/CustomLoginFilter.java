@@ -7,6 +7,9 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import kwh.cofshop.global.response.ApiResponse;
+import kwh.cofshop.member.event.Listener.LoginEventListener;
+import kwh.cofshop.member.event.MemberLoginEvent;
+import kwh.cofshop.member.service.MemberLoginHistoryService;
 import kwh.cofshop.security.domain.RefreshToken;
 import kwh.cofshop.security.dto.TokenDto;
 import kwh.cofshop.member.dto.request.LoginDto;
@@ -14,6 +17,7 @@ import kwh.cofshop.member.dto.response.LoginResponseDto;
 import kwh.cofshop.security.repository.RefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -34,6 +38,7 @@ public class CustomLoginFilter extends UsernamePasswordAuthenticationFilter {
     private final JwtTokenProvider jwtTokenProvider;
     private final ObjectMapper objectMapper;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
@@ -63,6 +68,17 @@ public class CustomLoginFilter extends UsernamePasswordAuthenticationFilter {
         response.addCookie(createCookie("refreshToken", token.getRefreshToken())); // Refresh 토큰을 쿠키로 넘긴다.
         response.setStatus(HttpServletResponse.SC_OK);
 
+        MemberLoginEvent memberLoginHistoryDto = MemberLoginEvent
+                .builder()
+                .loginDt(LocalDateTime.now())
+                .device(request.getHeader("User-Agent"))
+                .ipAddress(request.getRemoteAddr())
+                .memberId(customUserDetails.getId())
+                .build();
+
+        applicationEventPublisher.publishEvent(memberLoginHistoryDto);
+
+
         LoginResponseDto tokenResponse = LoginResponseDto.builder()
                 .accessToken(token.getAccessToken())
                 .refreshToken(token.getRefreshToken())
@@ -74,6 +90,7 @@ public class CustomLoginFilter extends UsernamePasswordAuthenticationFilter {
         ApiResponse<LoginResponseDto> apiResponse = ApiResponse.OK(tokenResponse);
         response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
     }
+
     private void addRefreshToken(Long memberId, String token) {
         LocalDateTime expiration = LocalDateTime.now().plusDays(7);
 

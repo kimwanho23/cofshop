@@ -35,7 +35,7 @@ public class ChatMessageService {
     public ChatMessageResponseDto createChatMessage(ChatMessageRequestDto requestDto) {
         // 1. 채팅방 탐색
         ChatRoom chatRoom = chatRoomRepository.findById(requestDto.getRoomId())
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.CHATROOM_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.CHAT_ROOM_NOT_FOUND));
 
         // 2. 유저 탐색
         Member sender = memberRepository.findById(requestDto.getSenderId())
@@ -66,7 +66,7 @@ public class ChatMessageService {
     @Transactional
     public DeletedMessageResponseDto deleteMessage(Long messageId, Long senderId) {
         ChatMessage message = chatMessageRepository.findById(messageId)
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.BUSINESS_ERROR_CODE));
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.CHAT_ROOM_ALREADY_CLOSED));
 
         if (!message.getSender().getId().equals(senderId)) {
             throw new BusinessException(UnauthorizedErrorCode.MEMBER_UNAUTHORIZED);

@@ -25,6 +25,8 @@ public class OrderItem extends BaseTimeEntity {
     @Column(name = "item_price", nullable = false)
     private int orderPrice;  // 개별 금액 (상품 + 옵션 가격)
 
+    private int discountRate; // 할인율
+
     /////////////////////////////////////////////////////////////////
     @Setter
     @ManyToOne(fetch = FetchType.LAZY)
@@ -48,18 +50,37 @@ public class OrderItem extends BaseTimeEntity {
         this.itemOption = itemOption;
     }
 
+    @Builder
+    public OrderItem(Long id, int quantity, int orderPrice, int discountRate, Order order, Item item, ItemOption itemOption) {
+        this.id = id;
+        this.quantity = quantity;
+        this.orderPrice = orderPrice;
+        this.discountRate = discountRate;
+        this.order = order;
+        this.item = item;
+        this.itemOption = itemOption;
+    }
+
     public static OrderItem createOrderItem(ItemOption itemOption, int quantity) {
         itemOption.removeStock(quantity);
         return OrderItem.builder()
                 .item(itemOption.getItem())
                 .itemOption(itemOption)
                 .quantity(quantity)
-                .orderPrice(itemOption.getTotalPrice() * quantity)
+                .orderPrice(itemOption.getBasePrice()) // 개별 상품 가격
                 .build();
+    }
+
+    public int getDiscountedPrice() { // 할인 적용 단가
+        return orderPrice * (100 - discountRate) / 100;
     }
 
     // 재고 복구
     public void restoreStock() {
         this.itemOption.addStock(this.quantity);
+    }
+
+    public int getTotalPrice(){ // 할인 적용 단가 * 수량
+        return getDiscountedPrice() * quantity;
     }
 }

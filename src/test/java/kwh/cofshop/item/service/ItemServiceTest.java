@@ -126,7 +126,7 @@ class ItemServiceTest {
 
         List<ItemOptionRequestDto> itemOptionDto = itemOptionRepository.findByItemId(item.getId())
                 .stream()
-                .map(option -> new ItemOptionRequestDto(option.getId(), option.getDescription(), option.getAdditionalPrice(), option.getOptionNo(), option.getStock()))
+                .map(option -> new ItemOptionRequestDto(option.getId(), option.getDescription(), option.getAdditionalPrice(), option.getStock()))
                 .toList();
         itemUpdateRequestDto.setExistingItemOptions(itemOptionDto);
 
@@ -146,14 +146,11 @@ class ItemServiceTest {
 
         log.info(objectMapper.writeValueAsString(itemUpdateRequestDto));
 
-/*        itemUpdateRequestDto.setAddItemImgs(getUpdateImgRequestDto());
-        List<MultipartFile> updateImageFiles = generateUpdateImageFiles();*/
-
         itemUpdateRequestDto.setAddItemImgs(null);
         List<MultipartFile> updateImageFiles = null;
 
         itemUpdateRequestDto.setAddItemOptions(getUpdateItemOptionRequestDto());
-        itemUpdateRequestDto.setDeleteImgIds(/*List.of(53L, 54L, 1402L, 1502L,1852L)*/null); // 기존 이미지 중 삭제할 ID
+        itemUpdateRequestDto.setDeleteImgIds(null); // 기존 이미지 중 삭제할 ID
         itemUpdateRequestDto.setDeleteOptionIds(List.of(104L)); // 기존 옵션 중 삭제할 ID
         itemUpdateRequestDto.setDeleteCategoryIds(List.of());
         itemUpdateRequestDto.setAddCategoryIds(List.of(14L));
@@ -185,8 +182,8 @@ class ItemServiceTest {
     private List<MultipartFile> generateImageFiles() {
         List<MultipartFile> images = new ArrayList<>();
         images.add(new MockMultipartFile("images", "test.jpg", "image/jpeg", "test data".getBytes()));
-        images.add(new MockMultipartFile("images", "test1.jpg", "image/jpeg", "test data 1".getBytes()));
-        images.add(new MockMultipartFile("images", "test2.jpg", "image/jpeg", "test data 2".getBytes()));
+/*        images.add(new MockMultipartFile("images", "test1.jpg", "image/jpeg", "test data 1".getBytes()));
+        images.add(new MockMultipartFile("images", "test2.jpg", "image/jpeg", "test data 2".getBytes()));*/
         return images;
     }
 
@@ -246,14 +243,13 @@ class ItemServiceTest {
         option.setDescription(description);
         option.setAdditionalPrice(additionalPrice);
         option.setStock(stock);
-        option.setOptionNo(optionNo);
         return option;
     }
 
 
     private ItemRequestDto getItemRequestDto() {
         ItemRequestDto requestDto = new ItemRequestDto();
-        requestDto.setItemName("커피 원두");
+        requestDto.setItemName("다양한 아이템!!");
         requestDto.setPrice(20000);
         requestDto.setOrigin("아르헨티나");
         requestDto.setDiscount(0); // 할인율

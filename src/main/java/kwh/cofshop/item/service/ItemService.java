@@ -1,10 +1,8 @@
 
 package kwh.cofshop.item.service;
 
-import jakarta.persistence.EntityManager;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
-import kwh.cofshop.global.exception.errorcodes.ErrorCode;
 import kwh.cofshop.item.domain.*;
 import kwh.cofshop.item.dto.request.ItemImgRequestDto;
 import kwh.cofshop.item.dto.request.ItemRequestDto;
@@ -12,9 +10,7 @@ import kwh.cofshop.item.dto.request.ItemSearchRequestDto;
 import kwh.cofshop.item.dto.request.ItemUpdateRequestDto;
 import kwh.cofshop.item.dto.response.ItemResponseDto;
 import kwh.cofshop.item.dto.response.ItemSearchResponseDto;
-import kwh.cofshop.item.mapper.ItemImgMapper;
 import kwh.cofshop.item.mapper.ItemMapper;
-import kwh.cofshop.item.mapper.ItemOptionMapper;
 import kwh.cofshop.item.mapper.ItemSearchMapper;
 import kwh.cofshop.item.repository.*;
 import kwh.cofshop.member.domain.Member;
@@ -42,8 +38,6 @@ public class ItemService { // 통합 Item 서비스
     // 매퍼 클래스
     private final ItemMapper itemMapper;
     private final ItemSearchMapper itemSearchMapper;
-    private final ItemOptionMapper itemOptionMapper;
-    private final ItemImgMapper itemImgMapper;
 
     // 연관관계 서비스
     private final ItemImgService itemImgService; // 이미지 서비스

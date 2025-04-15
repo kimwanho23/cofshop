@@ -17,6 +17,7 @@ import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
 public interface CategoryMapper {
 
     @Mapping(source = "parent.id", target = "parentCategoryId")
+    @Mapping(target =  "children", ignore = true)
     CategoryResponseDto toResponseDto(Category category);
 
     @Mapping(target = "parent", ignore = true)

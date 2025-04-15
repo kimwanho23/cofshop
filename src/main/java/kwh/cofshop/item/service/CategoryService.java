@@ -30,7 +30,7 @@ public class CategoryService {
         Category parent = null;
         if (dto.getParentCategoryId() != null) {
             parent = categoryRepository.findById(dto.getParentCategoryId())
-                    .orElseThrow(() -> new BusinessException(BusinessErrorCode.BUSINESS_ERROR_CODE));
+                    .orElseThrow(() -> new BusinessException(BusinessErrorCode.CATEGORY_NOT_FOUND));
         }
 
         Category category = Category.builder()
@@ -60,7 +60,7 @@ public class CategoryService {
     // 해당 카테고리가 마지막인가? 아니면 선택 옵션 제공
     public List<CategoryResponseDto> getCategoryChild(Long categoryId) {
         if (hasChildCategory(categoryId)) {
-            List<Category> categories = categoryRepository.findByParentCategoryId(categoryId);
+            List<Category> categories = categoryRepository.findImmediateChildrenNative(categoryId);
             return categories.stream().map(categoryMapper::toResponseDto).toList();
         }
         else return null;
@@ -72,14 +72,13 @@ public class CategoryService {
     }
 
 
-/*
     public List<CategoryResponseDto> getAllCategoryTest() {
         List<Category> allCategory = categoryRepository.findAllCategoryWithChild();
 
         return allCategory.stream().
                 map(categoryMapper::toResponseDto).toList();
     }
-*/
+
 
     // 모든 카테고리 조회
     public List<CategoryResponseDto> getAllCategory() {
@@ -114,7 +113,7 @@ public class CategoryService {
     @Transactional
     public void deleteCategory(Long categoryId) {
         Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.BUSINESS_ERROR_CODE));
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.CATEGORY_NOT_FOUND));
         categoryRepository.delete(category);
     }
 }

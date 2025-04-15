@@ -39,7 +39,7 @@ public class ReviewService {
         Item item = itemRepository.findById(itemId).orElseThrow();
 
         if (reviewRepository.existsByItemIdAndMemberId(itemId, memberId)) {
-            throw new BusinessException(BusinessErrorCode.REVIEW_ALREADY_EXIST); // 해당 회원의 리뷰 존재
+            throw new BusinessException(BusinessErrorCode.REVIEW_ALREADY_EXISTS); // 해당 회원의 리뷰 존재
         }
 
         Review review = Review.createReview(
@@ -77,14 +77,10 @@ public class ReviewService {
 
     // Item 평균 평점 및 리뷰 개수 업데이트
     private void updateItemReviewStats(Long itemId) {
-        Item item = itemRepository.findById(itemId).orElseThrow();
-        List<Review> reviews = reviewRepository.findByItemId(itemId);
-
-        int reviewCount = reviews.size();
-        double averageRating = reviews.stream()
-                .mapToDouble(Review::getRating)
-                .average()
-                .orElse(0.0);
+        Item item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
+        Double averageRating = reviewRepository.findAverageRatingByItemId(itemId);
+        long reviewCount = reviewRepository.countByItemId(itemId);
 
         item.updateReviewStats(averageRating, reviewCount);
     }
@@ -93,12 +89,14 @@ public class ReviewService {
     @Transactional
     public void deleteReview(Long reviewId, Long memberId) {
         Review review = reviewRepository.findById(reviewId)
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.BUSINESS_ERROR_CODE));
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.REVIEW_NOT_FOUND));
 
         if (!review.getMember().getId().equals(memberId)) {
             throw new BusinessException(UnauthorizedErrorCode.MEMBER_UNAUTHORIZED);
         }
+
         reviewRepository.delete(review);
+        updateItemReviewStats(review.getItem().getId());
     }
 
 
@@ -108,6 +106,14 @@ public class ReviewService {
         Page<Review> reviews = reviewRepository.findByItemId(itemId, pageable);
 
         return reviews.map(reviewMapper::toResponseDto);
+    }
+
+    // Item의 리뷰 조회
+    @Transactional(readOnly = true)
+    public List<ReviewResponseDto> getReviewsByItemId(Long itemId) {
+        List<Review> reviews = reviewRepository.getReviewsByItemId(itemId);
+
+        return reviews.stream().map(reviewMapper::toResponseDto).toList();
     }
 
 }

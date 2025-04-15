@@ -17,9 +17,9 @@ public interface OrderItemMapper {
 
     @Mapping(source = "item.itemName", target = "itemName")
     @Mapping(source = "item.price", target = "price")
-    @Mapping(source = "item.discount", target = "discount")
-    @Mapping(source = "item.deliveryFee", target = "deliveryFee")
+    @Mapping(source = "itemOption.additionalPrice", target = "additionalPrice")
     @Mapping(source = "item.origin", target = "origin")
+    @Mapping(source = "itemOption.discountRate", target = "discountRate")
     @Mapping(source = "quantity", target = "quantity")
     OrderItemResponseDto toResponseDto(OrderItem orderItem);
 

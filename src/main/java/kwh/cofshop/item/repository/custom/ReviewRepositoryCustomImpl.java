@@ -69,4 +69,15 @@ public class ReviewRepositoryCustomImpl implements ReviewRepositoryCustom{
 
         return fetchOne != null;
     }
+
+    @Override
+    public Double findAverageRatingByItemId(Long itemId) {
+        QReview review = QReview.review;
+
+        return queryFactory
+                .select(review.rating.avg())
+                .from(review)
+                .where(review.item.id.eq(itemId))
+                .fetchOne();
+    }
 }

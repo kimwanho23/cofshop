@@ -16,6 +16,8 @@ import kwh.cofshop.security.service.AuthService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -34,25 +36,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 class MemberServiceTest {
 
     @Autowired
-    MemberService memberService;
+    private MemberService memberService;
 
     @Autowired
-    AuthService authService;
-
-    @Autowired
-    MemberRepository memberRepository;
+    private MemberRepository memberRepository;
 
     @Autowired
     private ObjectMapper objectMapper;  // JSON 변환 도구
 
     @Autowired
-    private MemberMapper memberMapper;  // JSON 변환 도구
-
-    @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
-    @Autowired
-    private MockMvc mockMvc;
 
     @Test
     @DisplayName("회원가입 로직 테스트")
@@ -60,11 +54,7 @@ class MemberServiceTest {
     void signUp() throws JsonProcessingException {  // 1번 테스트
 
         //DTO 생성 (프론트에서 입력)
-        MemberRequestDto requestDto = new MemberRequestDto();
-        requestDto.setEmail("test2@gmail.com");
-        requestDto.setMemberName("테스트");
-        requestDto.setMemberPwd("1234567890");
-        requestDto.setTel("010-1234-5678");
+        MemberRequestDto requestDto = getMemberRequestDto("test1@gmail.com");
 
         // 저장
         MemberResponseDto savedMember = memberService.signUp(requestDto);
@@ -73,7 +63,7 @@ class MemberServiceTest {
 
         // 데이터 검증
         assertThat(savedMember).isNotNull();
-        assertThat(savedMember.getEmail()).isEqualTo("test2@gmail.com");
+        assertThat(savedMember.getEmail()).isEqualTo("test1@gmail.com");
         assertThat(savedMember.getMemberName()).isEqualTo("테스트");
         assertThat(savedMember.getTel()).isEqualTo("010-1234-5678");
 
@@ -90,7 +80,27 @@ class MemberServiceTest {
     }
 
     @Test
-    @DisplayName("멤버 Find, ResponseDto 테스트")
+    @DisplayName("회원가입 로직 테스트 - 대량 생성")
+    @Transactional
+    @Commit
+    void signUpRandom(){  // 1번 테스트
+
+        //DTO 생성 (프론트에서 입력)
+        for (int i = 500; i < 1000; i++) {
+            try {
+                MemberRequestDto requestDto = getMemberRequestDto("randomMember" + i + "@gmail.com");
+                MemberResponseDto savedMember = memberService.signUp(requestDto);
+            } catch (Exception e) {
+                System.out.println(i + "번째 회원가입 실패: " + e.getClass().getSimpleName());
+                e.printStackTrace();
+            }
+        }
+        // 저장
+    }
+
+
+    @Test
+    @DisplayName("멤버 찾기")
     @Transactional
     void findMember(){  // 2번 테스트
         MemberResponseDto findMember = memberService.findMember(2L);
@@ -99,28 +109,23 @@ class MemberServiceTest {
         assertThat(findMember.getMemberName()).isEqualTo("테스트");
         assertThat(findMember.getTel()).isEqualTo("010-1234-5678");
 
-        // 테스트 통과 (2024-12-11)
-    }
-
-    @Test
-    @DisplayName("로그인")
-    void login(){
-        LoginDto loginDto = new LoginDto();
-        loginDto.setEmail("test@gmail.com");
-        loginDto.setMemberPwd("1234567890");
     }
 
     @Test
     @DisplayName("멤버 상태 변경")
     @Transactional
- //   @Commit
-    void changeMemberState() throws Exception {
+    void changeMemberState() {
         Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
-        member.changeMemberState(MemberState.ACTIVE);
-        MemberResponseDto responseDto = memberMapper.toResponseDto(member);
-        log.info(objectMapper.writeValueAsString(responseDto));
+        member.changeMemberState(MemberState.SUSPENDED);
+        assertThat(member.getMemberState()).isEqualTo(MemberState.SUSPENDED);
     }
 
-
-
+    private static MemberRequestDto getMemberRequestDto(String email) {
+        MemberRequestDto requestDto = new MemberRequestDto();
+        requestDto.setEmail(email);
+        requestDto.setMemberName("테스트");
+        requestDto.setMemberPwd("1234567890");
+        requestDto.setTel("010-1234-5678");
+        return requestDto;
+    }
 }

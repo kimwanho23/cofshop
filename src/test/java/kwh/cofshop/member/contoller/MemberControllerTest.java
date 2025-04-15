@@ -17,25 +17,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 
 class MemberControllerTest extends TestSettingUtils {
 
-/*    @Test
-    @DisplayName("컨트롤러 로그인 성공 테스트")
-    void loginSuccessTest() throws Exception {  // 3번 테스트
-
-        // 로그인 성공 테스트
-        LoginDto loginDto = new LoginDto();
-        loginDto.setEmail("test@gmail.com");
-        loginDto.setMemberPwd("1234567890");
-
-        mockMvc.perform(post("/api/member/login")
-                        .contentType(MediaType.APPLICATION_JSON)  // JSON 데이터 타입 설정
-                        .content(objectMapper.writeValueAsString(loginDto)))  // DTO -> JSON 변환
-                .andExpect(status().isOk())  // 성공
-                .andExpect(jsonPath("$.body.data.email").value("test@gmail.com"))  // email 필드 검증
-                .andExpect(jsonPath("$.body.data.accessToken").exists())  // accessToken 필드 존재 여부 확인
-                .andExpect(jsonPath("$.body.data.refreshToken").exists())  // refreshToken 필드 존재 여부 확인
-                .andDo(print());  // 요청 및 응답 출력
-    }*/
-
     @Test
     @DisplayName("스프링 엔드포인트 로그인 성공 테스트")
     void SpringEndPointLoginSuccessTest() throws Exception {  // 3번 테스트

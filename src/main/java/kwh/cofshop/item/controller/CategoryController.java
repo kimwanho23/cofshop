@@ -8,7 +8,6 @@ import kwh.cofshop.item.dto.request.CategoryRequestDto;
 import kwh.cofshop.item.dto.response.CategoryResponseDto;
 import kwh.cofshop.item.service.CategoryService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -49,8 +48,6 @@ public class CategoryController {
     }
 
     //////////// @POST
-
-
     // 카테고리 등록 (관리자)
     @PostMapping
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")

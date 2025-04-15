@@ -3,6 +3,7 @@ package kwh.cofshop.item.repository.custom;
 import kwh.cofshop.item.domain.Review;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
@@ -19,4 +20,8 @@ public interface ReviewRepositoryCustom {
     Review findByItemAndMember(Long itemId, Long memberId);
 
     boolean existsByItemIdAndMemberId(Long itemId, Long memberId);
+
+
+    // 아이템의 평균 평점 조회
+    Double findAverageRatingByItemId(Long itemId);
 }

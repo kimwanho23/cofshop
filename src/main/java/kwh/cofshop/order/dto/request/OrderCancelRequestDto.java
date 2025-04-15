@@ -8,5 +8,5 @@ import lombok.Setter;
 public class OrderCancelRequestDto {
 
     private Long orderId;
-    private String cancelReason;
+    private String cancelReason; // 취소 사유
 }

@@ -16,7 +16,6 @@ public enum UnauthorizedErrorCode implements ErrorCode {
     TOKEN_NOT_EXIST("U-5", HttpStatus.UNAUTHORIZED, "토큰이 존재하지 않습니다.")
     ;
 
-
     private final String code;
     private final HttpStatus httpStatus;
     private final String message;

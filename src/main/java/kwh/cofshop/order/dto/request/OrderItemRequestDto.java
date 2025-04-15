@@ -9,6 +9,8 @@ public class OrderItemRequestDto { // 주문 상품
 
     private Long item; // 상품 ID
     private Long optionId; // 옵션 ID
+    private Integer additionalPrice;
     private int quantity;  // 수량
+
 
 }

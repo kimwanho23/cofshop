@@ -1,7 +1,7 @@
+/*
 package kwh.cofshop.global.response;
 
 import kwh.cofshop.global.exception.ErrorResponse;
-import kwh.cofshop.global.exception.errorcodes.ErrorCode;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -30,7 +30,7 @@ public class ResponseAdvice implements ResponseBodyAdvice<Object> {
         if (body instanceof ApiResponse || body instanceof ErrorResponse) {
             return body;  // 이미 래핑된 응답은 그대로 반환
         }
-
         return ApiResponse.OK(body);
     }
 }
+*/

@@ -18,14 +18,10 @@ public interface ReviewMapper {
 
   //  Review toEntity(ReviewRequestDto reviewRequestDto);
 
-    @Mapping(source = "item.id", target = "item")
-    @Mapping(source = "member", target = "member")
+    @Mapping(source = "item.id", target = "itemId")
+    @Mapping(source = "member.id", target = "memberId")
+    @Mapping(source = "review.id", target = "reviewId")
     ReviewResponseDto toResponseDto(Review review);
-
-
-    default String map(Member member) {
-        return member != null ? member.getEmail() : null;
-    }
 
 }
 

@@ -1,10 +1,12 @@
 package kwh.cofshop.order.service;
 
-import jakarta.persistence.EntityNotFoundException;
+import kwh.cofshop.coupon.domain.CouponState;
+import kwh.cofshop.coupon.domain.MemberCoupon;
+import kwh.cofshop.coupon.service.CouponService;
+import kwh.cofshop.coupon.service.MemberCouponService;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.item.domain.ItemOption;
-import kwh.cofshop.item.repository.ItemOptionRepository;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.repository.MemberRepository;
 import kwh.cofshop.order.domain.Address;
@@ -17,6 +19,7 @@ import kwh.cofshop.order.dto.request.OrderRequestDto;
 import kwh.cofshop.order.dto.response.OrderCancelResponseDto;
 import kwh.cofshop.order.dto.response.OrderResponseDto;
 import kwh.cofshop.order.mapper.OrderMapper;
+import kwh.cofshop.order.policy.DeliveryFeePolicy;
 import kwh.cofshop.order.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,10 +28,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -40,20 +41,55 @@ public class OrderService {
     private final MemberRepository memberRepository;
 
     private final OrderItemService orderItemService;
+    private final MemberCouponService memberCouponService;
+    private final DeliveryFeePolicy deliveryFeePolicy;
 
+    // 바로구매 로직
     @Transactional
-    public OrderResponseDto createOrder(Long memberId, Address address, List<OrderItemRequestDto> itemRequestDtoList) {
+    public OrderResponseDto createInstanceOrder(Long memberId, OrderRequestDto orderRequestDto) {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
 
         // 옵션 조회
-        List<ItemOption> itemOptions = orderItemService.getItemOptionsWithLock(itemRequestDtoList);
+        List<ItemOption> itemOptions = orderItemService.getItemOptionsWithLock(orderRequestDto.getOrderItemRequestDtoList());
 
         // 주문 항목 생성
-        List<OrderItem> orderItems = orderItemService.createOrderItems(itemRequestDtoList, itemOptions);
+        List<OrderItem> orderItems = orderItemService.createOrderItems(orderRequestDto.getOrderItemRequestDtoList(), itemOptions);
 
         // 주문 생성
-        Order order = Order.createOrder(member, address, orderItems);
+        Order order = Order.createOrder(member, orderRequestDto.getAddress(), orderItems);
+
+        int totalPrice = order.getTotalPrice(); // 현재의 총 금액
+
+
+        //////// 쿠폰 할인 적용
+        MemberCoupon memberCoupon = null; // 쿠폰
+        int couponDiscountValue = 0; // 쿠폰 할인 가격
+
+        if (orderRequestDto.getMemberCouponId() != null) {
+            memberCoupon = memberCouponService.findValidCoupon(orderRequestDto.getMemberCouponId(), memberId); // 사용 가능한 쿠폰 등록
+            couponDiscountValue = memberCoupon.getCoupon().calculateDiscount(order.getTotalPrice()); // 쿠폰으로 가격 계산
+            memberCoupon.useCoupon(); // 쿠폰 사용
+            order.addUseCoupon(memberCoupon, couponDiscountValue); // Order에 사용한 쿠폰 등록
+        }
+        int useAfterCouponValue = totalPrice - couponDiscountValue; // 쿠폰 사용 후 가격
+
+
+        //////////포인트 사용
+        int usePoint = orderRequestDto.getUsePoint(); // 포인트
+
+
+        if (usePoint > 0 && usePoint <= useAfterCouponValue) {
+            member.usePoint(usePoint);
+            order.addUsePoint(usePoint);
+        }
+
+        //////////// 배송비 계산, 최종 금액 계산
+        int deliveryFee = deliveryFeePolicy.calculate(itemOptions); // 배송비
+        int finalPrice = useAfterCouponValue - usePoint + deliveryFee; // 최종 가격
+
+        order.addDeliveryFee(deliveryFee);
+        order.addFinalPrice(finalPrice);
 
         // 저장 및 반환
         return orderMapper.toResponseDto(orderRepository.save(order));
@@ -96,5 +132,13 @@ public class OrderService {
         return orderRepository.findAllOrders(pageable);
     }
 
-
+    // 구매 확정(소비자)
+    @Transactional
+    public void PurchaseConfirmation(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
+        if (order.getOrderState() == OrderState.SHIPPED){ // 배송 완료 시
+            order.changeOrderState(OrderState.COMPLETED); // 구매 확정 가능
+        }
+    }
 }

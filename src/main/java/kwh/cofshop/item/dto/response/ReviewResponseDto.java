@@ -9,8 +9,8 @@ import lombok.Setter;
 public class ReviewResponseDto {
 
     private Long reviewId;
+    private Long memberId;
     private Long rating; // 별점
     private String content; // 후기글
-    private Long item; // 상품
-    private String member; // 작성자
+    private Long itemId; // 상품
 }
