@@ -1,8 +1,10 @@
 package kwh.cofshop.order.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import jakarta.persistence.Column;
 import kwh.cofshop.TestSettingUtils;
 import kwh.cofshop.item.domain.Item;
+import kwh.cofshop.item.domain.ItemOption;
 import kwh.cofshop.item.repository.ItemOptionRepository;
 import kwh.cofshop.item.repository.ItemRepository;
 import kwh.cofshop.member.domain.Member;
@@ -26,6 +28,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.test.annotation.Commit;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
@@ -33,6 +36,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
 
 
 @SpringBootTest
@@ -41,6 +45,9 @@ class OrderServiceTest extends TestSettingUtils {
 
     @Autowired
     private OrderRepository orderRepository;
+
+    @Autowired
+    private ItemOptionRepository itemOptionRepository;
 
     @Autowired
     private OrderService orderService;
@@ -54,7 +61,7 @@ class OrderServiceTest extends TestSettingUtils {
 
     @BeforeEach
     void setUp() {
-        executorService = Executors.newFixedThreadPool(10); // 10개의 스레드
+        executorService = Executors.newFixedThreadPool(100); // 10개의 스레드
     }
 
     @AfterEach
@@ -66,10 +73,13 @@ class OrderServiceTest extends TestSettingUtils {
     @Test
     @DisplayName("주문 생성")
     @Transactional
+    @Commit
     void createOrder() throws Exception {
 
+        Long random = ThreadLocalRandom.current().nextLong(40, 330); // 1 이상, 4 미만
+
         Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
-        Item item = itemRepository.findById(2L).orElseThrow();
+        Item item = itemRepository.findById(random).orElseThrow();
 
         OrderResponseDto order = orderService.createInstanceOrder(member.getId(),
                 getOrderRequestDto(item));
@@ -102,6 +112,19 @@ class OrderServiceTest extends TestSettingUtils {
         log.info("주문 취소 실행 시간: {} ms", (endTime - startTime) / 1_000_000); // 실행 시간 로깅
 
         log.info(objectMapper.writeValueAsString(orderCancelResponseDto));
+
+    }
+
+    @Test
+    @DisplayName("4월 주문 불러오기")
+    @Transactional
+    void testOrder4month() throws JsonProcessingException {
+
+        for (int i = 0; i < 10; i++) {
+            Long monthlyOrderCountUseFunc2 = orderService.getMonthlyOrderCountUseFunc(2024, 4);
+            Long monthlyOrderCount2 = orderService.getMonthlyOrderCount(2024, 4);
+        }
+
 
     }
 
@@ -154,13 +177,13 @@ class OrderServiceTest extends TestSettingUtils {
     void testConcurrentOrderCreation() throws InterruptedException {
 
         Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
-        Item item = itemRepository.findById(2L).orElseThrow();
+        Long random = ThreadLocalRandom.current().nextLong(40, 330); // 1 이상, 4 미만
+        Item item = itemRepository.findById(random).orElseThrow();
 
-        int threadCount = 10; //스레드 개수
-        CountDownLatch latch = new CountDownLatch(threadCount);
+        int taskCount = 1000;
+        CountDownLatch latch = new CountDownLatch(taskCount); // 1000개 완료 대기
 
-
-        for (int i = 0; i < threadCount; i++) {
+        for (int i = 0; i < taskCount; i++) {
             int count = i;
             executorService.execute(() -> {
                 try {
@@ -179,22 +202,65 @@ class OrderServiceTest extends TestSettingUtils {
         // Exception occurred: could not execute statement [Deadlock found when trying to get lock; try restarting transaction] 트랜잭션 데드락 발생
         // ItemOption 조회 시 비관적 락을 적용하여 해결
     }
+    @DisplayName("주문 동시성 테스트2")
+    @Test
+    void testConcurrentCreation() throws InterruptedException {
+        int total = 5000;
+        int batchSize = 100;
+        Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
+        Long random = ThreadLocalRandom.current().nextLong(40, 330); // 1 이상, 4 미만
+        Item item = itemRepository.findById(random).orElseThrow();
 
-    private static OrderRequestDto getOrderRequestDto(Item item){
+        for (int i = 0; i < total / batchSize; i++) {
+            testConcurrentOrderBatch(member, item, batchSize);
+        }
+
+    }
+    void testConcurrentOrderBatch(Member member, Item item, int count) throws InterruptedException {
+        CountDownLatch latch = new CountDownLatch(count);
+        for (int i = 0; i < count; i++) {
+            executorService.execute(() -> {
+                try {
+                    orderService.createInstanceOrder(member.getId(), getOrderRequestDto(item));
+                } finally {
+                    latch.countDown();
+                }
+            });
+        }
+        latch.await();
+    }
+
+
+    private OrderRequestDto getOrderRequestDto(Item item){
         OrderRequestDto orderRequestDto = new OrderRequestDto();
         orderRequestDto.setAddress(new Address("도시", "주소","우편번호"));
         orderRequestDto.setDeliveryRequest("배송 요청사항");
         orderRequestDto.setOrderItemRequestDtoList(getOrderItemRequestDto(item));
-        orderRequestDto.setUsePoint(1200);
-        orderRequestDto.setMemberCouponId(1L);
+        orderRequestDto.setUsePoint(0);
+      //  orderRequestDto.setMemberCouponId(1L);
+        orderRequestDto.setDeliveryRequest("문 앞에 놓아주세요");
         return orderRequestDto;
     }
 
-
     // 주문 상품 정보
-    private static List<OrderItemRequestDto> getOrderItemRequestDto(Item item) {
+    private List<OrderItemRequestDto> getOrderItemRequestDto(Item item) {
         List<OrderItemRequestDto> dtoList = new ArrayList<>();
 
+        int random = ThreadLocalRandom.current().nextInt(1, 5);
+
+        List<ItemOption> itemOptions = item.getItemOptions();
+        int size = itemOptions.size();
+
+        int random2 = ThreadLocalRandom.current().nextInt(0, size);
+
+        OrderItemRequestDto orderItem1 = new OrderItemRequestDto();
+        orderItem1.setItem(item.getId());
+        orderItem1.setQuantity(random);
+        orderItem1.setOptionId(item.getItemOptions().get(random2).getId());
+        dtoList.add(orderItem1);
+
+
+/*        List<OrderItemRequestDto> dtoList = new ArrayList<>();
         OrderItemRequestDto orderItem1 = new OrderItemRequestDto();
         orderItem1.setItem(item.getId());
         orderItem1.setQuantity(2);
@@ -206,7 +272,7 @@ class OrderServiceTest extends TestSettingUtils {
         orderItem2.setOptionId(4L);
 
         dtoList.add(orderItem1);
-        dtoList.add(orderItem2);
+        dtoList.add(orderItem2);*/
         return dtoList;
     }
 

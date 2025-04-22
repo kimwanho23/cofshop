@@ -1,10 +1,8 @@
 package kwh.cofshop.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import kwh.cofshop.config.CorsConfig;
-import kwh.cofshop.member.repository.MemberLoginHistoryRepository;
 import kwh.cofshop.member.repository.MemberRepository;
-import kwh.cofshop.security.repository.RefreshTokenRepository;
+import kwh.cofshop.security.service.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -30,10 +28,9 @@ public class SecurityConfig {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final ObjectMapper objectMapper;
-    private final CorsConfig corsConfig;
     private final MemberRepository memberRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final RefreshTokenService refreshTokenService;
 
     @Bean
     protected SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -57,9 +54,9 @@ public class SecurityConfig {
                         .invalidateHttpSession(true))
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // 무상태
-                .addFilterBefore(new CustomLogoutFilter(refreshTokenRepository, jwtTokenProvider), LogoutFilter.class)
+                .addFilterBefore(new CustomLogoutFilter(refreshTokenService, jwtTokenProvider), LogoutFilter.class)
                 .addFilterBefore(new JwtFilter(jwtTokenProvider), CustomLoginFilter.class)
-                .addFilterAt(new CustomLoginFilter(authenticationManager(), jwtTokenProvider, objectMapper, refreshTokenRepository, applicationEventPublisher), UsernamePasswordAuthenticationFilter.class);
+                .addFilterAt(new CustomLoginFilter(authenticationManager(), jwtTokenProvider, objectMapper, refreshTokenService, applicationEventPublisher), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 

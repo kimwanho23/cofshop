@@ -1,7 +1,9 @@
 package kwh.cofshop.coupon.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import kwh.cofshop.config.argumentResolver.LoginMember;
 import kwh.cofshop.coupon.dto.response.MemberCouponResponseDto;
+import kwh.cofshop.coupon.service.MemberCouponRedisService;
 import kwh.cofshop.coupon.service.MemberCouponService;
 import kwh.cofshop.global.response.ApiResponse;
 import kwh.cofshop.security.CustomUserDetails;
@@ -20,6 +22,7 @@ import java.util.List;
 public class MemberCouponController {
 
     private final MemberCouponService memberCouponService;
+    private final MemberCouponRedisService memberCouponRedisService;
 
     // 내 쿠폰 조회
     @GetMapping("/me")
@@ -33,10 +36,22 @@ public class MemberCouponController {
     @PostMapping("/me/{couponId}")
     public ResponseEntity<ApiResponse<MemberCouponResponseDto>> createMemberCoupon(
             @LoginMember CustomUserDetails customUserDetails, @PathVariable Long couponId) {
+       // memberCouponRedisService.requestCoupon(user.getId(), couponId);
         MemberCouponResponseDto memberCoupon = memberCouponService.createMemberCoupon(customUserDetails.getId(), couponId);
         return ResponseEntity.created(URI.create("/api/memberCoupon" + couponId))
                 .body(ApiResponse.Created(memberCoupon));
     }
+
+/*
+    // 쿠폰 발급
+    @PostMapping("/me/{couponId}")
+    public ResponseEntity<ApiResponse<String>> createMemberCoupon(
+            @LoginMember CustomUserDetails customUserDetails, @PathVariable Long couponId) throws JsonProcessingException {
+        memberCouponRedisService.createMemberCoupon(customUserDetails.getId(), couponId);
+        return ResponseEntity.created(URI.create("/api/memberCoupon" + couponId))
+                .body(ApiResponse.Created("쿠폰 발급 요청이 처리되었습니다."));
+    }
+*/
 
     // 쿠폰 만료 처리
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")

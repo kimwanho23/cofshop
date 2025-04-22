@@ -39,6 +39,15 @@ public class Order extends BaseTimeEntity {
     @Column(nullable = false)
     private LocalDateTime orderDate;
 
+    @Column(nullable = false)
+    private Integer orderYear;
+
+    @Column(nullable = false)
+    private Integer orderMonth;
+
+    @Column(nullable = false)
+    private Integer orderDay;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "order_state", nullable = false)
     private OrderState orderState;
@@ -75,22 +84,24 @@ public class Order extends BaseTimeEntity {
     private PaymentEntity payment;
 
     @Builder
-    public Order(Long id, Address address, Integer usePoint, int totalPrice, int finalPrice, int deliveryFee,
-                 String merchantUid, LocalDateTime orderDate, String deliveryRequest, MemberCoupon memberCoupon, int discountFromCoupon,
-                 Member member, OrderState orderState, List<OrderItem> orderItems, PaymentEntity payment) {
+    public Order(Long id, Member member, String merchantUid, LocalDateTime orderDate, Integer orderYear, Integer orderMonth, Integer orderDay, OrderState orderState, Address address, String deliveryRequest, int deliveryFee, int totalPrice,
+                 int discountFromCoupon, Integer usePoint, int finalPrice, MemberCoupon memberCoupon, List<OrderItem> orderItems, PaymentEntity payment) {
         this.id = id;
-        this.address = address;
-        this.usePoint = usePoint;
-        this.totalPrice = totalPrice;
-        this.finalPrice = finalPrice;
-        this.deliveryFee = deliveryFee;
+        this.member = member;
         this.merchantUid = merchantUid;
         this.orderDate = orderDate;
-        this.deliveryRequest = deliveryRequest;
-        this.memberCoupon = memberCoupon;
-        this.discountFromCoupon = discountFromCoupon;
-        this.member = member;
+        this.orderYear = orderYear;
+        this.orderMonth = orderMonth;
+        this.orderDay = orderDay;
         this.orderState = orderState;
+        this.address = address;
+        this.deliveryRequest = deliveryRequest;
+        this.deliveryFee = deliveryFee;
+        this.totalPrice = totalPrice;
+        this.discountFromCoupon = discountFromCoupon;
+        this.usePoint = usePoint;
+        this.finalPrice = finalPrice;
+        this.memberCoupon = memberCoupon;
         this.orderItems = orderItems;
         this.payment = payment;
     }
@@ -103,10 +114,37 @@ public class Order extends BaseTimeEntity {
                 .merchantUid(UUID.randomUUID() + "TEST")
                 .orderState(OrderState.NEW)
                 .orderDate(LocalDateTime.now())
+                .orderYear(LocalDateTime.now().getYear())
+                .orderMonth(LocalDateTime.now().getMonthValue())
+                .orderDay(LocalDateTime.now().getDayOfMonth())
                 .orderItems(new ArrayList<>())
                 .totalPrice(orderItems.stream()
                                 .mapToInt(OrderItem::getTotalPrice)
                                 .sum()
+                )
+                .build();
+        for (OrderItem orderItem : orderItems) {
+            order.addOrderItem(orderItem);
+        }
+        return order;
+    }
+
+
+
+    public static Order createOrderForce(Member member, Address address, List<OrderItem> orderItems, LocalDateTime customDate){
+        Order order = Order.builder()
+                .member(member)
+                .address(address)
+                .merchantUid(UUID.randomUUID() + "TEST")
+                .orderState(OrderState.NEW)
+                .orderDate(customDate)
+                .orderYear(customDate.getYear())
+                .orderMonth(customDate.getMonthValue())
+                .orderDay(customDate.getDayOfMonth())
+                .orderItems(new ArrayList<>())
+                .totalPrice(orderItems.stream()
+                        .mapToInt(OrderItem::getTotalPrice)
+                        .sum()
                 )
                 .build();
         for (OrderItem orderItem : orderItems) {

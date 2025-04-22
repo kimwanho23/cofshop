@@ -12,4 +12,6 @@ public interface MemberCouponRepositoryCustom {
     Optional<MemberCoupon> findValidCouponById(Long couponId, Long memberId, LocalDate today);
 
     List<MemberCoupon> findByCouponExpired(CouponState state, LocalDate date);
+
+
 }

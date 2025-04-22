@@ -1,46 +1,27 @@
 package kwh.cofshop.security.domain;
 
-import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Builder;
+import jakarta.persistence.Id;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
+import org.springframework.data.redis.core.index.Indexed;
 
-import java.time.LocalDateTime;
-
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
 @Getter
-@Entity
-public class RefreshToken {
+@ToString
+public class RefreshToken{
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id", updatable = false)
     private Long id;
 
-    @Column(name = "member_id", nullable = false, unique = true)
-    private Long memberId;
+    @Indexed
+    private String accessToken;
 
-    @Column(name = "refresh_token", nullable = false)
-    private String refresh; // 토큰
+    private String refreshToken;
 
-    @Column(name = "expiration", nullable = false)
-    private LocalDateTime expiration; // 만료 시간
-
-
-    @Builder
-    public RefreshToken(Long memberId, String refresh, LocalDateTime expiration) {
-        this.memberId = memberId;
-        this.refresh = refresh;
-        this.expiration = expiration;
-    }
-
-    public void update(String newRefreshToken, LocalDateTime newExpiration) {
-        this.refresh = newRefreshToken;
-        this.expiration = newExpiration;
-    }
-
-    public boolean isExpired() {
-        return expiration.isBefore(LocalDateTime.now());
+    public RefreshToken(Long id, String accessToken, String refreshToken){
+        this.id = id;
+        this.accessToken = accessToken;
+        this.refreshToken = refreshToken;
     }
 }

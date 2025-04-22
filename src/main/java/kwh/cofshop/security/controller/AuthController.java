@@ -18,8 +18,8 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/reissue")
-    public ResponseEntity<TokenDto> reissue(HttpServletRequest request, HttpServletResponse response) {
-        return authService.reissue(request, response);
+    public ResponseEntity<TokenDto> reissue(HttpServletRequest request) {
+        return authService.reissue(request);
     }
 
 

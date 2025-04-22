@@ -32,22 +32,24 @@ public class MemberCoupon {
     private Coupon coupon;
 
     @Enumerated(EnumType.STRING)
-    private CouponState state;
+    private CouponState state; // 쿠폰 상태
 
     @Column(nullable = false)
     private LocalDate issuedAt; // 발급일자
 
     private LocalDate usedAt; // 사용일자
 
+    private LocalDate expiredAt; // 만료일자
+
     @Builder
-    public MemberCoupon(Long id, Member member, Coupon coupon,
-                        CouponState state, LocalDate issuedAt, LocalDate usedAt) {
+    public MemberCoupon(Long id, Member member, Coupon coupon, CouponState state, LocalDate issuedAt, LocalDate usedAt, LocalDate expiredAt) {
         this.id = id;
         this.member = member;
         this.coupon = coupon;
         this.state = state;
         this.issuedAt = issuedAt;
         this.usedAt = usedAt;
+        this.expiredAt = expiredAt;
     }
 
     public static MemberCoupon createMemberCoupon(Member member, Coupon coupon) {
@@ -57,6 +59,7 @@ public class MemberCoupon {
                 .state(CouponState.AVAILABLE)
                 .issuedAt(LocalDate.now()) // 발급일자
                 .usedAt(null)
+                .expiredAt(coupon.getValidTo()) // 만료일자
                 .build();
     }
 

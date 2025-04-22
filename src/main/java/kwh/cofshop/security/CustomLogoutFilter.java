@@ -5,8 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import kwh.cofshop.security.domain.RefreshToken;
-import kwh.cofshop.security.repository.RefreshTokenRepository;
+import kwh.cofshop.security.service.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -19,7 +18,7 @@ import java.util.Optional;
 public class CustomLogoutFilter extends OncePerRequestFilter {
 
 
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final RefreshTokenService refreshTokenService;
     private final JwtTokenProvider jwtTokenProvider;
 
 
@@ -35,35 +34,44 @@ public class CustomLogoutFilter extends OncePerRequestFilter {
         }
 
         // 2. 쿠키에서 refreshToken 추출
-        String refreshToken = null;
-        Cookie[] cookies = request.getCookies();
-        for (Cookie cookie : cookies) {
-            if (cookie.getName().equals("refreshToken")) {
-                refreshToken = cookie.getValue();
-            }
-        }
+        String refreshToken = extractRefreshToken(request);
 
         if (refreshToken == null || !jwtTokenProvider.validateToken(refreshToken)) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             return;
         }
 
-        // 3. DB에 토큰이 존재하는 지, 만료되었는지
-        Optional<RefreshToken> dbToken = refreshTokenRepository.findByRefresh(refreshToken);
-        if (dbToken.isEmpty() || dbToken.get().isExpired()) {
-            log.error("없어요");
+        // 3. JWT에서 memberId 추출
+        Long memberId = jwtTokenProvider.getMemberId(refreshToken);
+
+        // 4. Redis에 저장된 토큰과 일치하는지 확인
+        if (!refreshTokenService.matches(memberId, refreshToken)) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
 
-        refreshTokenRepository.deleteByRefresh(refreshToken);
+        // 5. Redis에서 RefreshToken 삭제
+        refreshTokenService.delete(memberId);
 
-        Cookie cookie = new Cookie("refreshToken", null);
-        cookie.setMaxAge(0);
-        cookie.setPath("/");
-        response.addCookie(cookie);
+        // 쿠키 삭제
+        Cookie deleteCookie = new Cookie("refreshToken", null);
+        deleteCookie.setMaxAge(0);
+        deleteCookie.setPath("/");
+        response.addCookie(deleteCookie);
         response.setStatus(HttpServletResponse.SC_OK);
     }
 
+
+    private String extractRefreshToken(HttpServletRequest request) {
+        if (request.getCookies() == null)
+            return null;
+
+        for (Cookie cookie : request.getCookies()) {
+            if ("refreshToken".equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
+    }
 }
 

@@ -1,27 +1,17 @@
 package kwh.cofshop.member.service;
 
 import kwh.cofshop.member.event.MemberCreatedEvent;
-import kwh.cofshop.security.domain.RefreshToken;
-import kwh.cofshop.security.dto.TokenDto;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.domain.MemberState;
-import kwh.cofshop.member.dto.request.LoginDto;
 import kwh.cofshop.member.dto.request.MemberRequestDto;
-import kwh.cofshop.member.dto.response.LoginResponseDto;
 import kwh.cofshop.member.dto.response.MemberResponseDto;
 import kwh.cofshop.member.mapper.MemberMapper;
 import kwh.cofshop.member.repository.MemberRepository;
-import kwh.cofshop.security.CustomUserDetails;
-import kwh.cofshop.security.JwtTokenProvider;
-import kwh.cofshop.security.repository.RefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

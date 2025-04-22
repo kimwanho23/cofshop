@@ -18,7 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +27,7 @@ public class MemberCouponService {
     private final CouponRepository couponRepository;
     private final MemberRepository memberRepository;
     private final MemberCouponMapper memberCouponMapper;
+
 
     @Transactional
     public MemberCouponResponseDto createMemberCoupon(Long memberId, Long couponId) {
@@ -43,6 +43,8 @@ public class MemberCouponService {
             throw new BusinessException(BusinessErrorCode.COUPON_NOT_AVAILABLE);
         }
 
+      //  coupon.decreaseCouponCount();
+        couponRepository.decreaseCouponCount(couponId);
         MemberCoupon memberCoupon = MemberCoupon.createMemberCoupon(member, coupon);
 
         try {
@@ -52,6 +54,7 @@ public class MemberCouponService {
             throw new BusinessException(BusinessErrorCode.COUPON_ALREADY_EXIST);
         }
     }
+
 
     // 내 쿠폰 목록
     public List<MemberCouponResponseDto> memberCouponList(Long memberId){
@@ -66,6 +69,12 @@ public class MemberCouponService {
         return memberCouponRepository.findValidCouponById(couponId, memberId, LocalDate.now())
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.COUPON_NOT_AVAILABLE));
     }
+
+    public MemberCouponResponseDto findValidCouponResponse(Long couponId, Long memberId){
+        MemberCoupon validCoupon = findValidCoupon(couponId, memberId);
+        return memberCouponMapper.toResponseDto(validCoupon);
+    }
+
 
     @Transactional
     public void expireMemberCoupons(LocalDate today) {

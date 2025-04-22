@@ -5,6 +5,8 @@ import kwh.cofshop.coupon.policy.CouponDiscountPolicy;
 import kwh.cofshop.coupon.policy.CouponFixedDiscountPolicy;
 import kwh.cofshop.coupon.policy.CouponRateDiscountPolicy;
 import kwh.cofshop.coupon.dto.request.CouponRequestDto;
+import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -39,22 +41,25 @@ public class Coupon {
     @Column(nullable = false)
     private LocalDate couponCreatedAt; // 쿠폰 생성일
 
+    private Integer couponCount; // 남은 수량 (null이면 무제한)
+
     @Column(nullable = false)
     private LocalDate validFrom; // 쿠폰 유효 시작일
 
-    @Column(nullable = false)
-    private LocalDate validTo; // 쿠폰 유효 종료일
+    private LocalDate validTo; // 쿠폰 유효 종료일 (null 가능)
 
     @Builder
-    public Coupon(Long id, String name, int discountValue, Integer maxDiscount, CouponState state,
-                  CouponType type, LocalDate couponCreatedAt, LocalDate validFrom, LocalDate validTo) {
+    public Coupon(Long id, String name, Integer minOrderPrice, int discountValue, Integer maxDiscount,
+                  CouponState state, CouponType type, LocalDate couponCreatedAt, Integer couponCount, LocalDate validFrom, LocalDate validTo) {
         this.id = id;
         this.name = name;
+        this.minOrderPrice = minOrderPrice;
         this.discountValue = discountValue;
         this.maxDiscount = maxDiscount;
         this.state = state;
         this.type = type;
         this.couponCreatedAt = couponCreatedAt;
+        this.couponCount = couponCount;
         this.validFrom = validFrom;
         this.validTo = validTo;
     }
@@ -62,11 +67,13 @@ public class Coupon {
     public static Coupon createCoupon(CouponRequestDto dto) {
         return Coupon.builder()
                 .name(dto.getName())
+                .minOrderPrice(dto.getMinOrderPrice())
                 .discountValue(dto.getDiscountValue())
                 .maxDiscount(dto.getMaxDiscountAmount())
                 .type(dto.getType())
                 .state(CouponState.AVAILABLE)
                 .couponCreatedAt(LocalDate.now())
+                .couponCount(dto.getCouponCount())
                 .validFrom(dto.getValidFrom())
                 .validTo(dto.getValidTo())
                 .build();
@@ -75,6 +82,17 @@ public class Coupon {
     public void updateCouponState(CouponState newState) {
         this.state = newState;
     }
+
+
+    public void decreaseCouponCount() {
+        if (this.couponCount == null)
+            return; // 무한 수량일 시 아무것도 하지 않음.
+        if (this.couponCount <= 0) {
+            throw new BusinessException(BusinessErrorCode.COUPON_RUN_OUT); // 쿠폰 소진
+        }
+        this.couponCount -= 1;
+    }
+
 
 
     public CouponDiscountPolicy getPolicy() {

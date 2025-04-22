@@ -12,5 +12,17 @@ import java.util.Optional;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long>, OrderRepositoryCustom {
+    @Query(value = """
+        SELECT COUNT(*)
+        FROM orders
+        WHERE order_year = :year AND order_month = :month
+    """, nativeQuery = true)
+    Long countByYearAndMonth(@Param("year") int year, @Param("month") int month);
 
+    @Query(value = """
+        SELECT COUNT(*)
+        FROM orders
+        WHERE YEAR(order_date) = :year AND MONTH(order_date) = :month
+    """, nativeQuery = true)
+    Long countByOrderDateYearAndMonth(@Param("year") int year, @Param("month") int month);
 }

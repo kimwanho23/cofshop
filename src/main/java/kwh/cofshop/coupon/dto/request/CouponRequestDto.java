@@ -23,7 +23,9 @@ public class CouponRequestDto {
 
     private Integer maxDiscountAmount; // 최대 할인 금액
 
-    private Integer minOrderPrice;
+    private Integer minOrderPrice; // 최소 금액 (null이면 자유롭게 사용)
+
+    private Integer couponCount;
 
     @NotNull
     private LocalDate validFrom;

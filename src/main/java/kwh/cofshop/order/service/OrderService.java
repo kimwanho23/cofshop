@@ -23,13 +23,17 @@ import kwh.cofshop.order.policy.DeliveryFeePolicy;
 import kwh.cofshop.order.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.aspectj.weaver.ast.Or;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @RequiredArgsConstructor
@@ -56,8 +60,11 @@ public class OrderService {
         // 주문 항목 생성
         List<OrderItem> orderItems = orderItemService.createOrderItems(orderRequestDto.getOrderItemRequestDtoList(), itemOptions);
 
+
+        LocalDateTime randomDate = getLocalDateTime();
         // 주문 생성
-        Order order = Order.createOrder(member, orderRequestDto.getAddress(), orderItems);
+        //Order order = Order.createOrder(member, orderRequestDto.getAddress(), orderItems);
+        Order order = Order.createOrderForce(member, orderRequestDto.getAddress(), orderItems, randomDate);
 
         int totalPrice = order.getTotalPrice(); // 현재의 총 금액
 
@@ -74,10 +81,8 @@ public class OrderService {
         }
         int useAfterCouponValue = totalPrice - couponDiscountValue; // 쿠폰 사용 후 가격
 
-
         //////////포인트 사용
         int usePoint = orderRequestDto.getUsePoint(); // 포인트
-
 
         if (usePoint > 0 && usePoint <= useAfterCouponValue) {
             member.usePoint(usePoint);
@@ -93,6 +98,20 @@ public class OrderService {
 
         // 저장 및 반환
         return orderMapper.toResponseDto(orderRepository.save(order));
+    }
+
+    private LocalDateTime getLocalDateTime() {
+        int year = 2025;
+        int month = ThreadLocalRandom.current().nextInt(1, 13); // 1~12월
+
+        // 해당 월의 마지막 날 계산
+        int lastDay = YearMonth.of(year, month).lengthOfMonth();
+
+        // 1일부터 마지막 날까지 랜덤 일 선택
+        int day = ThreadLocalRandom.current().nextInt(1, lastDay + 1);
+
+        // 정오 고정
+        return LocalDateTime.of(year, month, day, 12, 0);
     }
 
 
@@ -140,5 +159,14 @@ public class OrderService {
         if (order.getOrderState() == OrderState.SHIPPED){ // 배송 완료 시
             order.changeOrderState(OrderState.COMPLETED); // 구매 확정 가능
         }
+    }
+
+    // 테스트용 데이터
+    public Long getMonthlyOrderCount(int year, int month) {
+        return orderRepository.countByYearAndMonth(year, month);
+    }
+
+    public Long getMonthlyOrderCountUseFunc(int year, int month) {
+        return orderRepository.countByOrderDateYearAndMonth(year, month);
     }
 }

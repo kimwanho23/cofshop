@@ -26,6 +26,7 @@ public enum BusinessErrorCode implements ErrorCode {
     COUPON_NOT_FOUND("COUPON-404", HttpStatus.NOT_FOUND, "쿠폰을 찾을 수 없습니다."),
     COUPON_NOT_AVAILABLE("COUPON-NOT-AVAILABLE", HttpStatus.CONFLICT, "쿠폰을 사용할 수 없습니다."),
     COUPON_ALREADY_EXIST("COUPON-ALREADY-EXIST", HttpStatus.CONFLICT, "쿠폰이 이미 존재합니다."),
+    COUPON_RUN_OUT("COUPON-RUN-OUT", HttpStatus.GONE, "쿠폰이 전부 소진되었습니다.."),
 
     // 장바구니
     CART_NOT_FOUND("CART-404", HttpStatus.NOT_FOUND, "장바구니를 찾을 수 없습니다."),

@@ -1,13 +1,20 @@
 package kwh.cofshop.statistics.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.time.LocalDateTime;
 
-public record TopItemDto(
-        Long itemId,
-        String itemName,
-        int totalSold,
-        int totalRevenue,
-        LocalDateTime lastOrderedAt
-) {
-
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class TopItemDto {
+    private Long itemId;
+    private String itemName;
+    private Integer totalSold;
+    private Integer totalRevenue;
+    private LocalDateTime lastOrderDate;
 }

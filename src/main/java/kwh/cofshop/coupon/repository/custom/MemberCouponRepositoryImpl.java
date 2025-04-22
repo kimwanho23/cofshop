@@ -28,16 +28,18 @@ public class MemberCouponRepositoryImpl implements MemberCouponRepositoryCustom{
                         .join(memberCoupon.coupon, coupon).fetchJoin()
                         .join(memberCoupon.member, member)
                         .where(
-                                memberCoupon.id.eq(couponId),
+                                memberCoupon.coupon.id.eq(couponId),
                                 memberCoupon.member.id.eq(memberId),
                                 memberCoupon.state.eq(CouponState.AVAILABLE),
                                 coupon.validFrom.loe(today),
                                 coupon.validTo.goe(today)
                         )
+
                         .fetchOne()
         );
     }
 
+    @Override
     public List<MemberCoupon> findByCouponExpired(CouponState state, LocalDate date) {
         QMemberCoupon memberCoupon = QMemberCoupon.memberCoupon;
         QCoupon coupon = QCoupon.coupon;
@@ -51,5 +53,4 @@ public class MemberCouponRepositoryImpl implements MemberCouponRepositoryCustom{
                 )
                 .fetch();
     }
-
 }

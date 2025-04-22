@@ -21,4 +21,5 @@ public interface ItemOptionRepository extends JpaRepository<ItemOption, Long>, I
     @Query("SELECT io FROM ItemOption io WHERE io.id IN :ids")
     List<ItemOption> findAllByIdInWithLock(@Param("ids") List<Long> ids);
 
+
 }

@@ -24,7 +24,7 @@ class CouponServiceTest {
     @Test
     @DisplayName("쿠폰 생성")
     void createCoupon() {
-        couponService.createCoupon(getCouponRequestDto());
+        couponService.createCoupon(getCouponRequestDtoWithCount());
     }
 
 
@@ -38,6 +38,19 @@ class CouponServiceTest {
         couponRequestDto.setMaxDiscountAmount(5000);
         couponRequestDto.setValidFrom(LocalDate.now());
         couponRequestDto.setValidTo(LocalDate.now().plusDays(150));
+        return couponRequestDto;
+    }
+
+    public CouponRequestDto getCouponRequestDtoWithCount(){
+        CouponRequestDto couponRequestDto = new CouponRequestDto();
+        couponRequestDto.setType(CouponType.RATE);
+        couponRequestDto.setName("쿠폰 1");
+        couponRequestDto.setDiscountValue(15);
+        couponRequestDto.setMinOrderPrice(0);
+        couponRequestDto.setMaxDiscountAmount(5000);
+        couponRequestDto.setValidFrom(LocalDate.now());
+        couponRequestDto.setValidTo(LocalDate.now().plusDays(150));
+        couponRequestDto.setCouponCount(10000);
         return couponRequestDto;
     }
 

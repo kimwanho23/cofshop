@@ -7,14 +7,11 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import kwh.cofshop.global.response.ApiResponse;
-import kwh.cofshop.member.event.Listener.LoginEventListener;
 import kwh.cofshop.member.event.MemberLoginEvent;
-import kwh.cofshop.member.service.MemberLoginHistoryService;
-import kwh.cofshop.security.domain.RefreshToken;
 import kwh.cofshop.security.dto.TokenDto;
 import kwh.cofshop.member.dto.request.LoginDto;
 import kwh.cofshop.member.dto.response.LoginResponseDto;
-import kwh.cofshop.security.repository.RefreshTokenRepository;
+import kwh.cofshop.security.service.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -27,7 +24,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 // Member ID, PASSWORD 전달받아서, 유효 사용자 검증 후 인증 Filter
 @Slf4j
@@ -37,7 +33,7 @@ public class CustomLoginFilter extends UsernamePasswordAuthenticationFilter {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
     private final ObjectMapper objectMapper;
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final RefreshTokenService refreshTokenService;
     private final ApplicationEventPublisher applicationEventPublisher;
 
     @Override
@@ -92,22 +88,7 @@ public class CustomLoginFilter extends UsernamePasswordAuthenticationFilter {
     }
 
     private void addRefreshToken(Long memberId, String token) {
-        LocalDateTime expiration = LocalDateTime.now().plusDays(7);
-
-        Optional<RefreshToken> optionalToken = refreshTokenRepository.findByMemberId(memberId);
-
-        if (optionalToken.isPresent()) {
-            RefreshToken existingToken = optionalToken.get();
-            existingToken.update(token, expiration);
-        } else {
-            // 존재하지 않으면 새로 생성해서 저장
-            RefreshToken newToken = RefreshToken.builder()
-                    .memberId(memberId)
-                    .refresh(token)
-                    .expiration(expiration)
-                    .build();
-            refreshTokenRepository.save(newToken);
-        }
+        refreshTokenService.save(memberId, token);
     }
 
     private Cookie createCookie(String key, String value) {

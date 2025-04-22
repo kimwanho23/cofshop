@@ -53,7 +53,7 @@ public class Item extends BaseEntity {
     @JoinColumn(name = "seller_id", nullable = false)
     private Member seller;  // 판매자 정보(이메일)
 
-    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<ItemOption> itemOptions = new ArrayList<>(); // 옵션 리스트
 
     @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
