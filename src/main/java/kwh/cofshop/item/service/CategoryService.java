@@ -82,33 +82,26 @@ public class CategoryService {
 
     // 모든 카테고리 조회
     public List<CategoryResponseDto> getAllCategory() {
-        List<Category> allCategory = categoryRepository.findAll();
+        List<Category> allCategory = categoryRepository.findAll(); // 전체 카테고리를 조회함
 
-        Map<Long, CategoryResponseDto> categoryMap = new HashMap<>();
-        List<CategoryResponseDto> allCategoryResponseDto = new ArrayList<>(); // 담기 위한 DTO
+        Map<Long, CategoryResponseDto> categoryMap = new LinkedHashMap<>(); // HashMap -> LinkedHashMap (순서 보장)
 
         for (Category category : allCategory) {
-            CategoryResponseDto dto = new CategoryResponseDto();
-            dto.setId(category.getId());
-            dto.setParentCategoryId(category.getParent() != null ? category.getParent().getId() : null);
-            dto.setName(category.getName());
-            dto.setDepth(category.getDepth());
-            dto.setChildren(new ArrayList<>());
+            CategoryResponseDto dto = CategoryResponseDto.from(category);
             categoryMap.put(dto.getId(), dto);
         }
 
+        List<CategoryResponseDto> allCategoryResponseDto = new ArrayList<>(); // 담기 위한 DTO
         for (CategoryResponseDto dto : categoryMap.values()) {
             if (dto.getParentCategoryId() == null) {
                 allCategoryResponseDto.add(dto);
             } else {
-                CategoryResponseDto parent = categoryMap.get(dto.getParentCategoryId());
-                if (parent != null) {
-                    parent.getChildren().add(dto);
-                }
+                categoryMap.get(dto.getParentCategoryId()).getChildren().add(dto);
             }
         }
-        return allCategoryResponseDto;
+        return allCategoryResponseDto; // DTO 리턴
     }
+
 
     @Transactional
     public void deleteCategory(Long categoryId) {
