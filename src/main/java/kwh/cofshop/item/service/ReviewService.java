@@ -15,12 +15,15 @@ import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+
+import static kwh.cofshop.global.exception.errorcodes.BusinessErrorCode.REVIEW_ALREADY_EXISTS;
 
 @Service
 @RequiredArgsConstructor
@@ -35,12 +38,10 @@ public class ReviewService {
     // 리뷰 생성
     @Transactional
     public ReviewResponseDto save(Long itemId, ReviewRequestDto requestDto, Long memberId) {
-        Member member = memberRepository.findById(memberId).orElseThrow();
-        Item item = itemRepository.findById(itemId).orElseThrow();
-
-        if (reviewRepository.existsByItemIdAndMemberId(itemId, memberId)) {
-            throw new BusinessException(BusinessErrorCode.REVIEW_ALREADY_EXISTS); // 해당 회원의 리뷰 존재
-        }
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
+        Item item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
 
         Review review = Review.createReview(
                 requestDto.getRating(),
@@ -49,41 +50,42 @@ public class ReviewService {
                 item
         );
 
-        reviewRepository.save(review);
-        updateItemReviewStats(item.getId());
+        try {
+            reviewRepository.save(review);
+            item.addReviewRating(requestDto.getRating());
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException(REVIEW_ALREADY_EXISTS);
+        }
         return reviewMapper.toResponseDto(review);
     }
+
 
     // 리뷰 수정
     @Transactional
     public ReviewResponseDto updateReview(Long reviewId, ReviewRequestDto reviewRequestDto, Long memberId) {
         // 1. 리뷰 조회
         Review review = reviewRepository.findById(reviewId)
-                .orElseThrow(() -> new IllegalArgumentException("Review not found"));
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.REVIEW_NOT_FOUND));
 
         // 2. 작성자 확인
         if (!review.getMember().getId().equals(memberId)) {
             throw new UnauthorizedRequestException(UnauthorizedErrorCode.MEMBER_UNAUTHORIZED);
         }
+
+        Long oldRating = review.getRating(); // 현재 평점
+        Long newRating = reviewRequestDto.getRating(); // 수정할 평점
+
         // 3. 리뷰 내용 업데이트
         review.updateContent(reviewRequestDto.getContent());
         review.updateRating(reviewRequestDto.getRating());
 
-        updateItemReviewStats(review.getItem().getId());
+        Item item = review.getItem();
+        item.updateReviewRating(oldRating, newRating);
 
         // 4. 업데이트된 리뷰를 반환
         return reviewMapper.toResponseDto(review);
     }
 
-    // Item 평균 평점 및 리뷰 개수 업데이트
-    private void updateItemReviewStats(Long itemId) {
-        Item item = itemRepository.findById(itemId)
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
-        Double averageRating = reviewRepository.findAverageRatingByItemId(itemId);
-        long reviewCount = reviewRepository.countByItemId(itemId);
-
-        item.updateReviewStats(averageRating, reviewCount);
-    }
 
     // 리뷰 삭제
     @Transactional
@@ -95,12 +97,14 @@ public class ReviewService {
             throw new BusinessException(UnauthorizedErrorCode.MEMBER_UNAUTHORIZED);
         }
 
+        Long rating = review.getRating();
         reviewRepository.delete(review);
-        updateItemReviewStats(review.getItem().getId());
+        Item item = review.getItem();
+        item.deleteReviewRating(rating);
     }
 
 
-    // Item의 리뷰 조회
+    // Item의 리뷰 조회(페이징)
     @Transactional(readOnly = true)
     public Page<ReviewResponseDto> getReviewsByItem(Long itemId, Pageable pageable) {
         Page<Review> reviews = reviewRepository.findByItemId(itemId, pageable);
@@ -114,6 +118,17 @@ public class ReviewService {
         List<Review> reviews = reviewRepository.getReviewsByItemId(itemId);
 
         return reviews.stream().map(reviewMapper::toResponseDto).toList();
+    }
+
+
+    // Item 평균 평점 및 리뷰 개수 업데이트
+    private void updateItemReviewStats(Long itemId) {
+        Item item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
+        Double averageRating = reviewRepository.findAverageRatingByItemId(itemId);
+        long reviewCount = reviewRepository.countByItemId(itemId);
+
+        item.updateReviewStats(averageRating, reviewCount);
     }
 
 }

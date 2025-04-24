@@ -82,11 +82,34 @@ public class Item extends BaseEntity {
         this.reviewCount = 0L;
     }
 
-    // 평균 평점과 리뷰 개수 업데이트 메서드
+    // 평균 평점과 리뷰 개수 업데이트 메서드 (스케줄링 과정에서 정합성 유지)
     public void updateReviewStats(double averageRating, long reviewCount) {
         this.averageRating = averageRating;
         this.reviewCount = reviewCount;
     }
+
+    // 리뷰 등록 시 평점 변화
+    public void addReviewRating(Long rating) {
+        this.averageRating = (this.averageRating * this.reviewCount + rating) / (this.reviewCount + 1);
+        this.reviewCount++;
+    }
+
+    // 리뷰 수정 시 평점 변화
+    public void updateReviewRating(Long oldRating, Long newRating) {
+        this.averageRating = (this.averageRating * this.reviewCount - oldRating + newRating) / this.reviewCount;
+    }
+
+    // 리뷰 삭제 시 평점 변화
+    public void deleteReviewRating(Long rating) {
+        if (this.reviewCount <= 1) {
+            this.averageRating = 0.0;
+            this.reviewCount = 0L;
+        } else {
+            this.averageRating = (this.averageRating * this.reviewCount - rating) / (this.reviewCount - 1);
+            this.reviewCount--;
+        }
+    }
+
 
     public void updateItem(ItemUpdateRequestDto dto) {
         this.itemName = dto.getItemName();

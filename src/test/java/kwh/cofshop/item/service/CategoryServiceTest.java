@@ -103,11 +103,14 @@ class CategoryServiceTest extends TestSettingUtils {
     void getAllCategory() throws Exception {
         List<CategoryResponseDto> childCategories = categoryService.getCategoryChild(13L);
 
-        List<CategoryResponseDto> allCategoryTest = categoryService.getAllCategoryTest();
-        List<CategoryResponseDto> allCategory = categoryService.getAllCategory();
+        for (int i = 0; i < 5; i++) {
+            List<CategoryResponseDto> allCategoryTest = categoryService.getAllCategoryTest();
+            List<CategoryResponseDto> allCategory = categoryService.getAllCategory();
+        }
 
-        log.info(objectMapper.writeValueAsString(allCategoryTest));
-        log.info(objectMapper.writeValueAsString(allCategory));
+
+/*        log.info(objectMapper.writeValueAsString(allCategoryTest));
+        log.info(objectMapper.writeValueAsString(allCategory));*/
     }
 
 }

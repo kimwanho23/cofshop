@@ -18,6 +18,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long>, ReviewRep
     Double findAverageRatingByItemId(@Param("itemId") Long itemId);
 
     // 숫자 조회
-    long countByItemId(Long itemId);
+    Long countByItemId(Long itemId);
+
+    boolean existsByItemIdAndMemberId(Long itemId, Long memberId);
 
 }

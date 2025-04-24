@@ -57,20 +57,6 @@ public class ReviewRepositoryCustomImpl implements ReviewRepositoryCustom{
     }
 
     @Override
-    public boolean existsByItemIdAndMemberId(Long itemId, Long memberId) {
-        QReview review = QReview.review;
-        Integer fetchOne = queryFactory.selectOne()
-                .from(review)
-                .where(
-                        review.item.id.eq(itemId),
-                        review.member.id.eq(memberId)
-                )
-                .fetchFirst();
-
-        return fetchOne != null;
-    }
-
-    @Override
     public Double findAverageRatingByItemId(Long itemId) {
         QReview review = QReview.review;
 

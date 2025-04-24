@@ -19,8 +19,6 @@ public interface ReviewRepositoryCustom {
     // 특정 사용자의 해당 아이템의 리뷰 조회
     Review findByItemAndMember(Long itemId, Long memberId);
 
-    boolean existsByItemIdAndMemberId(Long itemId, Long memberId);
-
 
     // 아이템의 평균 평점 조회
     Double findAverageRatingByItemId(Long itemId);

@@ -1,12 +1,10 @@
 package kwh.cofshop.order.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import jakarta.persistence.Column;
 import kwh.cofshop.TestSettingUtils;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemOption;
 import kwh.cofshop.item.repository.ItemOptionRepository;
-import kwh.cofshop.item.repository.ItemRepository;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.order.domain.Address;
 import kwh.cofshop.order.domain.Order;

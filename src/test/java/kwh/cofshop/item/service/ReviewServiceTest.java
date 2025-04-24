@@ -2,6 +2,7 @@ package kwh.cofshop.item.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kwh.cofshop.TestSettingUtils;
+import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.Review;
 import kwh.cofshop.item.dto.request.ReviewRequestDto;
@@ -11,6 +12,7 @@ import kwh.cofshop.item.repository.ReviewRepository;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.repository.MemberRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,16 +59,33 @@ class ReviewServiceTest extends TestSettingUtils {
         ReviewResponseDto responseDto = reviewService.save( item.getId(), reviewRequestDto, member.getId()); // 리뷰 저장
         String reviewJson = objectMapper.writeValueAsString(responseDto);
         log.info("review Json : {}", reviewJson);
-
     }
+
+    @Test
+    @DisplayName("리뷰 중복 작성 시 BusinessException 발생")
+    @Transactional
+    void createDuplicateReview() throws Exception {
+        // Given
+        Item item = createTestItem();
+        Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
+        ReviewRequestDto reviewRequestDto = getReviewRequestDto(item, (long) (Math.random() * 5) + 1);
+
+        // 첫 번째 리뷰 저장
+        reviewService.save(item.getId(), reviewRequestDto, member.getId());
+
+        // 리뷰 중복 저장 시도
+        Assertions.assertThrows(BusinessException.class,
+                ()-> reviewService.save(item.getId(), reviewRequestDto, member.getId()));
+    }
+
+
 
     @Test
     @DisplayName("다수 리뷰 작성 테스트")
     @Transactional
-    @Commit
     void createReviewRand() throws Exception {
 
-        for (int i = 5; i < 20; i++) {
+        for (int i = 0; i < 10; i++) {
             Item item = itemRepository.findById(2L).orElseThrow();
             Member member = memberRepository.findByEmail("randomMember" + i + "@gmail.com").orElseThrow();
             ReviewRequestDto reviewRequestDto = getReviewRequestDto(item, (long) (Math.random() * 5) + 1);
