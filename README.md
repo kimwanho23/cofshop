@@ -180,7 +180,7 @@ API 통신은 Postman이나 MockMvc 객체를 활용하여 실제 URL 요청 시
 
 ## API 명세 (주요 기능)
 
-👉 [HTML 파일 보러 가기](https://kimwanho23.github.io/cofshop)
+👉 [SWAGGER HTML](https://kimwanho23.github.io/cofshop)
 <details>
 <summary><strong>API 표 보기</strong></summary>
 
