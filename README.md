@@ -1,19 +1,13 @@
 # Rest API 기반 쇼핑몰 프로젝트입니다.
-테스트 코드를 기반으로 로직을 검증하며, 
-PostMan을 통해서 실제 URL에서 어떤 JSON 값을 리턴하는 지 테스트했습니다.
 
-## 기술 스택
-Language | Java 17
+Spring Boot를 기반으로 한 쇼핑몰 백엔드 서버를 구축하였으며, 모든 비즈니스 로직은 테스트 코드로 검증합니다.
 
-Framework | Spring Boot 3 / Spring Data JPA / Spring Security
+API 통신은 Postman이나 MockMvc 객체를 활용하여 실제 URL 요청 시 반환되는 JSON 응답을 테스트하고 확인했습니다.
 
-Database |  MYSQL / QueryDSL
+회원가입, 로그인, 상품 등록/수정, 장바구니, 주문, 리뷰 등 핵심 기능을 Restful API 형태로 제공합니다.  
 
-Test | JUnit / Postman
+또한 공통 응답 포맷, 예외 처리, 동적 검색(QueryDSL) 등의 비기능 요구사항도 충실히 반영하였습니다.
 
-Build / Gradle
-
-Docs / Swagger
 
 ## 기능 목록
 <details>
@@ -182,4 +176,145 @@ Docs / Swagger
 ## EER 다이어그램
 ![eer](https://github.com/user-attachments/assets/607f5d11-6356-44b3-8f71-1c52d53bead7)
 
-## [API 명세서](https://kimwanho23.github.io/cofshop)
+
+
+## API 명세 (주요 기능)
+
+👉 [HTML 파일 보러 가기](https://kimwanho23.github.io/cofshop)
+<details>
+<summary><strong>API 표 보기</strong></summary>
+
+**상품 (ItemController)**
+
+| 기능 | Method | URL |
+| --- | --- | --- |
+| 많이 팔린 상품 조회 | GET | /api/item/populars |
+| 상품 단건 조회 | GET | /api/item/{itemId} |
+| 상품 등록 | POST | /api/item |
+| 상품 검색 | POST | /api/item/search |
+| 상품 수정 | PUT | /api/item/{itemId} |
+| 상품 삭제 | DELETE | /api/item/{itemId} |
+
+**주문 (OrderController)**
+
+| 기능 | Method | URL |
+| --- | --- | --- |
+| 주문 상품 정보 조회 | GET | /api/orders/{orderId} |
+| 내 주문 목록 조회 | GET | /api/orders/me |
+| 전체 주문 목록 조회 | GET | /api/orders |
+| 주문 생성 | POST | /api/orders |
+| 주문 취소 | PATCH | /api/orders/{orderId}/cancel |
+| 상품 구매 확정 | PATCH | /api/orders/{orderId}/confirm |
+
+**회원 (MemberController)**
+
+| 기능 | Method | URL |
+| --- | --- | --- |
+| 회원 정보 조회 | GET | /api/members/{memberId} |
+| 전체 회원 목록 조회 | GET | /api/members |
+| 회원 가입 | POST | /api/members/signup |
+| 포인트 변경 | PATCH | /api/members/{memberId}/point |
+| 회원 상태 변경 | PATCH | /api/members/{memberId}/state |
+| 회원 탈퇴 | PATCH | /api/members/me/state |
+| 비밀번호 변경 | PATCH | /api/members/me/password |
+
+**장바구니 (CartController)**
+
+| 기능 | Method | URL |
+| --- | --- | --- |
+| 장바구니 존재 여부 확인 | GET | /api/carts/me/exist |
+| 장바구니 생성 | POST | /api/carts/me |
+| 장바구니 삭제 | DELETE | /api/carts/me |
+
+**장바구니 상품 (CartItemController)**
+
+| 기능 | Method | URL |
+| --- | --- | --- |
+| 장바구니 목록 조회 | GET | /api/carts/me |
+| 장바구니 총 금액 계산 | GET | /api/cart-items/me/total-price |
+| 장바구니 상품 추가 | POST | /api/carts/me/items |
+| 다수 상품 추가 | POST | /api/cart-items/me/items/list |
+| 장바구니 상품 수량 변경 | PATCH | /api/cart-items/me/quantity |
+| 장바구니 개별 상품 삭제 | DELETE | /api/carts/me/items/{itemOptionId} |
+| 장바구니 전체 상품 삭제 | DELETE | /api/carts/me/items |
+
+**보안 (AuthController)**
+
+| 기능 | Method | URL |
+| --- | --- | --- |
+| Refresh Token 재발급 | POST | /api/auth/reissue |
+
+**리뷰 (ReviewController)**
+
+| 기능 | Method | URL |
+| --- | --- | --- |
+| 상품 리뷰 목록 조회 | GET | /api/reviews/items/{itemId} |
+| 리뷰 등록 | POST | /api/reviews/items/{itemId} | <!-- reivews → reviews 오타 수정 -->
+| 리뷰 수정 | PUT | /api/reviews/{reviewId} |
+| 리뷰 삭제 | DELETE | /api/reviews/{reviewId} |
+
+**쿠폰 (CouponController)**
+
+| 기능 | Method | URL |
+| --- | --- | --- |
+| 전체 쿠폰 조회 | GET | /api/coupon |
+| 쿠폰 단건 조회 | GET | /api/coupon/{couponId} |
+| 쿠폰 생성 | POST | /api/coupon |
+| 쿠폰 만료 처리 (스케줄러 관리) | PATCH | /api/coupon/expire |
+| 쿠폰 상태 변경 | PATCH | /api/coupon/{couponId}/state |
+| 쿠폰 취소 | PATCH | /api/coupon/{couponId}/cancel |
+
+**회원 쿠폰 (MemberCouponController)**
+
+| 기능 | Method | URL |
+| --- | --- | --- |
+| 내 쿠폰 목록 조회 | GET | /api/memberCoupon/me |
+| 쿠폰 발급 | POST | /api/memberCoupon/me/{couponId} |
+| 회원 쿠폰 만료 처리 (스케줄러 관리) | PATCH | /api/memberCoupon/expire |
+
+**카테고리 (CategoryController)**
+
+| 기능 | Method | URL |
+| --- | --- | --- |
+| 자식 카테고리 목록 조회 | GET | /api/categories/{categoryId}/children |
+| 카테고리 경로 조회 | GET | /api/categories/{categoryId}/path |
+| 전체 카테고리 목록 조회 | GET | /api/categories |
+| 카테고리 등록 | POST | /api/categories |
+| 카테고리 삭제 | DELETE | /api/categories/{id} |
+
+**채팅방 (ChatRoomController) - 고객센터 1:1 채팅 서비스**
+
+| 기능 | Method | URL |
+| --- | --- | --- |
+| 채팅방 생성 | POST | /api/chat-rooms |
+| 상담사 채팅방 배정 | PATCH | /api/chat-rooms/{roomId}/join |
+| 채팅방 종료 | PATCH | /api/chat-rooms/{roomId}/close |
+
+**채팅 메시지 (ChatMessageController)**
+
+| 기능 | Method | URL |
+| --- | --- | --- |
+| 채팅 메시지 목록 조회 | GET | /api/chat-messages/{roomId}/messages |
+
+**통계 (StatisticsController)**
+
+| 기능 | Method | URL |
+| --- | --- | --- |
+| 기간별 판매량 조회 | GET | /api/statistics/sales-between |
+| 최근 7일 인기 상품 조회 | GET | /api/statistics/last-7days |
+| 하루 판매량 조회 | GET | /api/statistics/daily-sales |
+
+</details>
+
+## 기술 스택
+Language | Java 17
+
+Framework | Spring Boot 3 / Spring Data JPA / Spring Security
+
+Database |  MYSQL / QueryDSL
+
+Test | JUnit / Postman
+
+Build / Gradle
+
+Docs / Swagger
