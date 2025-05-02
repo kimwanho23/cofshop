@@ -66,7 +66,6 @@ public class CouponService {
     // 쿠폰 만료
     @Transactional
     public void expireCoupons(LocalDate now) {
-        List<Coupon> expiredCoupons = couponRepository.findByValidToBeforeAndState(now, CouponState.AVAILABLE);
-        expiredCoupons.forEach(coupon -> coupon.updateCouponState(CouponState.EXPIRED));
+        couponRepository.bulkExpireCoupons(now, CouponState.EXPIRED.name()); // 만료 처리
     }
 }

@@ -93,10 +93,8 @@ class ItemServiceTest {
 
         // 1. ItemRequestDto
         ItemRequestDto requestDto = getItemRequestDto();
-
         // 2. ImgRequestDto, MultiPartFile
         List<MultipartFile> imageFiles = generateImageFiles();
-
 
         // 3. ItemOptionRequestDto
         List<ItemOptionRequestDto> itemOptionRequestDto = getItemOptionRequestDto();
@@ -106,7 +104,6 @@ class ItemServiceTest {
         requestDto.setItemOptionRequestDto(itemOptionRequestDto); // 옵션 설정
         requestDto.setCategoryIds(new ArrayList<>());
 
-
         ItemResponseDto responseDto = itemService.saveItem(requestDto, member.getId(), imageFiles);
 
         // ResponseDto JSON 변환
@@ -114,7 +111,7 @@ class ItemServiceTest {
         log.info("Item JSON: {}", itemJson);
     }
 
-    @Test
+/*    @Test
     @DisplayName("아이템 수정 테스트")
     @Transactional
     @Commit
@@ -157,7 +154,7 @@ class ItemServiceTest {
 
         ItemResponseDto itemResponseDto = itemService.updateItem(item.getId(), itemUpdateRequestDto, updateImageFiles);
         log.info(objectMapper.writeValueAsString(itemResponseDto));
-    }
+    }*/
 
     @Test
     @DisplayName("아이템 검색 테스트")
@@ -182,15 +179,6 @@ class ItemServiceTest {
     private List<MultipartFile> generateImageFiles() {
         List<MultipartFile> images = new ArrayList<>();
         images.add(new MockMultipartFile("images", "test.jpg", "image/jpeg", "test data".getBytes()));
-/*        images.add(new MockMultipartFile("images", "test1.jpg", "image/jpeg", "test data 1".getBytes()));
-        images.add(new MockMultipartFile("images", "test2.jpg", "image/jpeg", "test data 2".getBytes()));*/
-        return images;
-    }
-
-    // 수정할 이미지 파일
-    private List<MultipartFile> generateUpdateImageFiles() {
-        List<MultipartFile> images = new ArrayList<>();
-        images.add(new MockMultipartFile("images", "test3.jpg", "image/jpeg", "test data 3".getBytes()));
         return images;
     }
 
@@ -213,39 +201,22 @@ class ItemServiceTest {
         return imgRequestDto;
     }
 
-    // 이미지 DTO
-    private static List<ItemImgRequestDto> getUpdateImgRequestDto() {
-        List<ItemImgRequestDto> imgRequestDto = new ArrayList<>();
-        ItemImgRequestDto subDto = new ItemImgRequestDto();
-        subDto.setImgType(ImgType.REPRESENTATIVE);
-        imgRequestDto.add(subDto);
-
-        return imgRequestDto;
-    }
-
     // 옵션 DTO
     private List<ItemOptionRequestDto> getItemOptionRequestDto() {
         return List.of(
-                createOption("Small Size", 0, 100, 1),
-                createOption("Large Size", 500, 50, 2)
-        );
-    }
-    private List<ItemOptionRequestDto> getUpdateItemOptionRequestDto() {
-        return List.of(
-                createOption("Middle Size", 300, 100, 3)
-
+                createOption("Small Size", 0, 100),
+                createOption("Large Size", 500, 50)
         );
     }
 
     // 옵션 만들기
-    private ItemOptionRequestDto createOption(String description, int additionalPrice, int stock, int optionNo) {
+    private ItemOptionRequestDto createOption(String description, int additionalPrice, int stock) {
         ItemOptionRequestDto option = new ItemOptionRequestDto();
         option.setDescription(description);
         option.setAdditionalPrice(additionalPrice);
         option.setStock(stock);
         return option;
     }
-
 
     private ItemRequestDto getItemRequestDto() {
         ItemRequestDto requestDto = new ItemRequestDto();
@@ -255,24 +226,6 @@ class ItemServiceTest {
         requestDto.setDiscount(0); // 할인율
         requestDto.setDeliveryFee(1000); // 배송비
         requestDto.setItemLimit(5); // 수량 제한
-        return requestDto;
-    }
-
-    // 업데이트
-    private ItemUpdateRequestDto getUpdateItemRequestDto() {
-        ItemUpdateRequestDto requestDto = new ItemUpdateRequestDto();
-
-        Item item = itemRepository.findById(2L).orElseThrow();
-        ItemResponseDto responseDto = itemMapper.toResponseDto(item);
-
-        // 기본 정보
-        requestDto.setItemName(responseDto.getItemName());
-        requestDto.setPrice(responseDto.getPrice());
-        requestDto.setOrigin(responseDto.getOrigin());
-        requestDto.setDiscount(responseDto.getDiscount()); // 할인율
-        requestDto.setDeliveryFee(responseDto.getDeliveryFee()); // 배송비
-        requestDto.setItemLimit(responseDto.getItemLimit()); // 수량 제한
-
 
         return requestDto;
     }

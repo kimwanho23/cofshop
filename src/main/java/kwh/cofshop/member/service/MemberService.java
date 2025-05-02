@@ -38,7 +38,7 @@ public class MemberService {
 
         memberDto.setMemberPwd(passwordEncoder.encode(memberDto.getMemberPwd()));
 
-        Member member = memberRepository.save(memberMapper.toEntity(memberDto));// DTO 엔티티로 변환해서 저장
+        Member member = memberRepository.save(memberMapper.toEntity(memberDto));
         eventPublisher.publishEvent(new MemberCreatedEvent(member.getId()));
         return memberMapper.toResponseDto(member);
     }

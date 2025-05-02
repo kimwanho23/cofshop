@@ -4,12 +4,14 @@ import jakarta.persistence.*;
 import kwh.cofshop.cart.domain.Cart;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.Review;
+import kwh.cofshop.member.dto.request.MemberRequestDto;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -79,10 +81,6 @@ public class Member {
         this.cart = new Cart(this);
     }
 
-    public Cart createCart() {
-        return new Cart(this);  // Cart 생성 시 연관관계 설정
-    }
-
     @PrePersist
     public void prePersist() {
         this.createdAt = LocalDateTime.now();  // 가입일자
@@ -90,6 +88,10 @@ public class Member {
         this.memberState = this.memberState == null ? MemberState.ACTIVE : this.memberState;
         this.role = this.role == null ? Role.MEMBER : this.role;
         this.point = this.point == null ? 0 : this.point;
+    }
+
+    public Cart createCart() {
+        return new Cart(this);  // Cart 생성 시 연관관계 설정
     }
 
     public void changePassword(String newPassword) {

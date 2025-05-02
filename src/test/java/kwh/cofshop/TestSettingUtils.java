@@ -2,6 +2,9 @@ package kwh.cofshop;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kwh.cofshop.cart.dto.request.CartItemRequestDto;
+import kwh.cofshop.coupon.domain.Coupon;
+import kwh.cofshop.coupon.domain.CouponState;
+import kwh.cofshop.coupon.repository.CouponRepository;
 import kwh.cofshop.item.domain.ImgType;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.dto.request.ItemImgRequestDto;
@@ -11,9 +14,12 @@ import kwh.cofshop.item.dto.response.ItemResponseDto;
 import kwh.cofshop.item.repository.ItemRepository;
 import kwh.cofshop.item.service.ItemService;
 import kwh.cofshop.member.domain.Member;
+import kwh.cofshop.member.domain.MemberState;
+import kwh.cofshop.member.domain.Role;
 import kwh.cofshop.member.repository.MemberRepository;
 import kwh.cofshop.security.CustomUserDetails;
 import kwh.cofshop.security.JwtTokenProvider;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -25,6 +31,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -32,6 +39,7 @@ import java.util.List;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@Slf4j
 public abstract class TestSettingUtils {
 
     @Autowired
@@ -42,6 +50,9 @@ public abstract class TestSettingUtils {
 
     @Autowired
     protected MemberRepository memberRepository;
+
+    @Autowired
+    protected CouponRepository couponRepository;
 
     @Autowired
     protected JwtTokenProvider jwtTokenProvider;
@@ -91,12 +102,27 @@ public abstract class TestSettingUtils {
 
     protected Member createMember() {
         Member customer = Member.builder()
-                .email("testEmail@test.com")
+                .email("testEmail123@test.com")
                 .memberName("테스트용")
                 .memberPwd("password1234")
                 .tel("010-1234-5678")
                 .build();
         return memberRepository.save(customer);
+    }
+
+    protected Coupon makeCoupon(){
+        Coupon coupon = Coupon.builder()
+                .name("할인 쿠폰")
+                .couponCount(null)
+                .couponCreatedAt(LocalDate.now())
+                .discountValue(15)
+                .maxDiscount(0)
+                .minOrderPrice(null)
+                .state(CouponState.AVAILABLE)
+                .validFrom(LocalDate.now())
+                .validTo(LocalDate.now().plusDays(100))
+                .build();
+        return couponRepository.save(coupon);
     }
 
 

@@ -22,11 +22,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.test.annotation.Commit;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
@@ -36,8 +34,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 
-
-@SpringBootTest
 @Slf4j
 class OrderServiceTest extends TestSettingUtils {
 
@@ -71,13 +67,9 @@ class OrderServiceTest extends TestSettingUtils {
     @Test
     @DisplayName("주문 생성")
     @Transactional
-    @Commit
     void createOrder() throws Exception {
-
-        Long random = ThreadLocalRandom.current().nextLong(40, 330); // 1 이상, 4 미만
-
-        Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
-        Item item = itemRepository.findById(random).orElseThrow();
+        Member member = createMember();
+        Item item = createTestItem();
 
         OrderResponseDto order = orderService.createInstanceOrder(member.getId(),
                 getOrderRequestDto(item));
@@ -89,7 +81,7 @@ class OrderServiceTest extends TestSettingUtils {
     @DisplayName("주문 상태 변경")
     @Transactional
     void changeOrderState() throws Exception {
-        Order order = orderRepository.findById(61L).orElseThrow();
+        Order order = orderRepository.findById(8188L).orElseThrow();
         order.changeOrderState(OrderState.SHIPPED);
         OrderResponseDto responseDto = orderMapper.toResponseDto(order);
         log.info(objectMapper.writeValueAsString(responseDto));
@@ -99,30 +91,11 @@ class OrderServiceTest extends TestSettingUtils {
     @DisplayName("주문 취소")
     @Transactional
     void OrderCancel() throws JsonProcessingException {
-        long startTime = System.nanoTime(); //  실행 시작 시간 기록
-
         OrderCancelRequestDto orderCancelRequestDto = new OrderCancelRequestDto();
         orderCancelRequestDto.setCancelReason("단순 변심");
-        orderCancelRequestDto.setOrderId(61L);
+        orderCancelRequestDto.setOrderId(8188L);
         OrderCancelResponseDto orderCancelResponseDto = orderService.cancelOrder(orderCancelRequestDto);
-
-        long endTime = System.nanoTime(); //  실행 종료 시간 기록
-        log.info("주문 취소 실행 시간: {} ms", (endTime - startTime) / 1_000_000); // 실행 시간 로깅
-
         log.info(objectMapper.writeValueAsString(orderCancelResponseDto));
-
-    }
-
-    @Test
-    @DisplayName("4월 주문 불러오기")
-    @Transactional
-    void testOrder4month() throws JsonProcessingException {
-
-        for (int i = 0; i < 10; i++) {
-            Long monthlyOrderCountUseFunc2 = orderService.getMonthlyOrderCountUseFunc(2024, 4);
-            Long monthlyOrderCount2 = orderService.getMonthlyOrderCount(2024, 4);
-        }
-
 
     }
 
@@ -200,33 +173,6 @@ class OrderServiceTest extends TestSettingUtils {
         // Exception occurred: could not execute statement [Deadlock found when trying to get lock; try restarting transaction] 트랜잭션 데드락 발생
         // ItemOption 조회 시 비관적 락을 적용하여 해결
     }
-    @DisplayName("주문 동시성 테스트2")
-    @Test
-    void testConcurrentCreation() throws InterruptedException {
-        int total = 5000;
-        int batchSize = 100;
-        Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
-        Long random = ThreadLocalRandom.current().nextLong(40, 330); // 1 이상, 4 미만
-        Item item = itemRepository.findById(random).orElseThrow();
-
-        for (int i = 0; i < total / batchSize; i++) {
-            testConcurrentOrderBatch(member, item, batchSize);
-        }
-
-    }
-    void testConcurrentOrderBatch(Member member, Item item, int count) throws InterruptedException {
-        CountDownLatch latch = new CountDownLatch(count);
-        for (int i = 0; i < count; i++) {
-            executorService.execute(() -> {
-                try {
-                    orderService.createInstanceOrder(member.getId(), getOrderRequestDto(item));
-                } finally {
-                    latch.countDown();
-                }
-            });
-        }
-        latch.await();
-    }
 
 
     private OrderRequestDto getOrderRequestDto(Item item){
@@ -235,7 +181,6 @@ class OrderServiceTest extends TestSettingUtils {
         orderRequestDto.setDeliveryRequest("배송 요청사항");
         orderRequestDto.setOrderItemRequestDtoList(getOrderItemRequestDto(item));
         orderRequestDto.setUsePoint(0);
-      //  orderRequestDto.setMemberCouponId(1L);
         orderRequestDto.setDeliveryRequest("문 앞에 놓아주세요");
         return orderRequestDto;
     }
@@ -257,20 +202,6 @@ class OrderServiceTest extends TestSettingUtils {
         orderItem1.setOptionId(item.getItemOptions().get(random2).getId());
         dtoList.add(orderItem1);
 
-
-/*        List<OrderItemRequestDto> dtoList = new ArrayList<>();
-        OrderItemRequestDto orderItem1 = new OrderItemRequestDto();
-        orderItem1.setItem(item.getId());
-        orderItem1.setQuantity(2);
-        orderItem1.setOptionId(3L);
-
-        OrderItemRequestDto orderItem2 = new OrderItemRequestDto();
-        orderItem2.setItem(item.getId());
-        orderItem2.setQuantity(2);
-        orderItem2.setOptionId(4L);
-
-        dtoList.add(orderItem1);
-        dtoList.add(orderItem2);*/
         return dtoList;
     }
 

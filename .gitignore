@@ -38,5 +38,7 @@ out/
 
 application.properties
 application-key.properties
-application-test.properties
+application-dev.properties
 application-prod.properties
+application-test.properties
+.env

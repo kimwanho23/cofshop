@@ -3,12 +3,9 @@ package kwh.cofshop.item.mapper;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.dto.request.ItemRequestDto;
 import kwh.cofshop.item.dto.response.ItemResponseDto;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.ReportingPolicy;
+import org.mapstruct.*;
 
 
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -26,16 +23,16 @@ public interface ItemMapper {
 
     @Mapping(target = "imgResponseDto", source = "itemImgs")
     @Mapping(target = "optionResponseDto", source = "itemOptions")
-    @Mapping(target = "categoryNames", expression = "java(getCategoryNames(item))")
     ItemResponseDto toResponseDto(Item item);
 
-    default List<String> getCategoryNames(Item item) {
-        if (item.getItemCategories() == null) {
-            return Collections.emptyList();
+    @AfterMapping
+    default void mapCategoryNames(Item item, @MappingTarget ItemResponseDto dto) {
+        if (item.getItemCategories() != null) {
+            List<String> categoryNames = item.getItemCategories().stream()
+                    .map(itemCategory -> itemCategory.getCategory().getName())
+                    .collect(Collectors.toList());
+            dto.setCategoryNames(categoryNames);
         }
-        return item.getItemCategories().stream()
-                .map(itemCategory -> itemCategory.getCategory().getName())
-                .collect(Collectors.toList());
     }
 }
 

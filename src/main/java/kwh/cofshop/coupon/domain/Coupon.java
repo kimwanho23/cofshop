@@ -32,9 +32,11 @@ public class Coupon {
 
     private Integer maxDiscount; // 최대 할인 금액 제한
 
+    @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private CouponState state;
 
+    @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private CouponType type; // FIXED, PERCENTAGE
 
@@ -46,6 +48,7 @@ public class Coupon {
     @Column(nullable = false)
     private LocalDate validFrom; // 쿠폰 유효 시작일
 
+    @Column(nullable = false)
     private LocalDate validTo; // 쿠폰 유효 종료일 (null 가능)
 
     @Builder

@@ -13,17 +13,17 @@ public interface CategoryRepository extends JpaRepository<Category, Long>, Categ
 
     @Query(value = """
         WITH RECURSIVE category_path AS (
-            SELECT id, name, parent_category_id
+            SELECT category_id, name, parent_category_id
             FROM category
-            WHERE id = :categoryId
+            WHERE category_id = :categoryId
 
             UNION ALL
 
-            SELECT c.id, c.name, c.parent_category_id
+            SELECT c.category_id, c.name, c.parent_category_id
             FROM category c
-            INNER JOIN category_path cp ON c.id = cp.parent_category_id
+            INNER JOIN category_path cp ON c.category_id = cp.parent_category_id
         )
-        SELECT id, name, parent_category_id AS parentCategoryId
+        SELECT category_id, name, parent_category_id AS parentCategoryId
         FROM category_path
         """, nativeQuery = true)
     List<CategoryPathDto> findCategoryPath(@Param("categoryId") Long categoryId);

@@ -9,6 +9,10 @@ import lombok.NoArgsConstructor;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(name = "item_category",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "unique_item_category", columnNames = {"item_id", "category_id"})
+        })
 public class ItemCategory { // 연결 테이블
 
     @Id

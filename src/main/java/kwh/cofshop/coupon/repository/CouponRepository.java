@@ -18,6 +18,11 @@ public interface CouponRepository extends JpaRepository<Coupon, Long>, CouponRep
     List<Coupon> findByValidToBeforeAndState(LocalDate date, CouponState state);
 
 
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE Coupon c SET c.state = :expiredState WHERE c.validTo < :now")
+    int bulkExpireCoupons(@Param("now") LocalDate now,
+                          @Param("expiredState") String expiredState);
+
     @Modifying
     @Query("UPDATE Coupon c SET c.couponCount = c.couponCount - 1 WHERE c.id = :id AND c.couponCount > 0")
     void decreaseCouponCount(@Param("id") Long couponId);

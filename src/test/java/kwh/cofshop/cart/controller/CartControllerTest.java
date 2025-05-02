@@ -12,7 +12,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -35,7 +34,7 @@ class CartControllerTest extends TestSettingUtils {
         Item item = createTestItem();
         List<CartItemRequestDto> requestDto = getCartItemRequestDto(item);
 
-        MvcResult result = mockMvc.perform(post("/api/cart/addCart")
+        MvcResult result = mockMvc.perform(post("/api/cart-items/me/items/list")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto))
                         .header("Authorization", "Bearer " + getToken()))
@@ -45,10 +44,10 @@ class CartControllerTest extends TestSettingUtils {
     }
 
     @Test
-    @DisplayName("장바구니 가져오기")
+    @DisplayName("장바구니 아이템 가져오기")
     @Transactional
     public void getCart() throws Exception {
-        MvcResult result = mockMvc.perform(get("/api/cart/getCart")
+        MvcResult result = mockMvc.perform(get("/api/cart-items/me")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", "Bearer " + getToken()))
                 .andExpect(status().isOk())

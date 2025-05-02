@@ -1,5 +1,6 @@
 package kwh.cofshop.item.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import kwh.cofshop.global.response.ApiResponse;
@@ -27,6 +28,7 @@ public class CategoryController {
 
 
     // 특정 카테고리의 자식 카테고리
+    @Operation(summary = "하위 카테고리 조회", description = "조회 결과")
     @GetMapping("/{categoryId}/children")
     public ResponseEntity<ApiResponse<List<CategoryResponseDto>>> getCategoryChildren(@PathVariable Long categoryId) {
         List<CategoryResponseDto> children = categoryService.getCategoryChild(categoryId);
@@ -34,6 +36,7 @@ public class CategoryController {
     }
 
     // 카테고리 경로
+    @Operation(summary = "카테고리 경로 목록", description = "상위 카테고리부터 하위 카테고리를 조회합니다.")
     @GetMapping("/{categoryId}/path")
     public ResponseEntity<ApiResponse<List<CategoryPathDto>>> getCategoryPath(@PathVariable Long categoryId) {
         List<CategoryPathDto> categoryPath = categoryService.getCategoryPath(categoryId);
@@ -41,6 +44,7 @@ public class CategoryController {
     }
 
     // 전체 카테고리 목록 (상위 카테고리와 하위 카테고리의 관계가 트리 구조와 유사함)
+    @Operation(summary = "전체 카테고리 조회", description = "전체 카테고리를 조회합니다.")
     @GetMapping
     public ResponseEntity<ApiResponse<List<CategoryResponseDto>>> getAllCategories() {
         List<CategoryResponseDto> responseDto = categoryService.getAllCategory();
@@ -49,6 +53,7 @@ public class CategoryController {
 
     //////////// @POST
     // 카테고리 등록 (관리자)
+    @Operation(summary = "카테고리 등록", description = "관리자 전용입니다.")
     @PostMapping
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<ApiResponse<CategoryResponseDto>> createCategory(
@@ -67,6 +72,7 @@ public class CategoryController {
     //////////// @DELETE
 
     // 카테고리 삭제 (관리자)
+    @Operation(summary = "카테고리 삭제", description = "관리자 전용입니다.")
     @DeleteMapping("/{categoryId}")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<Void> deleteCategory(@PathVariable Long categoryId) {

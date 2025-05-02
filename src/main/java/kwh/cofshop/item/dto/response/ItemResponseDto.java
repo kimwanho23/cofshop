@@ -1,6 +1,7 @@
 package kwh.cofshop.item.dto.response;
 
 import kwh.cofshop.item.domain.ItemState;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -22,5 +23,7 @@ public class ItemResponseDto {
     private List<String> categoryNames; // 카테고리
     private List<ItemImgResponseDto> imgResponseDto; // 이미지 정보
     private List<ItemOptionResponseDto> optionResponseDto; // 옵션 목록
+
+
 
 }

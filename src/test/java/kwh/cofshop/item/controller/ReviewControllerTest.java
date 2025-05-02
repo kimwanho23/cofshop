@@ -31,7 +31,7 @@ class ReviewControllerTest extends TestSettingUtils {
 
         log.info(requestJson);
         // 2. 요청 수행
-        mockMvc.perform(post("/api/review/createReview/{itemId}", item.getId())
+        mockMvc.perform(post("/api/reviews/items/{itemId}", item.getId())
                         .header("Authorization", "Bearer " + getToken())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson))

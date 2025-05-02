@@ -1,5 +1,6 @@
 package kwh.cofshop.item.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
@@ -29,6 +30,7 @@ public class ReviewController {
 
     //////////// @GET
     // 한 상품의 리뷰 목록
+    @Operation(summary = "리뷰 목록 조회", description = "조회 결과")
     @GetMapping("/items/{itemId}")
     public ResponseEntity<ApiResponse<Page<ReviewResponseDto>>> reviewList(
             @PathVariable Long itemId,
@@ -40,6 +42,7 @@ public class ReviewController {
 
     //////////// @POST
     // 리뷰 등록
+    @Operation(summary = "리뷰 등록", description = "한 상품에 리뷰를 등록합니다.")
     @PostMapping("/items/{itemId}")
     public ResponseEntity<ApiResponse<ReviewResponseDto>> addReview(
             @PathVariable Long itemId,
@@ -53,6 +56,7 @@ public class ReviewController {
 
     //////////// @PUT, PATCH
     // 리뷰 수정
+    @Operation(summary = "리뷰 수정", description = "등록했던 리뷰 정보를 변경합니다.")
     @PutMapping("/{reviewId}")
     public ResponseEntity<ApiResponse<ReviewResponseDto>> updateReview(
             @PathVariable Long reviewId,
@@ -65,6 +69,7 @@ public class ReviewController {
 
     //////////// @DELETE
     // 리뷰 삭제
+    @Operation(summary = "리뷰 삭제", description = "리뷰를 삭제합니다.")
     @DeleteMapping("/{reviewId}")
     public ResponseEntity<Void> deleteReview(
             @PathVariable Long reviewId,

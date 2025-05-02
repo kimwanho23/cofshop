@@ -130,12 +130,10 @@ class ReviewServiceTest extends TestSettingUtils {
     @DisplayName("특정 상품의 리뷰 전체 조회")
     @Transactional
     void ReviewList() throws Exception {
-
         Item item = itemRepository.findById(2L)
                 .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));
-
         List<ReviewResponseDto> reviewsByItemId = reviewService.getReviewsByItemId(item.getId());
-        List<ReviewResponseDto> reviewsByItemId2 = reviewService.getReviewsByItemId(item.getId());
+        log.info(objectMapper.writeValueAsString(reviewsByItemId));
     }
 
 

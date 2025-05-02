@@ -1,6 +1,7 @@
 package kwh.cofshop.payment.controller;
 
 import com.siot.IamportRestClient.response.Payment;
+import io.swagger.v3.oas.annotations.Operation;
 import kwh.cofshop.global.response.ApiResponse;
 import kwh.cofshop.payment.service.PaymentService;
 import lombok.RequiredArgsConstructor;

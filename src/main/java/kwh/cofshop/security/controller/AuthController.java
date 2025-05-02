@@ -1,5 +1,6 @@
 package kwh.cofshop.security.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import kwh.cofshop.security.dto.TokenDto;
@@ -17,6 +18,7 @@ public class AuthController {
 
     private final AuthService authService;
 
+    @Operation(summary = "RefreshToken 재발급", description = "1시간 단위로 RefreshToken을 재발급합니다..")
     @PostMapping("/reissue")
     public ResponseEntity<TokenDto> reissue(HttpServletRequest request) {
         return authService.reissue(request);

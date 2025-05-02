@@ -1,5 +1,6 @@
 package kwh.cofshop.item.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
@@ -29,6 +30,7 @@ public class ItemController {
     //////////// @GET
 
     // 상품 정보 조회
+    @Operation(summary = "상품 정보 조회", description = "조회 결과")
     @GetMapping("/{itemId}")
     public ResponseEntity<ApiResponse<ItemResponseDto>> inquiryItem(@PathVariable Long itemId){
         ItemResponseDto responseDto = itemService.getItem(itemId);
@@ -36,6 +38,7 @@ public class ItemController {
     }
 
     // 많이 팔린 상품 조회 (기본적으로 10개씩 조회)
+    @Operation(summary = "인기 상품 조회", description = "판매순으로 10개씩 조회합니다.")
     @GetMapping("/populars")
     public ResponseEntity<ApiResponse<List<ItemResponseDto>>> popularItems(
             @RequestParam(defaultValue = "10") int limit) {
@@ -47,6 +50,7 @@ public class ItemController {
     //////////// @POST
 
     // 상품 등록
+    @Operation(summary = "상품 등록", description = "판매상품을 등록합니다.")
     @PostMapping("")
     public ResponseEntity<ApiResponse<ItemResponseDto>> uploadItem(
             @Parameter(hidden = true) @LoginMember CustomUserDetails customUserDetails,
@@ -62,6 +66,7 @@ public class ItemController {
 
 
     // 상품 검색
+    @Operation(summary = "상품 검색", description = "검색 결과")
     @PostMapping("/search")
     public ResponseEntity<ApiResponse<Page<ItemSearchResponseDto>>> searchItems(
             @Valid @RequestBody  ItemSearchRequestDto itemSearchRequestDto) {
@@ -73,6 +78,7 @@ public class ItemController {
 
     //////////// @PUT, PATCH
     // 상품 수정
+    @Operation(summary = "상품 정보 수정", description = "상품 정보를 수정합니다.")
     @PutMapping("/{itemId}")
     public ResponseEntity<ApiResponse<ItemResponseDto>> updateItem(
             @PathVariable Long itemId,
@@ -86,6 +92,7 @@ public class ItemController {
 
     //////////// @DELETE
     // 상품 삭제
+    @Operation(summary = "상품 삭제", description = "상품 정보를 삭제합니다.")
     @DeleteMapping("/{itemId}")
     public ResponseEntity<Void> deleteItem(@PathVariable Long itemId) {
         itemService.deleteItem(itemId);

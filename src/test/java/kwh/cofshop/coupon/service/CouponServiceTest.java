@@ -1,22 +1,16 @@
 package kwh.cofshop.coupon.service;
 
+import kwh.cofshop.TestSettingUtils;
 import kwh.cofshop.coupon.domain.CouponType;
 import kwh.cofshop.coupon.dto.request.CouponRequestDto;
-import kwh.cofshop.coupon.dto.response.CouponResponseDto;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 
 import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.*;
-@SpringBootTest
-@AutoConfigureMockMvc
-@Slf4j
-class CouponServiceTest {
+class CouponServiceTest extends TestSettingUtils {
 
     @Autowired
     private CouponService couponService;

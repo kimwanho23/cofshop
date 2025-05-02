@@ -49,6 +49,7 @@ public class MemberController {
     }
 
     // 멤버의 로그인 기록 열람
+    @Operation(summary = "멤버 로그인 기록 조회", description = "조회 결과")
     @GetMapping("/history/{memberId}")
     public ResponseEntity<ApiResponse<List<MemberLoginEvent>>> getLoginMemberHistory(@PathVariable Long memberId){
         return ResponseEntity.ok(ApiResponse.OK(memberLoginHistoryService.getUserLoginHistory(memberId)));
@@ -100,6 +101,7 @@ public class MemberController {
     }
 
     // 포인트 변경
+    @Operation(summary = "포인트 변경", description = "회원의 포인트를 변경합니다.")
     @PatchMapping("/{memberId}/point")
     public ResponseEntity<ApiResponse<Integer>> updatePoint(
             @PathVariable Long memberId,
