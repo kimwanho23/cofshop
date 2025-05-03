@@ -38,7 +38,6 @@ import java.util.List;
 
 
 @SpringBootTest
-@ActiveProfiles("test")
 @AutoConfigureMockMvc
 @Slf4j
 @Transactional
