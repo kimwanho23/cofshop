@@ -28,6 +28,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
@@ -40,6 +41,7 @@ import java.util.List;
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
 @Slf4j
+@Transactional
 public abstract class TestSettingUtils {
 
     @Autowired
