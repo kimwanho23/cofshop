@@ -14,8 +14,6 @@ import kwh.cofshop.item.dto.response.ItemResponseDto;
 import kwh.cofshop.item.repository.ItemRepository;
 import kwh.cofshop.item.service.ItemService;
 import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.member.domain.MemberState;
-import kwh.cofshop.member.domain.Role;
 import kwh.cofshop.member.repository.MemberRepository;
 import kwh.cofshop.security.CustomUserDetails;
 import kwh.cofshop.security.JwtTokenProvider;
@@ -37,7 +35,7 @@ import java.util.Collection;
 import java.util.List;
 
 
-@SpringBootTest
+//@SpringBootTest
 @AutoConfigureMockMvc
 @Slf4j
 public abstract class TestSettingUtils {
