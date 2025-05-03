@@ -35,7 +35,7 @@ import java.util.Collection;
 import java.util.List;
 
 
-//@SpringBootTest
+@SpringBootTest
 @AutoConfigureMockMvc
 @Slf4j
 public abstract class TestSettingUtils {
