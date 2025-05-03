@@ -40,5 +40,4 @@ application.properties
 application-key.properties
 application-dev.properties
 application-prod.properties
-application-test.properties
 .env
