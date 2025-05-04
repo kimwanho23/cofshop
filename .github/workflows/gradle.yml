@@ -82,18 +82,19 @@ jobs:
           sudo docker pull ${{ env.DOCKER_IMAGE_NAME }}
 
           echo "Starting new container..."
-          sudo docker run --name cofshop -d -p 8080:8080 \
-            -e TZ=Asia/Seoul \
-            -e DB_URL=${{ secrets.DB_URL }} \
-            -e DB_USERNAME=${{ secrets.DB_USERNAME }} \
-            -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-            -e IMP_CODE=${{ secrets.IMP_CODE }} \
-            -e IMP_API_KEY=${{ secrets.IMP_API_KEY }} \
-            -e IMP_API_SECRETKEY=${{ secrets.IMP_API_SECRETKEY }} \
-            -e JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }} \
-            -e REDIS_HOST=${{ secrets.REDIS_HOST }} \
-            -e REDIS_PORT=${{ secrets.REDIS_PORT }} \
-            ${{ env.DOCKER_IMAGE_NAME }}
+          sudo docker run --name cofshop --network my-network -d -p 8080:8080 \
+          -e TZ=Asia/Seoul \
+          -e DB_URL=${{ secrets.DB_URL }} \
+          -e DB_USERNAME=${{ secrets.DB_USERNAME }} \
+          -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+          -e IMP_CODE=${{ secrets.IMP_CODE }} \
+          -e IMP_API_KEY=${{ secrets.IMP_API_KEY }} \
+          -e IMP_API_SECRETKEY=${{ secrets.IMP_API_SECRETKEY }} \
+          -e JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }} \
+          -e REDIS_HOST=${{ secrets.REDIS_HOST }} \
+          -e REDIS_PORT=${{ secrets.REDIS_PORT }} \
+          ${{ env.DOCKER_IMAGE_NAME }}
+
 
 
 
