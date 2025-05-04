@@ -16,7 +16,7 @@ on:
 env:
   DOCKER_IMAGE_NAME: ${{ secrets.DOCKER_IMAGE_NAME }}
   EC2_HOST: ${{ secrets.EC2_IP }}
-  EC2_SSH_USER: ${{ secrets.EC2_USER }}
+  EC2_SSH_USER: ${{ secrets.EC2_SSH_USER }}
   PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
 
 
