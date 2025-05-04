@@ -91,9 +91,10 @@ jobs:
             -e IMP_API_KEY=${{ secrets.IMP_API_KEY }} \
             -e IMP_API_SECRETKEY=${{ secrets.IMP_API_SECRETKEY }} \
             -e JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }} \
-            -e REDIS_HOST=redis-container \
-            -e REDIS_PORT=6379 \
+            -e REDIS_HOST=${{ secrets.REDIS_HOST }} \
+            -e REDIS_PORT=${{ secrets.REDIS_PORT }} \
             ${{ env.DOCKER_IMAGE_NAME }}
+
 
 
 
