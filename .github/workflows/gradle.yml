@@ -64,25 +64,31 @@ jobs:
         username: ${{ env.EC2_SSH_USER }}
         key: ${{ env.PRIVATE_KEY }}
         script: |
-          echo "Stopping existing container (if any)..."
+          echo "Stopping existing container (if running)..."
           CONTAINER_ID=$(sudo docker ps -q --filter "publish=8080-8080")
-
-          if [ ! -z "$CONTAINER_ID" ]; then
-            echo "Stopping container ID: $CONTAINER_ID"
-            sudo docker stop $CONTAINER_ID
-            sudo docker rm $CONTAINER_ID
+        
+          if [ -n "$CONTAINER_ID" ]; then
+          echo "Stopping container ID: $CONTAINER_ID"
+          sudo docker stop $CONTAINER_ID
+          sudo docker rm $CONTAINER_ID
           else
-            echo "No running container found."
+          echo "No running container found."
           fi
-
-          echo "Pulling the latest Docker image..."
+        
+          echo "Logging into Docker Hub..."
+          echo "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" | sudo docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+        
+          echo "Pulling latest image..."
           sudo docker pull ${{ env.DOCKER_IMAGE_NAME }}
-
+        
           echo "Starting new container..."
           sudo docker run --name cofshop -d -p 8080:8080 -e TZ=Asia/Seoul ${{ env.DOCKER_IMAGE_NAME }}
-      
+  
+  
+  
+  
 
-    # NOTE: The Gradle Wrapper is the default and recommended way to run Gradle (https://docs.gradle.org/current/userguide/gradle_wrapper.html).
+  # NOTE: The Gradle Wrapper is the default and recommended way to run Gradle (https://docs.gradle.org/current/userguide/gradle_wrapper.html).
     # If your project does not have the Gradle Wrapper configured, you can use the following configuration to run Gradle with a specified version.
     #
     # - name: Setup Gradle
