@@ -58,7 +58,7 @@ jobs:
       run: docker push ${{ env.DOCKER_IMAGE_NAME }}:latest
 
     - name: Deploy to EC2
-      uses: kimwanho23/ssh-action@master
+      uses: appleboy/ssh-action@master
       with:
         host: ${{ env.EC2_HOST }}
         username: ${{ env.EC2_SSH_USER }}
