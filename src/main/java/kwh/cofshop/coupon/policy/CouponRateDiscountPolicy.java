@@ -11,8 +11,8 @@ public class CouponRateDiscountPolicy implements CouponDiscountPolicy {
     }
 
     @Override
-    public int calculateDiscount(int price) {
-        int calculatedPrice = price * discountRate / 100;
+    public Long calculateDiscount(Long price) {
+        long calculatedPrice = price * discountRate / 100;
         return (maxDiscount != null) ? Math.min(calculatedPrice, maxDiscount) : calculatedPrice;
     }
 }

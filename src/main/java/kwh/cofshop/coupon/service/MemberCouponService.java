@@ -75,7 +75,15 @@ public class MemberCouponService {
         return memberCouponMapper.toResponseDto(validCoupon);
     }
 
+    // 쿠폰 복구
+    @Transactional
+    public void restoreCoupon(Long memberCouponId) {
+        MemberCoupon coupon = memberCouponRepository.findById(memberCouponId)
+                .orElseThrow();
+        coupon.restoreCouponStatus();
+    }
 
+    // 쿠폰 일괄 만료
     @Transactional
     public void expireMemberCoupons(LocalDate today) {
         List<MemberCoupon> expiredCoupons =

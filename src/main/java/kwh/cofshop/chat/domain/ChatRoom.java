@@ -51,6 +51,11 @@ public class ChatRoom extends BaseTimeEntity {
         this.chatRoomStatus = ChatRoomStatus.CLOSED; // 채팅방 종료
     }
 
+    // 채팅방 참여 여부 검증
+    public boolean isParticipant(Member member) {
+        return member != null && (member.equals(this.customer) || member.equals(this.agent));
+    }
+
     // 채팅방이 이미 종료되었는 지
     public boolean isClosed(){
         return this.chatRoomStatus == ChatRoomStatus.CLOSED;

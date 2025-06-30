@@ -56,28 +56,37 @@ public class MemberService {
 
     // 회원 상태 변경
     @Transactional
-    public void changeMemberState(Long id, MemberState newState) {
-        Member member = getMember(id);
+    public void changeMemberState(Long memberId, MemberState newState) {
+        Member member = getMember(memberId);
         member.changeMemberState(newState);
     }
 
     // 비밀번호 변경
     @Transactional
-    public void updateMemberPassword(Long id, String newPassword) {
-        Member member = getMember(id);
+    public void updateMemberPassword(Long memberId, String newPassword) {
+        Member member = getMember(memberId);
         String encodePassword = passwordEncoder.encode(newPassword);
         member.changePassword(encodePassword);
     }
 
-
+    // 포인트 증가
     @Transactional
-    public Integer updatePoint(Long id, int amount) { // 포인트 증가
+    public Integer updatePoint(Long id, int point) {
         Member member = getMember(id);
-        member.updatePoint(amount);
+        member.updatePoint(point);
         return member.getPoint();
     }
 
-    private Member getMember(Long id) {
+
+    // 포인트 복구
+    @Transactional
+    public void restorePoint(Long memberId, int point) {
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow();
+        member.restorePoint(point);
+    }
+
+    public Member getMember(Long id) {
         return memberRepository.findById(id).orElseThrow(
                 () -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND)
         );

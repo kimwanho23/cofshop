@@ -46,7 +46,12 @@ public enum BusinessErrorCode implements ErrorCode {
     CHAT_MESSAGE_NOT_FOUND("CHAT-MESSAGE-404", HttpStatus.CONFLICT, "해당 채팅을 찾을 수 없습니다."),
 
     // 결제
-    PAYMENT_NOT_FOUND("CHAT-404", HttpStatus.NOT_FOUND, "결제 정보를 찾을 수 없습니다."),
+    PAYMENT_NOT_FOUND("PAY-404", HttpStatus.NOT_FOUND, "결제 정보를 찾을 수 없습니다."),
+    PAYMENT_UID_DISCREPANCY("CHAT-404", HttpStatus.NOT_FOUND, "결제 UID가 일치하지 않습니다."),
+    PAYMENT_AMOUNT_DISCREPANCY("CHAT-404", HttpStatus.NOT_FOUND, "결제 금액이 일치하지 않습니다."),
+    PAYMENT_CANNOT_REFUND("CANNOT-REFUND", HttpStatus.CONFLICT, "환불이 불가능합니다"),
+    PAYMENT_ALREADY_CANCELLED("ALREADY_CANCELLED", HttpStatus.CONFLICT, "이미 취소된 결제입니다."),
+    PAYMENT_REFUND_FAIL("REFUND_FAILED", HttpStatus.CONFLICT, "환불에 실패했습니다.")
     ;
 
     private final String code;

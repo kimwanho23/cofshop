@@ -8,6 +8,7 @@ import java.util.List;
 @Getter
 @Setter
 public class DeletedMessageResponseDto {
+    private Long roomId;
     private String groupId;
     private List<Long> messageIds;
 }

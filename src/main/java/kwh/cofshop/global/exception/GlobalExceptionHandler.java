@@ -1,8 +1,11 @@
 package kwh.cofshop.global.exception;
 
 import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
+import kwh.cofshop.global.exception.errorcodes.DataIntegrityViolationErrorCode;
 import kwh.cofshop.global.exception.errorcodes.InternalServerErrorCode;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -47,6 +50,15 @@ public class GlobalExceptionHandler {
                 .status(BadRequestErrorCode.INPUT_INVALID_VALUE.getHttpStatus())
                 .body(ErrorResponse.of(BadRequestErrorCode.INPUT_INVALID_VALUE));
     }
+
+    // 데이터 중복
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException e) {
+        return ResponseEntity
+                .status(DataIntegrityViolationErrorCode.DATA_INTEGRITY_VIOLATION_ERROR_CODE.getHttpStatus())
+                .body(ErrorResponse.of(DataIntegrityViolationErrorCode.DATA_INTEGRITY_VIOLATION_ERROR_CODE));
+    }
+
 
     // 기본 예외
     @ExceptionHandler(Exception.class)

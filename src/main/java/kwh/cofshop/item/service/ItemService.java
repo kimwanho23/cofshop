@@ -13,6 +13,7 @@ import kwh.cofshop.item.dto.response.ItemSearchResponseDto;
 import kwh.cofshop.item.mapper.ItemMapper;
 import kwh.cofshop.item.mapper.ItemSearchMapper;
 import kwh.cofshop.item.repository.*;
+import kwh.cofshop.item.vo.ItemImgUploadVO;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.repository.MemberRepository;
 import kwh.cofshop.order.repository.OrderItemRepository;
@@ -59,18 +60,17 @@ public class ItemService { // 통합 Item 서비스
         // 1. 상품 저장
         Item savedItem = getSavedItem(itemRequestDto, member);
 
-        // 2. DTO + 파일 매칭
-        List<ItemImgRequestDto> imgRequestDto = itemRequestDto.getItemImgRequestDto();
-
-        Map<ItemImgRequestDto, MultipartFile> imgMap = new LinkedHashMap<>();
+        // 2. DTO + 파일 VO 리스트 생성
+        List<ItemImgRequestDto> imgRequestDtoList = itemRequestDto.getItemImgRequestDto();
+        List<ItemImgUploadVO> imgUploadVOList = new ArrayList<>();
         for (int i = 0; i < images.size(); i++) {
-            imgMap.put(imgRequestDto.get(i), images.get(i));
+            imgUploadVOList.add(new ItemImgUploadVO(imgRequestDtoList.get(i), images.get(i)));
         }
 
-        //  3. 이미지 저장
-        List<ItemImg> itemImgs = itemImgService.saveItemImages(savedItem, imgMap);
+        // 3. 이미지 저장
+        List<ItemImg> itemImgs = itemImgService.saveItemImages(savedItem, imgUploadVOList);
 
-        //  4. 옵션 저장
+        // 4. 옵션 저장
         List<ItemOption> itemOptions = itemOptionService.saveItemOptions(savedItem, itemRequestDto.getItemOptionRequestDto());
 
         // 5. 카테고리 저장
@@ -83,11 +83,12 @@ public class ItemService { // 통합 Item 서비스
         }
         itemCategoryRepository.saveAll(itemCategories);
 
-        //  6. Response 생성 및 반환
+        // 6. Response 생성 및 반환
         ItemResponseDto responseDto = itemMapper.toResponseDto(savedItem);
         responseDto.setEmail(member.getEmail());
         return responseDto;
     }
+
 
     @Transactional
     public ItemResponseDto updateItem(Long itemId, ItemUpdateRequestDto dto, List<MultipartFile> newImages) throws IOException {

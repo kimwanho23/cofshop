@@ -105,7 +105,7 @@ public class Coupon {
         };
     }
 
-    public int calculateDiscount(int targetPrice) {
+    public Long calculateDiscount(Long targetPrice) {
         return getPolicy().calculateDiscount(targetPrice);
     }
 

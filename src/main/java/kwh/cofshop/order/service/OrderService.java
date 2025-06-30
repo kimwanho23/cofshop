@@ -1,20 +1,17 @@
 package kwh.cofshop.order.service;
 
-import kwh.cofshop.coupon.domain.CouponState;
 import kwh.cofshop.coupon.domain.MemberCoupon;
-import kwh.cofshop.coupon.service.CouponService;
 import kwh.cofshop.coupon.service.MemberCouponService;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.item.domain.ItemOption;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.repository.MemberRepository;
-import kwh.cofshop.order.domain.Address;
+import kwh.cofshop.member.service.MemberService;
 import kwh.cofshop.order.domain.Order;
 import kwh.cofshop.order.domain.OrderItem;
 import kwh.cofshop.order.domain.OrderState;
 import kwh.cofshop.order.dto.request.OrderCancelRequestDto;
-import kwh.cofshop.order.dto.request.OrderItemRequestDto;
 import kwh.cofshop.order.dto.request.OrderRequestDto;
 import kwh.cofshop.order.dto.response.OrderCancelResponseDto;
 import kwh.cofshop.order.dto.response.OrderResponseDto;
@@ -23,36 +20,33 @@ import kwh.cofshop.order.policy.DeliveryFeePolicy;
 import kwh.cofshop.order.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.aspectj.weaver.ast.Or;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.YearMonth;
 import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class OrderService {
 
+
+    // Order 관련
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
-    private final MemberRepository memberRepository;
-
     private final OrderItemService orderItemService;
-    private final MemberCouponService memberCouponService;
     private final DeliveryFeePolicy deliveryFeePolicy;
+
+    // Member 관련 서비스
+    private final MemberService memberService;
+    private final MemberCouponService memberCouponService;
 
     // 바로구매 로직
     @Transactional
     public OrderResponseDto createInstanceOrder(Long memberId, OrderRequestDto orderRequestDto) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
+        Member member = memberService.getMember(memberId);
 
         // 옵션 조회
         List<ItemOption> itemOptions = orderItemService.getItemOptionsWithLock(orderRequestDto.getOrderItemRequestDtoList());
@@ -60,59 +54,24 @@ public class OrderService {
         // 주문 항목 생성
         List<OrderItem> orderItems = orderItemService.createOrderItems(orderRequestDto.getOrderItemRequestDtoList(), itemOptions);
 
-
-        LocalDateTime randomDate = getLocalDateTime();
         // 주문 생성
-        //Order order = Order.createOrder(member, orderRequestDto.getAddress(), orderItems);
-        Order order = Order.createOrderForce(member, orderRequestDto.getAddress(), orderItems, randomDate);
+        Order order = Order.createOrder(member, orderRequestDto.getAddress(), orderItems);
 
-        int totalPrice = order.getTotalPrice(); // 현재의 총 금액
+        // 쿠폰 할인 금액
+        long priceAfterCouponDiscount = applyCoupon(order, orderRequestDto, memberId);
 
+        // 포인트 할인 금액
+        applyPoint(order, orderRequestDto, member, priceAfterCouponDiscount);
 
-        //////// 쿠폰 할인 적용
-        MemberCoupon memberCoupon = null; // 쿠폰
-        int couponDiscountValue = 0; // 쿠폰 할인 가격
+        // 배송비
+        int deliveryFee = deliveryFeePolicy.calculate(itemOptions);
 
-        if (orderRequestDto.getMemberCouponId() != null) {
-            memberCoupon = memberCouponService.findValidCoupon(orderRequestDto.getMemberCouponId(), memberId); // 사용 가능한 쿠폰 등록
-            couponDiscountValue = memberCoupon.getCoupon().calculateDiscount(order.getTotalPrice()); // 쿠폰으로 가격 계산
-            memberCoupon.useCoupon(); // 쿠폰 사용
-            order.addUseCoupon(memberCoupon, couponDiscountValue); // Order에 사용한 쿠폰 등록
-        }
-        int useAfterCouponValue = totalPrice - couponDiscountValue; // 쿠폰 사용 후 가격
-
-        //////////포인트 사용
-        int usePoint = orderRequestDto.getUsePoint(); // 포인트
-
-        if (usePoint > 0 && usePoint <= useAfterCouponValue) {
-            member.usePoint(usePoint);
-            order.addUsePoint(usePoint);
-        }
-
-        //////////// 배송비 계산, 최종 금액 계산
-        int deliveryFee = deliveryFeePolicy.calculate(itemOptions); // 배송비
-        int finalPrice = useAfterCouponValue - usePoint + deliveryFee; // 최종 가격
-
-        order.addDeliveryFee(deliveryFee);
-        order.addFinalPrice(finalPrice);
+        // 최종 금액 계산
+        order.finalizePrice(priceAfterCouponDiscount, orderRequestDto.getUsePoint(), deliveryFee);
 
         // 저장 및 반환
         return orderMapper.toResponseDto(orderRepository.save(order));
-    }
-
-    private LocalDateTime getLocalDateTime() {
-        int year = 2025;
-        int month = ThreadLocalRandom.current().nextInt(1, 13); // 1~12월
-
-        // 해당 월의 마지막 날 계산
-        int lastDay = YearMonth.of(year, month).lengthOfMonth();
-
-        // 1일부터 마지막 날까지 랜덤 일 선택
-        int day = ThreadLocalRandom.current().nextInt(1, lastDay + 1);
-
-        // 정오 고정
-        return LocalDateTime.of(year, month, day, 12, 0);
-    }
+    } // 주문 생성을 위한 기틀
 
 
     @Transactional // 주문 취소
@@ -124,6 +83,9 @@ public class OrderService {
         // 2. 주문 상태 변경 (취소 처리)
         order.cancel();
 
+        // 3. 사용 포인트 및 쿠폰 복구 처리
+        restoreMemberPointAndCoupon(order);
+
         OrderCancelResponseDto orderCancelResponseDto = new OrderCancelResponseDto();
         orderCancelResponseDto.setOrderId(orderCancelRequestDto.getOrderId());
         orderCancelResponseDto.setCancelReason(orderCancelRequestDto.getCancelReason());
@@ -131,7 +93,27 @@ public class OrderService {
         return orderCancelResponseDto;
     }
 
-    // 반품 요청
+    private void restoreMemberPointAndCoupon(Order order) {
+        if (order.getUsePoint() > 0) {
+            memberService.restorePoint(order.getMember().getId(), order.getUsePoint());
+        }
+        if (order.getMemberCoupon() != null) {
+            memberCouponService.restoreCoupon(order.getMemberCoupon().getId());
+        }
+    }
+
+    // 포인트, 쿠폰 복구
+    public void restorePointAndCoupon(Order order) {
+        order.getOrderItems().forEach(OrderItem::restoreStock);
+
+        if (order.getUsePoint() > 0) {
+            order.getMember().restorePoint(order.getUsePoint());
+        }
+
+        if (order.getMemberCoupon() != null) {
+            order.getMemberCoupon().restoreCouponStatus();
+        }
+    }
 
     // 하나의 주문 정보
     @Transactional(readOnly = true)
@@ -156,17 +138,33 @@ public class OrderService {
     public void PurchaseConfirmation(Long orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
-        if (order.getOrderState() == OrderState.SHIPPED){ // 배송 완료 시
-            order.changeOrderState(OrderState.COMPLETED); // 구매 확정 가능
+        if (order.getOrderState() == OrderState.DELIVERED){ // 배송 완료 시
+            order.changeOrderState(OrderState.COMPLETED); // 구매 확정 가능 - 이 시점에서 반품 불가능함
         }
     }
 
-    // 테스트용 데이터
-    public Long getMonthlyOrderCount(int year, int month) {
-        return orderRepository.countByYearAndMonth(year, month);
+
+    // 쿠폰 할인 적용
+    private long applyCoupon(Order order, OrderRequestDto dto, Long memberId) {
+        Long couponDiscountValue = 0L;
+
+        if (dto.getMemberCouponId() != null) {
+            MemberCoupon memberCoupon = memberCouponService.findValidCoupon(dto.getMemberCouponId(), memberId);
+            couponDiscountValue = memberCoupon.getCoupon().calculateDiscount(order.getTotalPrice());
+            memberCoupon.useCoupon();
+            order.addUseCoupon(memberCoupon, couponDiscountValue);
+        }
+
+        return order.getTotalPrice() - couponDiscountValue;
     }
 
-    public Long getMonthlyOrderCountUseFunc(int year, int month) {
-        return orderRepository.countByOrderDateYearAndMonth(year, month);
+    // 포인트 적용
+    private void applyPoint(Order order, OrderRequestDto dto, Member member, long priceAfterCoupon) {
+        int usePoint = dto.getUsePoint();
+
+        if (usePoint > 0 && usePoint <= priceAfterCoupon) {
+            member.usePoint(usePoint);
+            order.addUsePoint(usePoint);
+        }
     }
 }

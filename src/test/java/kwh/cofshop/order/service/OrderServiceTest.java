@@ -82,7 +82,7 @@ class OrderServiceTest extends TestSettingUtils {
     @Transactional
     void changeOrderState() throws Exception {
         Order order = orderRepository.findById(8188L).orElseThrow();
-        order.changeOrderState(OrderState.SHIPPED);
+        order.changeOrderState(OrderState.PREPARING_FOR_SHIPMENT);
         OrderResponseDto responseDto = orderMapper.toResponseDto(order);
         log.info(objectMapper.writeValueAsString(responseDto));
     }

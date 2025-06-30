@@ -32,21 +32,27 @@ public class ChatMessageService {
 
     // 채팅 메시지 생성
     @Transactional
-    public ChatMessageResponseDto createChatMessage(ChatMessageRequestDto requestDto) {
+    public ChatMessageResponseDto createChatMessage(ChatMessageRequestDto requestDto, Long memberId) {
         // 1. 채팅방 탐색
         ChatRoom chatRoom = chatRoomRepository.findById(requestDto.getRoomId())
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.CHAT_ROOM_NOT_FOUND));
 
-        // 2. 유저 탐색
-        Member sender = memberRepository.findById(requestDto.getSenderId())
+        // 2. 인증된 유저 탐색
+        Member sender = memberRepository.findById(memberId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
 
-        //3. 메시지 생성 후 저장
+        // 3. 해당 유저가 채팅방 참여자인지 검증
+        if (!chatRoom.isParticipant(sender)) {
+            throw new BusinessException(UnauthorizedErrorCode.CHAT_ROOM_ACCESS_DENIED);
+        }
+
+        // 4. 메시지 생성 후 저장
         ChatMessage message = ChatMessage.createMessage(chatRoom, sender, requestDto);
         chatMessageRepository.save(message);
 
         return chatMessageMapper.toResponseDto(message);
     }
+
 
     // 채팅 메시지 조회
     @Transactional(readOnly = true)

@@ -107,6 +107,14 @@ public class Member {
         this.point -= amount;
     }
 
+    // 포인트 복구
+    public void restorePoint(int amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("복구할 포인트는 0보다 커야 합니다.");
+        }
+        this.point += amount;
+    }
+
     public void updatePoint(int amount) {
         this.point += amount;
     }

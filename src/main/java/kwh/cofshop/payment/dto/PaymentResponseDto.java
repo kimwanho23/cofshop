@@ -1,17 +1,32 @@
 package kwh.cofshop.payment.dto;
 
+import kwh.cofshop.payment.domain.PaymentEntity;
+import kwh.cofshop.payment.domain.PaymentStatus;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
 
 @Getter
-@Setter
+@Builder
 public class PaymentResponseDto {
-    private String merchantUid;    // 주문번호 (Order - OrderId)
-    private String productName;    // 상품명(OrderItem - itemName)
-    private int amount;            // 결제 총액 (Order - totalPrice)
-    private String buyerEmail; // 구매자 이메일 (Member - email)
-    private String buyerName; // 구매자 이름(Member - memberName)
-    private String buyerTel; // 구매자 전화번호 (Member - tel)
+    private Long paymentId;          // 결제 ID
+    private String merchantUid;      // 주문번호 (order-blahblah)
+    private Long price;           // 최종 결제 금액
+    private String pgProvider;       // PG사
+    private String payMethod;        // 결제 방식
+    private PaymentStatus status;           // READY, PAID, CANCELLED
+
+    public static PaymentResponseDto from(PaymentEntity payment) {
+        return PaymentResponseDto.builder()
+                .paymentId(payment.getId())
+                .merchantUid(payment.getMerchantUid())
+                .price(payment.getPrice())
+                .pgProvider(payment.getPgProvider())
+                .payMethod(payment.getPayMethod())
+                .status(payment.getStatus())
+                .build();
+    }
+
 }
 

@@ -7,6 +7,7 @@ import kwh.cofshop.item.domain.ItemImg;
 import kwh.cofshop.item.dto.request.ItemImgRequestDto;
 import kwh.cofshop.item.dto.request.ItemUpdateRequestDto;
 import kwh.cofshop.item.repository.ItemImgRepository;
+import kwh.cofshop.item.vo.ItemImgUploadVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,16 +27,17 @@ public class ItemImgService {
     private final ItemImgRepository itemImgRepository;
 
     @Transactional
-    public List<ItemImg> saveItemImages(Item item, Map<ItemImgRequestDto, MultipartFile> imgMap) throws IOException {
-        List<ItemImgRequestDto> imgRequestDtoList = new ArrayList<>(imgMap.keySet());
-        List<MultipartFile> fileList = new ArrayList<>(imgMap.values());
+    public List<ItemImg> saveItemImages(Item item, List<ItemImgUploadVO> uploadVOList) throws IOException {
+        List<MultipartFile> fileList = uploadVOList.stream()
+                .map(ItemImgUploadVO::getMultipartFile)
+                .toList();
 
         List<UploadFile> uploadFiles = fileStore.storeFiles(fileList);
         List<ItemImg> itemImgs = new ArrayList<>();
 
         for (int i = 0; i < uploadFiles.size(); i++) {
             UploadFile uploadFile = uploadFiles.get(i);
-            ItemImgRequestDto imgRequestDto = imgRequestDtoList.get(i);
+            ItemImgRequestDto imgRequestDto = uploadVOList.get(i).getImgRequestDto();
 
             itemImgs.add(ItemImg.createImg(
                     uploadFile.getStoreFileName(),
@@ -45,9 +47,10 @@ public class ItemImgService {
                     item
             ));
         }
-        // DB 저장
+
         return itemImgRepository.saveAll(itemImgs);
     }
+
 
 
     // 수정 시 삭제할 이미지 목록

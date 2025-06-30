@@ -9,8 +9,10 @@ public class CouponFixedDiscountPolicy implements CouponDiscountPolicy {
         this.discountValue = discountValue;
     }
 
+
     @Override
-    public int calculateDiscount(int price) {
-        return Math.min(price, discountValue);
+    public Long calculateDiscount(Long value) {
+        return Math.min(value, discountValue);
     }
+
 }

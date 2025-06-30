@@ -28,47 +28,58 @@ public class Order extends BaseTimeEntity {
     @Column(name = "order_id", nullable = false, updatable = false)
     private Long id;
 
+    // 주문자
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id")
     private Member member;
 
     // 주문 정보
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String merchantUid;
 
+    // 주문 날짜
     @Column(nullable = false)
     private LocalDateTime orderDate;
 
+    // 주문년도
     @Column(nullable = false)
     private Integer orderYear;
 
+    // 주문월
     @Column(nullable = false)
     private Integer orderMonth;
 
+    // 주문일
     @Column(nullable = false)
     private Integer orderDay;
 
+    // 배송 상태
     @Enumerated(EnumType.STRING)
     @Column(name = "order_state", nullable = false)
     private OrderState orderState;
 
-    // 배송 정보
+    // 주소
     @Column(nullable = false)
     private Address address;
 
+    // 주문 요청 사항
     private String deliveryRequest;
 
+    // 배송비
     private int deliveryFee;
 
-    // 비용
+    // 상품 총액
     @Column(nullable = false)
-    private int totalPrice;
+    private Long totalPrice;
 
-    private int discountFromCoupon;
+    // 쿠폰 할인 금액
+    private Long discountFromCoupon;
 
+    // 포인트 사용량
     private Integer usePoint;
 
-    private int finalPrice;
+    // 최종 금액
+    private Long finalPrice;
 
     // 쿠폰
     @ManyToOne(fetch = FetchType.LAZY)
@@ -84,8 +95,8 @@ public class Order extends BaseTimeEntity {
     private PaymentEntity payment;
 
     @Builder
-    public Order(Long id, Member member, String merchantUid, LocalDateTime orderDate, Integer orderYear, Integer orderMonth, Integer orderDay, OrderState orderState, Address address, String deliveryRequest, int deliveryFee, int totalPrice,
-                 int discountFromCoupon, Integer usePoint, int finalPrice, MemberCoupon memberCoupon, List<OrderItem> orderItems, PaymentEntity payment) {
+    public Order(Long id, Member member, String merchantUid, LocalDateTime orderDate, Integer orderYear, Integer orderMonth, Integer orderDay, OrderState orderState, Address address, String deliveryRequest, int deliveryFee, Long totalPrice,
+                 Long discountFromCoupon, Integer usePoint, Long finalPrice, MemberCoupon memberCoupon, List<OrderItem> orderItems, PaymentEntity payment) {
         this.id = id;
         this.member = member;
         this.merchantUid = merchantUid;
@@ -111,15 +122,15 @@ public class Order extends BaseTimeEntity {
         Order order = Order.builder()
                 .member(member)
                 .address(address)
-                .merchantUid(UUID.randomUUID() + "TEST")
-                .orderState(OrderState.NEW)
+                .merchantUid("cofshop" + UUID.randomUUID())
+                .orderState(OrderState.WAITING_FOR_PAY)
                 .orderDate(LocalDateTime.now())
                 .orderYear(LocalDateTime.now().getYear())
                 .orderMonth(LocalDateTime.now().getMonthValue())
                 .orderDay(LocalDateTime.now().getDayOfMonth())
                 .orderItems(new ArrayList<>())
                 .totalPrice(orderItems.stream()
-                                .mapToInt(OrderItem::getTotalPrice)
+                                .mapToLong(OrderItem::getTotalPrice)
                                 .sum()
                 )
                 .build();
@@ -129,29 +140,13 @@ public class Order extends BaseTimeEntity {
         return order;
     }
 
-
-
-    public static Order createOrderForce(Member member, Address address, List<OrderItem> orderItems, LocalDateTime customDate){
-        Order order = Order.builder()
-                .member(member)
-                .address(address)
-                .merchantUid(UUID.randomUUID() + "TEST")
-                .orderState(OrderState.NEW)
-                .orderDate(customDate)
-                .orderYear(customDate.getYear())
-                .orderMonth(customDate.getMonthValue())
-                .orderDay(customDate.getDayOfMonth())
-                .orderItems(new ArrayList<>())
-                .totalPrice(orderItems.stream()
-                        .mapToInt(OrderItem::getTotalPrice)
-                        .sum()
-                )
-                .build();
-        for (OrderItem orderItem : orderItems) {
-            order.addOrderItem(orderItem);
+    public void pay(){
+        if (this.getOrderState() != OrderState.WAITING_FOR_PAY) {
+            throw new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND); // 결제 대기 상태가 아니면 예외 처리
         }
-        return order;
+        this.changeOrderState(OrderState.PAYMENT_PENDING); // Order 테이블에 결제 저장
     }
+
 
     // 주문 상태 변경
     public void changeOrderState(OrderState orderState){
@@ -160,7 +155,7 @@ public class Order extends BaseTimeEntity {
 
 
     // 사용할 쿠폰 등록
-    public void addUseCoupon(MemberCoupon memberCoupon, int discountAmount) {
+    public void addUseCoupon(MemberCoupon memberCoupon, Long discountAmount) {
         this.memberCoupon = memberCoupon;
         this.discountFromCoupon = discountAmount;
     }
@@ -170,15 +165,13 @@ public class Order extends BaseTimeEntity {
         this.usePoint = usePoint;
     }
 
-    // 배송비 설정
-    public void addDeliveryFee(int deliveryFee) {
-        this.deliveryFee = deliveryFee;
+    // 최종 금액 환산
+    public void finalizePrice(long priceAfterCoupon, int usePoint, int deliveryFee) {
+        this.finalPrice = Math.max(priceAfterCoupon - usePoint + deliveryFee, 0);
     }
 
-    // 최종 금액 계산
-    public void addFinalPrice(int finalPrice) {
-        this.finalPrice = Math.max(finalPrice, 0);
-    }
+
+
 
     // 연관관계 편의 메서드
     public void addOrderItem(OrderItem orderItem) {
@@ -192,12 +185,7 @@ public class Order extends BaseTimeEntity {
         if (this.orderState == OrderState.CANCELLED) {
             throw new BusinessException(BusinessErrorCode.ORDER_ALREADY_CANCELLED);
         }
-
         this.orderState = OrderState.CANCELLED;
-
-        for (OrderItem orderItem : this.orderItems) {
-            orderItem.restoreStock();
-        }
     }
 
 }

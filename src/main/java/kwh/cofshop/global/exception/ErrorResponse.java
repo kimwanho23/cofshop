@@ -22,8 +22,34 @@ public class ErrorResponse {
         this.timestamp = LocalDateTime.now();
     }
 
+    private ErrorResponse(String codes, HttpStatus status, String message, LocalDateTime timestamp) {
+        this.codes = codes;
+        this.status = status;
+        this.message = message;
+        this.timestamp = timestamp;
+    }
+
+
     // 기본
     public static ErrorResponse of(final ErrorCode errorCode) {
         return new ErrorResponse(errorCode);
+    }
+
+    public static ErrorResponse of(final ErrorCode errorCode, final String customMessage) {
+        return new ErrorResponse(
+                errorCode.getCode(),
+                errorCode.getHttpStatus(),
+                customMessage,
+                LocalDateTime.now()
+        );
+    }
+
+    public static ErrorResponse of(final HttpStatus status, final String message) {
+        return new ErrorResponse(
+                "COMMON",
+                status,
+                message,
+                LocalDateTime.now()
+        );
     }
 }
