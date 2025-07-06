@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import kwh.cofshop.cart.dto.request.CartItemRequestDto;
 import kwh.cofshop.coupon.domain.Coupon;
 import kwh.cofshop.coupon.domain.CouponState;
+import kwh.cofshop.coupon.domain.CouponType;
 import kwh.cofshop.coupon.repository.CouponRepository;
 import kwh.cofshop.item.domain.ImgType;
 import kwh.cofshop.item.domain.Item;
@@ -111,7 +112,7 @@ public abstract class TestSettingUtils {
         return memberRepository.save(customer);
     }
 
-    protected Coupon makeCoupon(){
+    protected Coupon makeUnLimitedCoupon(){
         Coupon coupon = Coupon.builder()
                 .name("할인 쿠폰")
                 .couponCount(null)
@@ -120,6 +121,23 @@ public abstract class TestSettingUtils {
                 .maxDiscount(0)
                 .minOrderPrice(null)
                 .state(CouponState.AVAILABLE)
+                .type(CouponType.FIXED)
+                .validFrom(LocalDate.now())
+                .validTo(LocalDate.now().plusDays(100))
+                .build();
+        return couponRepository.save(coupon);
+    }
+
+    protected Coupon makeLimitedCoupon(){
+        Coupon coupon = Coupon.builder()
+                .name("할인 쿠폰")
+                .couponCount(15)
+                .couponCreatedAt(LocalDate.now())
+                .discountValue(15)
+                .maxDiscount(0)
+                .minOrderPrice(null)
+                .state(CouponState.AVAILABLE)
+                .type(CouponType.FIXED)
                 .validFrom(LocalDate.now())
                 .validTo(LocalDate.now().plusDays(100))
                 .build();

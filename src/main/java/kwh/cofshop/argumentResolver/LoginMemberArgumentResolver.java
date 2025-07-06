@@ -1,12 +1,8 @@
-package kwh.cofshop.config.argumentResolver;
+package kwh.cofshop.argumentResolver;
 
-import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.member.repository.MemberRepository;
-import kwh.cofshop.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.ClassUtils;
 import org.springframework.core.MethodParameter;
-import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -14,9 +10,6 @@ import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
-
-import java.lang.annotation.Annotation;
-import java.util.Objects;
 
 @RequiredArgsConstructor
 @Component

@@ -3,7 +3,7 @@ package kwh.cofshop.member.contoller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
-import kwh.cofshop.config.argumentResolver.LoginMember;
+import kwh.cofshop.argumentResolver.LoginMember;
 import kwh.cofshop.global.response.ApiResponse;
 import kwh.cofshop.member.domain.MemberState;
 import kwh.cofshop.member.dto.request.MemberRequestDto;

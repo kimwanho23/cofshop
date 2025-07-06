@@ -6,6 +6,7 @@ import kwh.cofshop.coupon.dto.request.CouponRequestDto;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.annotation.Commit;
 
 import java.time.LocalDate;
 
@@ -17,35 +18,23 @@ class CouponServiceTest extends TestSettingUtils {
 
     @Test
     @DisplayName("쿠폰 생성")
+    @Commit
     void createCoupon() {
-        couponService.createCoupon(getCouponRequestDtoWithCount());
-    }
-
-
-    //쿠폰 requestDto
-    public CouponRequestDto getCouponRequestDto(){
-        CouponRequestDto couponRequestDto = new CouponRequestDto();
-        couponRequestDto.setType(CouponType.RATE);
-        couponRequestDto.setName("쿠폰 1");
-        couponRequestDto.setDiscountValue(15);
-        couponRequestDto.setMinOrderPrice(0);
-        couponRequestDto.setMaxDiscountAmount(5000);
-        couponRequestDto.setValidFrom(LocalDate.now());
-        couponRequestDto.setValidTo(LocalDate.now().plusDays(150));
-        return couponRequestDto;
+        Long coupon1 = couponService.createCoupon(getCouponRequestDtoWithCount());
     }
 
     public CouponRequestDto getCouponRequestDtoWithCount(){
-        CouponRequestDto couponRequestDto = new CouponRequestDto();
-        couponRequestDto.setType(CouponType.RATE);
-        couponRequestDto.setName("쿠폰 1");
-        couponRequestDto.setDiscountValue(15);
-        couponRequestDto.setMinOrderPrice(0);
-        couponRequestDto.setMaxDiscountAmount(5000);
-        couponRequestDto.setValidFrom(LocalDate.now());
-        couponRequestDto.setValidTo(LocalDate.now().plusDays(150));
-        couponRequestDto.setCouponCount(10000);
-        return couponRequestDto;
+        CouponRequestDto limitedCoupon = new CouponRequestDto();
+        limitedCoupon.setName("신규 할인 쿠폰");
+        limitedCoupon.setType(CouponType.FIXED);              // 고정 할인
+        limitedCoupon.setDiscountValue(5000);                  // 5,000원 할인
+        limitedCoupon.setMaxDiscountAmount(null);              // 최대 할인 금액 없음
+        limitedCoupon.setMinOrderPrice(20000);                  // 최소 주문 금액 20,000원 이상
+        limitedCoupon.setCouponCount(100);                      // 총 100장 발급 가능
+        limitedCoupon.setValidFrom(LocalDate.now());            // 오늘부터 사용 가능
+        limitedCoupon.setValidTo(LocalDate.now().plusMonths(1)); // 1개월간 유효
+        return limitedCoupon;
+
     }
 
 }

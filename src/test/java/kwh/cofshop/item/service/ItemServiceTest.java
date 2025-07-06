@@ -22,6 +22,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.annotation.Commit;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -85,6 +86,7 @@ class ItemServiceTest extends TestSettingUtils {
     @Test
     @DisplayName("아이템 등록 테스트")
     @Transactional
+    @Commit
     void createItem() throws Exception {
 
         Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();

@@ -1,9 +1,9 @@
 package kwh.cofshop.coupon.domain;
 
 import jakarta.persistence.*;
-import kwh.cofshop.coupon.policy.CouponDiscountPolicy;
-import kwh.cofshop.coupon.policy.CouponFixedDiscountPolicy;
-import kwh.cofshop.coupon.policy.CouponRateDiscountPolicy;
+import kwh.cofshop.coupon.policy.discount.CouponDiscountPolicy;
+import kwh.cofshop.coupon.policy.discount.CouponFixedDiscountPolicy;
+import kwh.cofshop.coupon.policy.discount.CouponRateDiscountPolicy;
 import kwh.cofshop.coupon.dto.request.CouponRequestDto;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
@@ -86,27 +86,18 @@ public class Coupon {
         this.state = newState;
     }
 
+    // 수량 제한 여부
+    public boolean isLimitedQuantity() {
+        return this.couponCount != null;
+    }
 
-    public void decreaseCouponCount() {
+/*    public void decreaseCouponCount() {
         if (this.couponCount == null)
             return; // 무한 수량일 시 아무것도 하지 않음.
         if (this.couponCount <= 0) {
             throw new BusinessException(BusinessErrorCode.COUPON_RUN_OUT); // 쿠폰 소진
         }
         this.couponCount -= 1;
-    }
-
-
-
-    public CouponDiscountPolicy getPolicy() {
-        return switch (this.type) {
-            case FIXED      -> new CouponFixedDiscountPolicy(this.discountValue);
-            case RATE -> new CouponRateDiscountPolicy(this.discountValue, this.maxDiscount);
-        };
-    }
-
-    public Long calculateDiscount(Long targetPrice) {
-        return getPolicy().calculateDiscount(targetPrice);
-    }
+    }*/
 
 }

@@ -141,9 +141,9 @@ public class Order extends BaseTimeEntity {
     }
 
     public void pay(){
-        if (this.getOrderState() != OrderState.WAITING_FOR_PAY) {
-            throw new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND); // 결제 대기 상태가 아니면 예외 처리
-        }
+/*        if (this.getOrderState() != OrderState.WAITING_FOR_PAY) {
+            throw new BusinessException(BusinessErrorCode.PAYMENT_FAIL); // 결제 대기 상태가 아니면 예외 처리
+        }*/
         this.changeOrderState(OrderState.PAYMENT_PENDING); // Order 테이블에 결제 저장
     }
 

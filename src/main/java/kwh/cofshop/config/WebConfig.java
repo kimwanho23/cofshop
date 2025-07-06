@@ -1,6 +1,6 @@
 package kwh.cofshop.config;
 
-import kwh.cofshop.config.argumentResolver.LoginMemberArgumentResolver;
+import kwh.cofshop.argumentResolver.LoginMemberArgumentResolver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;

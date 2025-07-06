@@ -1,4 +1,4 @@
-package kwh.cofshop.global.aspect;
+package kwh.cofshop.aspect;
 
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;

@@ -2,8 +2,6 @@ package kwh.cofshop.statistics.scheduler;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import kwh.cofshop.coupon.service.CouponService;
-import kwh.cofshop.coupon.service.MemberCouponService;
 import kwh.cofshop.statistics.dto.TopItemDto;
 import kwh.cofshop.statistics.service.StatisticsService;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +28,6 @@ public class StatisticsScheduler {
             String data = objectMapper.writeValueAsString(last7DaysTopItem);
             redisTemplate.opsForValue().set("ranking:top_items:last7days", data, Duration.ofDays(1));
 
-            log.info("[Scheduler] : 7일간의 인기 상품 조회");
+            log.info("[Scheduler] : 7일간의 인기 상품 저장");
         }
 }

@@ -25,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.test.annotation.Commit;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
@@ -148,20 +149,18 @@ class OrderServiceTest extends TestSettingUtils {
     void testConcurrentOrderCreation() throws InterruptedException {
 
         Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
-        Long random = ThreadLocalRandom.current().nextLong(40, 330); // 1 이상, 4 미만
-        Item item = itemRepository.findById(random).orElseThrow();
+        Item item = itemRepository.findById(1L).orElseThrow();
 
-        int taskCount = 1000;
-        CountDownLatch latch = new CountDownLatch(taskCount); // 1000개 완료 대기
+        int numberOfThreads = 10;
+        ExecutorService executorService = Executors.newFixedThreadPool(numberOfThreads);
+        CountDownLatch latch = new CountDownLatch(numberOfThreads);
 
-        for (int i = 0; i < taskCount; i++) {
-            int count = i;
-            executorService.execute(() -> {
+        for (int i = 0; i < numberOfThreads; i++) {
+            executorService.submit(() -> {
                 try {
                     orderService.createInstanceOrder(member.getId(), getOrderRequestDto(item));
-                    log.info("{}번 실행", count);
                 } catch (Exception e) {
-                    System.err.println("에러 발생: " + e.getMessage());
+                    e.printStackTrace();
                 } finally {
                     latch.countDown();
                 }

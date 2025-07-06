@@ -1,4 +1,6 @@
-package kwh.cofshop.coupon.policy;
+package kwh.cofshop.coupon.policy.discount;
+
+import kwh.cofshop.coupon.domain.CouponType;
 
 public class CouponRateDiscountPolicy implements CouponDiscountPolicy {
 
@@ -8,6 +10,11 @@ public class CouponRateDiscountPolicy implements CouponDiscountPolicy {
     public CouponRateDiscountPolicy(int discountRate, Integer maxDiscount) {
         this.discountRate = discountRate;
         this.maxDiscount = maxDiscount;
+    }
+
+    @Override
+    public boolean supports(CouponType type) {
+        return type == CouponType.RATE;
     }
 
     @Override

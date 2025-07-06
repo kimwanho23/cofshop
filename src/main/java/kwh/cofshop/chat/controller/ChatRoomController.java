@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import kwh.cofshop.chat.dto.response.ChatRoomResponseDto;
 import kwh.cofshop.chat.service.ChatRoomService;
-import kwh.cofshop.config.argumentResolver.LoginMember;
+import kwh.cofshop.argumentResolver.LoginMember;
 import kwh.cofshop.global.response.ApiResponse;
 import kwh.cofshop.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;

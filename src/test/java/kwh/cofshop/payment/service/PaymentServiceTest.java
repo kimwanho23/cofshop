@@ -4,9 +4,7 @@ import com.siot.IamportRestClient.IamportClient;
 import com.siot.IamportRestClient.response.IamportResponse;
 import com.siot.IamportRestClient.response.Payment;
 import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.order.domain.Address;
 import kwh.cofshop.order.domain.Order;
-import kwh.cofshop.order.domain.OrderItem;
 import kwh.cofshop.order.repository.OrderRepository;
 import kwh.cofshop.payment.domain.PaymentEntity;
 import kwh.cofshop.payment.dto.PaymentPrepareRequestDto;
@@ -22,9 +20,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
+
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -44,6 +44,7 @@ class PaymentServiceTest {
 
     @InjectMocks
     private PaymentService paymentService;
+
 
     @BeforeEach
     void setUp() {

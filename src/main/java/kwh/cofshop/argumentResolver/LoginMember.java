@@ -1,4 +1,4 @@
-package kwh.cofshop.config.argumentResolver;
+package kwh.cofshop.argumentResolver;
 
 
 import java.lang.annotation.*;

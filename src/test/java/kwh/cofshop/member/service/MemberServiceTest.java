@@ -19,6 +19,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.test.annotation.Commit;
 import org.springframework.transaction.annotation.Transactional;
 
 
@@ -46,10 +47,11 @@ class MemberServiceTest extends TestSettingUtils {
     @Test
     @DisplayName("회원가입 테스트")
     @Transactional
+    @Commit
     void signUp() throws JsonProcessingException {  // 1번 테스트
 
         //DTO 생성 (프론트에서 입력)
-        MemberRequestDto requestDto = getMemberRequestDto("test2@gmail.com");
+        MemberRequestDto requestDto = getMemberRequestDto("test@gmail.com");
 
         // 저장
         MemberResponseDto savedMember = memberService.signUp(requestDto);
@@ -58,7 +60,7 @@ class MemberServiceTest extends TestSettingUtils {
 
         // 데이터 검증
         assertThat(savedMember).isNotNull();
-        assertThat(savedMember.getEmail()).isEqualTo("test2@gmail.com");
+        assertThat(savedMember.getEmail()).isEqualTo("test@gmail.com");
         assertThat(savedMember.getMemberName()).isEqualTo("테스트");
         assertThat(savedMember.getTel()).isEqualTo("010-1234-5678");
 

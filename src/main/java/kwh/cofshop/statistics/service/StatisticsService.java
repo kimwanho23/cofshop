@@ -40,7 +40,6 @@ public class StatisticsService {
         return null; // 캐시 없음
     }
 
-
     // 기간 별 판매량
     public List<DailySalesDto> getDailySalesBetween(LocalDate from, LocalDate to) {
         return statisticsRepository.getDailySalesBetween(from, to);

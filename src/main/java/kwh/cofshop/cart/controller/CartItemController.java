@@ -6,7 +6,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import kwh.cofshop.cart.dto.request.CartItemRequestDto;
 import kwh.cofshop.cart.dto.response.CartItemResponseDto;
 import kwh.cofshop.cart.service.CartItemService;
-import kwh.cofshop.config.argumentResolver.LoginMember;
+import kwh.cofshop.argumentResolver.LoginMember;
 import kwh.cofshop.global.response.ApiResponse;
 import kwh.cofshop.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;

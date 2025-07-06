@@ -1,5 +1,7 @@
-package kwh.cofshop.coupon.policy;
+package kwh.cofshop.coupon.policy.discount;
 
+
+import kwh.cofshop.coupon.domain.CouponType;
 
 public class CouponFixedDiscountPolicy implements CouponDiscountPolicy {
 
@@ -9,6 +11,11 @@ public class CouponFixedDiscountPolicy implements CouponDiscountPolicy {
         this.discountValue = discountValue;
     }
 
+
+    @Override
+    public boolean supports(CouponType type) {
+        return type == CouponType.FIXED;
+    }
 
     @Override
     public Long calculateDiscount(Long value) {

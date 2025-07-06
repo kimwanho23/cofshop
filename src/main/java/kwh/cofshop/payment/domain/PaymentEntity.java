@@ -93,6 +93,7 @@ public class PaymentEntity {
         return PaymentEntity.builder()
                 .order(order)
                 .status(PaymentStatus.READY)
+                .member(member)
                 .buyerEmail(member.getEmail())
                 .buyerName(member.getMemberName())
                 .buyerTel(member.getTel())

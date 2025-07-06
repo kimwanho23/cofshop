@@ -1,6 +1,9 @@
 package kwh.cofshop.order.service;
 
+import kwh.cofshop.argumentResolver.DistributedLock;
 import kwh.cofshop.coupon.domain.MemberCoupon;
+import kwh.cofshop.coupon.factory.CouponDiscountPolicyFactory;
+import kwh.cofshop.coupon.policy.discount.CouponDiscountPolicy;
 import kwh.cofshop.coupon.service.MemberCouponService;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
@@ -43,6 +46,9 @@ public class OrderService {
     private final MemberService memberService;
     private final MemberCouponService memberCouponService;
 
+    // 쿠폰 할인 정책
+    private final CouponDiscountPolicyFactory couponDiscountPolicyFactory;
+
     // 바로구매 로직
     @Transactional
     public OrderResponseDto createInstanceOrder(Long memberId, OrderRequestDto orderRequestDto) {
@@ -57,7 +63,7 @@ public class OrderService {
         // 주문 생성
         Order order = Order.createOrder(member, orderRequestDto.getAddress(), orderItems);
 
-        // 쿠폰 할인 금액
+        // 쿠폰 할인 적용 금액
         long priceAfterCouponDiscount = applyCoupon(order, orderRequestDto, memberId);
 
         // 포인트 할인 금액
@@ -146,16 +152,18 @@ public class OrderService {
 
     // 쿠폰 할인 적용
     private long applyCoupon(Order order, OrderRequestDto dto, Long memberId) {
-        Long couponDiscountValue = 0L;
-
-        if (dto.getMemberCouponId() != null) {
-            MemberCoupon memberCoupon = memberCouponService.findValidCoupon(dto.getMemberCouponId(), memberId);
-            couponDiscountValue = memberCoupon.getCoupon().calculateDiscount(order.getTotalPrice());
-            memberCoupon.useCoupon();
-            order.addUseCoupon(memberCoupon, couponDiscountValue);
+        if (dto.getMemberCouponId() == null) {
+            return order.getTotalPrice();
         }
 
-        return order.getTotalPrice() - couponDiscountValue;
+        MemberCoupon memberCoupon = memberCouponService.findValidCoupon(dto.getMemberCouponId(), memberId);
+        CouponDiscountPolicy policy = couponDiscountPolicyFactory.getPolicy(memberCoupon.getCoupon().getType());
+        Long discount = policy.calculateDiscount(order.getTotalPrice());
+
+        memberCoupon.useCoupon();
+        order.addUseCoupon(memberCoupon, discount);
+
+        return order.getTotalPrice() - discount;
     }
 
     // 포인트 적용

@@ -5,6 +5,7 @@ import com.siot.IamportRestClient.exception.IamportResponseException;
 import com.siot.IamportRestClient.request.CancelData;
 import com.siot.IamportRestClient.response.IamportResponse;
 import com.siot.IamportRestClient.response.Payment;
+import kwh.cofshop.argumentResolver.DistributedLock;
 import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
@@ -47,9 +48,28 @@ public class PaymentService {
     }
 
     // 결제 요청 생성
+    @DistributedLock(keyName = "'payment:' + #orderId")
     @Transactional
     public PaymentResponseDto createPaymentRequest(Long orderId, PaymentPrepareRequestDto requestDto) {
+        // 1. 주문 정보 확인
+        Order order = orderRepository.findById(orderId).orElseThrow(
+                () -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND)
+        );
 
+        // 2. 주문 상태 확인 & 주문 생성 - 결제 대기
+        order.pay();
+
+        // 3. 결제 정보 저장
+        PaymentEntity currentPayment = PaymentEntity.
+                createPayment(order, requestDto.getPgProvider(), requestDto.getPayMethod());
+        paymentEntityRepository.save(currentPayment); // 결제 정보 저장
+
+        return PaymentResponseDto.from(currentPayment);
+    }
+
+    // 결제 요청 생성
+    @Transactional
+    public PaymentResponseDto createPaymentRequestTest(Long orderId, PaymentPrepareRequestDto requestDto) {
         // 1. 주문 정보 확인
         Order order = orderRepository.findById(orderId).orElseThrow(
                 () -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND)
@@ -97,6 +117,7 @@ public class PaymentService {
     }
 
     // 환불 요청
+    @DistributedLock(keyName = "'refund:' + #requestDto.merchantUid")
     @Transactional
     public void refundPayment(Long memberId, PaymentRefundRequestDto requestDto) {
         // 결제 내역 조회 및 검증

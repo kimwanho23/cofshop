@@ -44,11 +44,11 @@ public class CouponController {
     // 쿠폰 생성
     @Operation(summary = "쿠폰 생성", description = "쿠폰을 생성합니다.")
     @PostMapping
-    public ResponseEntity<ApiResponse<CouponResponseDto>> createCoupon(
+    public ResponseEntity<ApiResponse<Long>> createCoupon(
             @RequestBody @Valid CouponRequestDto couponRequestDto) {
-        CouponResponseDto createdCoupon = couponService.createCoupon(couponRequestDto);
+        Long coupon = couponService.createCoupon(couponRequestDto);
         return ResponseEntity.created(URI.create("/api/coupon"))
-                .body(ApiResponse.Created(createdCoupon));
+                .body(ApiResponse.Created(coupon));
     }
 
     ///@PUT, PATCH
