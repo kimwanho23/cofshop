@@ -1,8 +1,5 @@
 package kwh.cofshop.coupon.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import kwh.cofshop.coupon.dto.request.MemberCouponRequestDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;

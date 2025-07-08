@@ -16,7 +16,7 @@ public class CouponCreatedEventListener {
 
     private final CouponRedisService couponRedisService;
 
-    //@Async
+    @Async
     @EventListener
     public void handle(CouponCreatedEvent event) {
         if (event.isLimited()) { // 수량 제한이 있는가?

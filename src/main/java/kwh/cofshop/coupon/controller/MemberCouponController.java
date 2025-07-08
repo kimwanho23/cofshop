@@ -44,6 +44,15 @@ public class MemberCouponController {
                 .body(ApiResponse.Created("쿠폰 발급 요청 완료"));
     }
 
+    @PostMapping("/{couponId}")
+    public ResponseEntity<ApiResponse<String>> createForTest(
+            @RequestParam Long memberId,
+            @PathVariable Long couponId) {
+
+        memberCouponService.issueCoupon(memberId, couponId);
+        return ResponseEntity.ok(ApiResponse.OK("테스트용 쿠폰 발급 완료"));
+    }
+
 
     // 쿠폰 만료 처리
     @Operation(summary = "쿠폰 만료", description = "회원의 쿠폰 상태를 만료 상태로 변경합니다.")

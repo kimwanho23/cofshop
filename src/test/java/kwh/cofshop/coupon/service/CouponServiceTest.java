@@ -30,7 +30,7 @@ class CouponServiceTest extends TestSettingUtils {
         limitedCoupon.setDiscountValue(5000);                  // 5,000원 할인
         limitedCoupon.setMaxDiscountAmount(null);              // 최대 할인 금액 없음
         limitedCoupon.setMinOrderPrice(20000);                  // 최소 주문 금액 20,000원 이상
-        limitedCoupon.setCouponCount(100);                      // 총 100장 발급 가능
+        limitedCoupon.setCouponCount(null);                      // 총 500000장 발급 가능
         limitedCoupon.setValidFrom(LocalDate.now());            // 오늘부터 사용 가능
         limitedCoupon.setValidTo(LocalDate.now().plusMonths(1)); // 1개월간 유효
         return limitedCoupon;

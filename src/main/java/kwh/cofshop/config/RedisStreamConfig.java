@@ -19,12 +19,11 @@ import org.springframework.data.redis.stream.StreamListener;
 import org.springframework.data.redis.stream.StreamMessageListenerContainer;
 import io.lettuce.core.RedisBusyException;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Executors;
 
 @Configuration
 @RequiredArgsConstructor
@@ -37,10 +36,7 @@ public class RedisStreamConfig {
 
     public static final String STREAM_KEY = "stream:events";
     public static final String COUPON_GROUP = "consumer-group:coupon";
-
-    @Value("${spring.redis.host}")
-    private String host;
-
+    private static final String CONSUMER_NAME = "coupon-consumer";
     // Cousumer 빈으로 등록
     @Bean(initMethod = "start", destroyMethod = "stop")
     public StreamMessageListenerContainer<String, MapRecord<String, String, String>> streamMessageListenerContainer() {
@@ -51,22 +47,16 @@ public class RedisStreamConfig {
 
         var container = StreamMessageListenerContainer.create(redisConnectionFactory, options); // 컨테이너 생성
 
-        String consumerName = host + "-" + UUID.randomUUID();
-
         // 리스너 그룹 생성, 해당 도메인의 그룹과 리스너를 매칭시킨다.
         Map<String, StreamListener<String, MapRecord<String, String, String>>> groupToListener = Map.of(
                 COUPON_GROUP, couponStreamListener // 쿠폰 그룹은 쿠폰 리스너에 매칭
         );
 
-        groupToListener.forEach((group, listener) -> {
-            container.receive(
-                    Consumer.from(group, consumerName),
-                    StreamOffset.create(STREAM_KEY, ReadOffset.lastConsumed()),
-                    listener
-            );
-        });
-
-
+        groupToListener.forEach((group, listener) -> container.receive(
+                Consumer.from(group, CONSUMER_NAME),
+                StreamOffset.create(STREAM_KEY, ReadOffset.lastConsumed()),
+                listener
+        ));
         return container;
     }
 

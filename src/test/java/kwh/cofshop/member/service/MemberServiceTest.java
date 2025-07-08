@@ -71,8 +71,21 @@ class MemberServiceTest extends TestSettingUtils {
         assertThat(savedMember.getCreatedAt()).isBeforeOrEqualTo(LocalDateTime.now());  // 가입일자
         assertThat(savedMember.getLastPasswordChange()).isBeforeOrEqualTo(LocalDateTime.now());  // 비밀번호 변경일자
         assertThat(savedMember.getLastLogin()).isNull();
+    }
 
-        // 테스트 통과 (2024-12-11)
+    @Test
+    @DisplayName("회원가입 테스트")
+    @Transactional
+    @Commit
+    void signUpMany() throws JsonProcessingException {  // 1번 테스트
+
+        //DTO 생성 (프론트에서 입력)
+        for (int i = 1; i <= 1000; i++) {
+            MemberRequestDto requestDto = getMemberRequestDto("test" + i + "@gmail.com");
+            MemberResponseDto savedMember = memberService.signUp(requestDto);
+      //      log.info(objectMapper.writeValueAsString(savedMember));
+        }
+        // 저장
     }
 
     @Test

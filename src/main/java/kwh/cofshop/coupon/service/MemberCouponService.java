@@ -16,7 +16,6 @@ import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +36,7 @@ public class MemberCouponService {
 
 
     @Transactional
-    @DistributedLock(keyName = "#memberId + ':' + #couponId")
+   // @DistributedLock(keyName = "#memberId + ':' + #couponId")
     public void issueCoupon(Long memberId, Long couponId) {
         log.info("[MemberCouponService] 쿠폰 발급 요청 시작: memberId={}, couponId={}", memberId, couponId);
 

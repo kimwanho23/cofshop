@@ -40,7 +40,7 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests((authorize) -> authorize
                         .requestMatchers("/css/**", "/js/**", "/favicon.ico").permitAll()
-                        .requestMatchers("/api/member/signup", "/",  "/login", "/api/item/search",
+                        .requestMatchers("/api/member/signup", "/",  "/login", "/api/item/search", "/api/memberCoupon/**",
                                 "/api/review/**",  "/api/auth/login", "/api/auth/reissue", "/api/auth/logout",
                                 "/swagger-ui/**", "/swagger-resources/**", "/v3/api-docs/**", "/api*").permitAll()
                         .requestMatchers("/api/**", "/item/**").authenticated()
