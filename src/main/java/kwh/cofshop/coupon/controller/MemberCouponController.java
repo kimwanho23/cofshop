@@ -4,8 +4,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import kwh.cofshop.argumentResolver.LoginMember;
 import kwh.cofshop.coupon.dto.response.MemberCouponResponseDto;
 import kwh.cofshop.coupon.service.MemberCouponService;
-import kwh.cofshop.global.response.ApiResponse;
-import kwh.cofshop.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,32 +23,33 @@ public class MemberCouponController {
     // 내 쿠폰 조회
     @Operation(summary = "쿠폰 목록 조회", description = "사용자의 쿠폰 목록을 조회합니다.")
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<List<MemberCouponResponseDto>>> getMemberCouponList(
-            @LoginMember CustomUserDetails customUserDetails){
-        List<MemberCouponResponseDto> memberCouponListResponseDto = memberCouponService.memberCouponList(customUserDetails.getId());
-        return ResponseEntity.ok(ApiResponse.OK(memberCouponListResponseDto));
+    public List<MemberCouponResponseDto> getMemberCouponList(
+            @LoginMember Long memberId) {
+        return memberCouponService.memberCouponList(memberId);
     }
 
     // 쿠폰 발급
     @Operation(summary = "쿠폰 발급", description = "사용자에게 쿠폰을 발급합니다.")
     @PostMapping("/me/{couponId}")
-    public ResponseEntity<ApiResponse<String>> createMemberCoupon(
-            @LoginMember CustomUserDetails customUserDetails,
+    public ResponseEntity<Void> createMemberCoupon(
+            @LoginMember Long memberId,
             @PathVariable Long couponId) {
 
-        memberCouponService.issueCoupon(customUserDetails.getId(), couponId);
+        memberCouponService.issueCoupon(memberId, couponId);
         return ResponseEntity
                 .created(URI.create("/api/memberCoupon/" + couponId))
-                .body(ApiResponse.Created("쿠폰 발급 요청 완료"));
+                .build();
     }
 
     @PostMapping("/{couponId}")
-    public ResponseEntity<ApiResponse<String>> createForTest(
+    public ResponseEntity<Void> createForTest(
             @RequestParam Long memberId,
             @PathVariable Long couponId) {
 
         memberCouponService.issueCoupon(memberId, couponId);
-        return ResponseEntity.ok(ApiResponse.OK("테스트용 쿠폰 발급 완료"));
+        return ResponseEntity
+                .created(URI.create("/api/memberCoupon/" + couponId))
+                .build();
     }
 
 
@@ -58,10 +57,10 @@ public class MemberCouponController {
     @Operation(summary = "쿠폰 만료", description = "회원의 쿠폰 상태를 만료 상태로 변경합니다.")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     @PatchMapping("/expire")
-    public ResponseEntity<ApiResponse<Void>> expireMemberCoupons(
+    public ResponseEntity<Void> expireMemberCoupons(
             @RequestParam LocalDate date) {
         memberCouponService.expireMemberCoupons(date);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
 }

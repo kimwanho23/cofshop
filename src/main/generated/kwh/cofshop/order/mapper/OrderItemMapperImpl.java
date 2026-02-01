@@ -1,7 +1,6 @@
 package kwh.cofshop.order.mapper;
 
 import javax.annotation.processing.Generated;
-import kwh.cofshop.item.domain.Category;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemOption;
 import kwh.cofshop.order.domain.OrderItem;
@@ -10,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-02-15T13:59:40+0900",
+    date = "2026-01-24T00:40:10+0900",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.9 (Oracle Corporation)"
 )
 @Component
@@ -26,12 +25,10 @@ public class OrderItemMapperImpl implements OrderItemMapper {
 
         orderItemResponseDto.setItemName( orderItemItemItemName( orderItem ) );
         orderItemResponseDto.setPrice( orderItemItemPrice( orderItem ) );
-        orderItemResponseDto.setDiscount( orderItemItemDiscount( orderItem ) );
-        orderItemResponseDto.setDeliveryFee( orderItemItemDeliveryFee( orderItem ) );
-        orderItemResponseDto.setCategories( orderItemItemCategory( orderItem ) );
+        orderItemResponseDto.setAdditionalPrice( orderItemItemOptionAdditionalPrice( orderItem ) );
         orderItemResponseDto.setOrigin( orderItemItemOrigin( orderItem ) );
+        orderItemResponseDto.setDiscountRate( orderItemItemOptionDiscountRate( orderItem ) );
         orderItemResponseDto.setQuantity( orderItem.getQuantity() );
-        orderItemResponseDto.setItemOption( itemOptionToOrderItemOptionResponseDto( orderItem.getItemOption() ) );
 
         return orderItemResponseDto;
     }
@@ -63,49 +60,19 @@ public class OrderItemMapperImpl implements OrderItemMapper {
         return price;
     }
 
-    private Integer orderItemItemDiscount(OrderItem orderItem) {
+    private Integer orderItemItemOptionAdditionalPrice(OrderItem orderItem) {
         if ( orderItem == null ) {
             return null;
         }
-        Item item = orderItem.getItem();
-        if ( item == null ) {
+        ItemOption itemOption = orderItem.getItemOption();
+        if ( itemOption == null ) {
             return null;
         }
-        Integer discount = item.getDiscount();
-        if ( discount == null ) {
+        Integer additionalPrice = itemOption.getAdditionalPrice();
+        if ( additionalPrice == null ) {
             return null;
         }
-        return discount;
-    }
-
-    private Integer orderItemItemDeliveryFee(OrderItem orderItem) {
-        if ( orderItem == null ) {
-            return null;
-        }
-        Item item = orderItem.getItem();
-        if ( item == null ) {
-            return null;
-        }
-        Integer deliveryFee = item.getDeliveryFee();
-        if ( deliveryFee == null ) {
-            return null;
-        }
-        return deliveryFee;
-    }
-
-    private Category orderItemItemCategory(OrderItem orderItem) {
-        if ( orderItem == null ) {
-            return null;
-        }
-        Item item = orderItem.getItem();
-        if ( item == null ) {
-            return null;
-        }
-        Category category = item.getCategory();
-        if ( category == null ) {
-            return null;
-        }
-        return category;
+        return additionalPrice;
     }
 
     private String orderItemItemOrigin(OrderItem orderItem) {
@@ -123,16 +90,18 @@ public class OrderItemMapperImpl implements OrderItemMapper {
         return origin;
     }
 
-    protected OrderItemOptionResponseDto itemOptionToOrderItemOptionResponseDto(ItemOption itemOption) {
+    private Integer orderItemItemOptionDiscountRate(OrderItem orderItem) {
+        if ( orderItem == null ) {
+            return null;
+        }
+        ItemOption itemOption = orderItem.getItemOption();
         if ( itemOption == null ) {
             return null;
         }
-
-        OrderItemOptionResponseDto orderItemOptionResponseDto = new OrderItemOptionResponseDto();
-
-        orderItemOptionResponseDto.setDescription( itemOption.getDescription() );
-        orderItemOptionResponseDto.setAdditionalPrice( itemOption.getAdditionalPrice() );
-
-        return orderItemOptionResponseDto;
+        Integer discountRate = itemOption.getDiscountRate();
+        if ( discountRate == null ) {
+            return null;
+        }
+        return discountRate;
     }
 }

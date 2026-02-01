@@ -15,7 +15,7 @@ public class CouponResponseDto {
     private CouponType type;
     private int discountValue;
     private Integer maxDiscountAmount;
-    private int minOrderPrice;
+    private Integer minOrderPrice;
     private LocalDate validFrom;
     private LocalDate validTo;
     private LocalDateTime createdAt;

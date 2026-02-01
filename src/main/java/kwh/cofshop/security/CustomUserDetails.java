@@ -1,9 +1,6 @@
-
 package kwh.cofshop.security;
 
-import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.domain.MemberState;
-import kwh.cofshop.member.domain.Role;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -13,6 +10,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
+
 @Getter
 @AllArgsConstructor
 @Builder

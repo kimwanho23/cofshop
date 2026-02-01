@@ -21,13 +21,13 @@ public class QMemberLoginHistory extends EntityPathBase<MemberLoginHistory> {
 
     public final StringPath device = createString("device");
 
-    public final StringPath email = createString("email");
-
-    public final NumberPath<Integer> id = createNumber("id", Integer.class);
+    public final NumberPath<Long> id = createNumber("id", Long.class);
 
     public final StringPath ipAddress = createString("ipAddress");
 
     public final DateTimePath<java.time.LocalDateTime> loginDt = createDateTime("loginDt", java.time.LocalDateTime.class);
+
+    public final NumberPath<Long> memberId = createNumber("memberId", Long.class);
 
     public QMemberLoginHistory(String variable) {
         super(MemberLoginHistory.class, forVariable(variable));

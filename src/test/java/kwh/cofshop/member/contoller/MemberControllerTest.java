@@ -1,74 +1,141 @@
 package kwh.cofshop.member.contoller;
 
-import jakarta.servlet.http.Cookie;
-import kwh.cofshop.TestSettingUtils;
-import kwh.cofshop.member.dto.request.LoginDto;
-import lombok.extern.slf4j.Slf4j;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import kwh.cofshop.member.domain.MemberState;
+import kwh.cofshop.member.dto.request.MemberRequestDto;
+import kwh.cofshop.member.dto.response.MemberResponseDto;
+import kwh.cofshop.member.event.MemberLoginEvent;
+import kwh.cofshop.member.service.MemberLoginHistoryService;
+import kwh.cofshop.member.service.MemberService;
+import kwh.cofshop.support.StandaloneMockMvcFactory;
+import kwh.cofshop.support.TestLoginMemberArgumentResolver;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;  // POST 요청
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;  // POST 요청
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+@ExtendWith(MockitoExtension.class)
+class MemberControllerTest {
 
-@Slf4j
-class MemberControllerTest extends TestSettingUtils {
+    private MockMvc mockMvc;
 
-    @Test
-    @DisplayName("스프링 엔드포인트 로그인 성공 테스트")
-    void SpringEndPointLoginSuccessTest() throws Exception {  // 3번 테스트
+    private ObjectMapper objectMapper;
 
-        // 로그인 성공 테스트
-        LoginDto loginDto = new LoginDto();
-        loginDto.setEmail("test@gmail.com");
-        loginDto.setMemberPwd("1234567890");
+    @Mock
+    private MemberService memberService;
 
-        mockMvc.perform(post("/login")
-                        .contentType(MediaType.APPLICATION_JSON)  // JSON 데이터 타입 설정
-                        .content(objectMapper.writeValueAsString(loginDto)))  // DTO -> JSON 변환
-                .andExpect(status().isOk())  // 성공
-                .andExpect(jsonPath("$.body.data.email").value("test@gmail.com"))  // 응답 필드 검증
-                .andExpect(jsonPath("$.body.data.accessToken").exists())  // accessToken
-                .andExpect(jsonPath("$.body.data.refreshToken").exists())  // refreshToken
-                .andDo(print());  // 요청 및 응답 출력
+    @Mock
+    private MemberLoginHistoryService memberLoginHistoryService;
+
+    @InjectMocks
+    private MemberController memberController;
+
+    @BeforeEach
+    void setUp() {
+        objectMapper = new ObjectMapper();
+        mockMvc = StandaloneMockMvcFactory.build(
+                memberController,
+                new TestLoginMemberArgumentResolver()
+        );
     }
 
+    @Test
+    @DisplayName("회원 정보 조회")
+    void getMemberById() throws Exception {
+        when(memberService.findMember(anyLong())).thenReturn(new MemberResponseDto());
+
+        mockMvc.perform(get("/api/members/1"))
+                .andExpect(status().isOk());
+    }
 
     @Test
-    @DisplayName("스프링 엔드포인트 로그아웃 성공 테스트")
-    void SpringEndPointLogoutSuccessTest() throws Exception {  // 3번 테스트
+    @DisplayName("회원 목록 조회")
+    void getAllMembers() throws Exception {
+        when(memberService.memberLists()).thenReturn(List.of(new MemberResponseDto()));
 
-        LoginDto loginDto = new LoginDto();
-        loginDto.setEmail("test@gmail.com");
-        loginDto.setMemberPwd("1234567890");
+        mockMvc.perform(get("/api/members"))
+                .andExpect(status().isOk());
+    }
 
-        MvcResult loginResult = mockMvc.perform(post("/login")
+    @Test
+    @DisplayName("로그인 이력 조회")
+    void getLoginMemberHistory() throws Exception {
+        when(memberLoginHistoryService.getUserLoginHistory(anyLong()))
+                .thenReturn(List.of(MemberLoginEvent.builder()
+                        .memberId(1L)
+                        .loginDt(LocalDateTime.now())
+                        .build()));
+
+        mockMvc.perform(get("/api/members/history/1"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("회원 가입")
+    void signup() throws Exception {
+        MemberResponseDto responseDto = new MemberResponseDto();
+        responseDto.setMemberId(1L);
+
+        when(memberService.signUp(any())).thenReturn(responseDto);
+
+        MemberRequestDto requestDto = new MemberRequestDto();
+        requestDto.setEmail("user@example.com");
+        requestDto.setMemberName("사용자");
+        requestDto.setMemberPwd("password123");
+        requestDto.setTel("01012341234");
+
+        mockMvc.perform(post("/api/members/signup")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginDto)))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        // 로그인 응답에서 refreshToken 쿠키 추출
-        Cookie refreshCookie = loginResult.getResponse().getCookie("refreshToken");
-
-        log.info(objectMapper.writeValueAsString(refreshCookie));
-
-        // 로그아웃 요청
-        mockMvc.perform(post("/logout")
-                        .cookie(refreshCookie))  // 쿠키 전달
-                .andExpect(status().isOk())  // 또는 isNoContent()
-                .andDo(print());
-
-        mockMvc.perform(post("/api/auth/reissue").cookie(refreshCookie))
-                .andExpect(status().isUnauthorized());
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isCreated());
     }
 
+    @Test
+    @DisplayName("관리자 회원 상태 변경")
+    void updateMemberStateByAdmin() throws Exception {
+        mockMvc.perform(patch("/api/members/1/state")
+                        .param("memberState", MemberState.ACTIVE.name()))
+                .andExpect(status().isNoContent());
+    }
 
+    @Test
+    @DisplayName("회원 탈퇴")
+    void quitMember() throws Exception {
+        mockMvc.perform(patch("/api/members/me/state"))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("비밀번호 변경")
+    void changePassword() throws Exception {
+        mockMvc.perform(patch("/api/members/me/password")
+                        .param("password", "newPassword"))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("포인트 변경")
+    void updatePoint() throws Exception {
+        when(memberService.updatePoint(anyLong(), org.mockito.ArgumentMatchers.anyInt())).thenReturn(100);
+
+        mockMvc.perform(patch("/api/members/1/point")
+                        .param("amount", "100"))
+                .andExpect(status().isOk());
+    }
 }

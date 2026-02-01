@@ -16,8 +16,7 @@ public enum UnauthorizedErrorCode implements ErrorCode {
 
     TOKEN_EXPIRED("U-EXPIRED", HttpStatus.UNAUTHORIZED, "토큰이 만료되었습니다."),
     TOKEN_INVALID("U-INVALID", HttpStatus.UNAUTHORIZED, "토큰이 유효하지 않습니다."),
-    TOKEN_NOT_EXIST("U-NOT_EXIST", HttpStatus.UNAUTHORIZED, "토큰이 존재하지 않습니다.")
-    ;
+    TOKEN_NOT_EXIST("U-NOT_EXIST", HttpStatus.UNAUTHORIZED, "토큰이 존재하지 않습니다.");
 
     private final String code;
     private final HttpStatus httpStatus;

@@ -9,7 +9,7 @@ import java.util.List;
 
 @Component
 @Primary
-public class BasicDeliveryPolicy implements DeliveryFeePolicy{
+public class BasicDeliveryPolicy implements DeliveryFeePolicy {
     @Override
     public int calculate(List<ItemOption> itemOptions) {
         return itemOptions.stream()

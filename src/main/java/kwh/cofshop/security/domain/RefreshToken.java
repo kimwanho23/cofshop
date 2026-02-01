@@ -9,7 +9,7 @@ import org.springframework.data.redis.core.index.Indexed;
 @NoArgsConstructor
 @Getter
 @ToString
-public class RefreshToken{
+public class RefreshToken {
 
     @Id
     private Long id;
@@ -19,7 +19,7 @@ public class RefreshToken{
 
     private String refreshToken;
 
-    public RefreshToken(Long id, String accessToken, String refreshToken){
+    public RefreshToken(Long id, String accessToken, String refreshToken) {
         this.id = id;
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;

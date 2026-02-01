@@ -14,7 +14,7 @@ import java.util.Optional;
 
 @Repository
 @RequiredArgsConstructor
-public class ReviewRepositoryCustomImpl implements ReviewRepositoryCustom{
+public class ReviewRepositoryCustomImpl implements ReviewRepositoryCustom {
 
 
     private final JPAQueryFactory queryFactory;

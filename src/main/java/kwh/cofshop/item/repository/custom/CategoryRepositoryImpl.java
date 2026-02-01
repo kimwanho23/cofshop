@@ -19,9 +19,9 @@ public class CategoryRepositoryImpl implements CategoryRepositoryCustom {
         QCategory category = QCategory.category;
 
         return queryFactory.selectFrom(category).distinct()
-                    .leftJoin(category.children).fetchJoin() // 자식 카테고리를 한 번에 가져오기
-                    .where(category.parent.isNull()) // 최상위 부모 카테고리만 가져오기
-                    .fetch();
+                .leftJoin(category.children).fetchJoin() // 자식 카테고리를 한 번에 가져오기
+                .where(category.parent.isNull()) // 최상위 부모 카테고리만 가져오기
+                .fetch();
     }
 
     @Override

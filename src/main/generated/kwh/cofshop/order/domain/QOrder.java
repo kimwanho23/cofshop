@@ -29,6 +29,14 @@ public class QOrder extends EntityPathBase<Order> {
     //inherited
     public final DateTimePath<java.time.LocalDateTime> createDate = _super.createDate;
 
+    public final NumberPath<Integer> deliveryFee = createNumber("deliveryFee", Integer.class);
+
+    public final StringPath deliveryRequest = createString("deliveryRequest");
+
+    public final NumberPath<Long> discountFromCoupon = createNumber("discountFromCoupon", Long.class);
+
+    public final NumberPath<Long> finalPrice = createNumber("finalPrice", Long.class);
+
     public final NumberPath<Long> id = createNumber("id", Long.class);
 
     //inherited
@@ -36,11 +44,27 @@ public class QOrder extends EntityPathBase<Order> {
 
     public final kwh.cofshop.member.domain.QMember member;
 
+    public final kwh.cofshop.coupon.domain.QMemberCoupon memberCoupon;
+
+    public final StringPath merchantUid = createString("merchantUid");
+
     public final DateTimePath<java.time.LocalDateTime> orderDate = createDateTime("orderDate", java.time.LocalDateTime.class);
+
+    public final NumberPath<Integer> orderDay = createNumber("orderDay", Integer.class);
 
     public final ListPath<OrderItem, QOrderItem> orderItems = this.<OrderItem, QOrderItem>createList("orderItems", OrderItem.class, QOrderItem.class, PathInits.DIRECT2);
 
+    public final NumberPath<Integer> orderMonth = createNumber("orderMonth", Integer.class);
+
     public final EnumPath<OrderState> orderState = createEnum("orderState", OrderState.class);
+
+    public final NumberPath<Integer> orderYear = createNumber("orderYear", Integer.class);
+
+    public final kwh.cofshop.payment.domain.QPaymentEntity payment;
+
+    public final NumberPath<Long> totalPrice = createNumber("totalPrice", Long.class);
+
+    public final NumberPath<Integer> usePoint = createNumber("usePoint", Integer.class);
 
     public QOrder(String variable) {
         this(Order.class, forVariable(variable), INITS);
@@ -62,6 +86,8 @@ public class QOrder extends EntityPathBase<Order> {
         super(type, metadata, inits);
         this.address = inits.isInitialized("address") ? new QAddress(forProperty("address")) : null;
         this.member = inits.isInitialized("member") ? new kwh.cofshop.member.domain.QMember(forProperty("member"), inits.get("member")) : null;
+        this.memberCoupon = inits.isInitialized("memberCoupon") ? new kwh.cofshop.coupon.domain.QMemberCoupon(forProperty("memberCoupon"), inits.get("memberCoupon")) : null;
+        this.payment = inits.isInitialized("payment") ? new kwh.cofshop.payment.domain.QPaymentEntity(forProperty("payment"), inits.get("payment")) : null;
     }
 
 }

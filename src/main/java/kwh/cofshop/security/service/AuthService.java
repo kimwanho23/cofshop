@@ -8,18 +8,16 @@ import kwh.cofshop.global.exception.UnauthorizedRequestException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.global.exception.errorcodes.UnauthorizedErrorCode;
 import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.member.domain.Role;
 import kwh.cofshop.member.repository.MemberRepository;
 import kwh.cofshop.security.JwtTokenProvider;
 import kwh.cofshop.security.dto.TokenDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-
 
 @Service
 @RequiredArgsConstructor
@@ -29,12 +27,15 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final MemberRepository memberRepository;
 
-    // 토큰 재발급
-    public ResponseEntity<TokenDto> reissue(HttpServletRequest request) {
+    public TokenDto reissue(HttpServletRequest request, HttpServletResponse response) {
         String refreshToken = extractRefreshToken(request);
 
         if (refreshToken == null) {
             throw new UnauthorizedRequestException(UnauthorizedErrorCode.TOKEN_NOT_EXIST);
+        }
+
+        if (!jwtTokenProvider.validateToken(refreshToken) || !jwtTokenProvider.isRefreshToken(refreshToken)) {
+            throw new UnauthorizedRequestException(UnauthorizedErrorCode.TOKEN_INVALID);
         }
 
         Long memberId = jwtTokenProvider.getMemberId(refreshToken);
@@ -46,14 +47,17 @@ public class AuthService {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
 
-        String newAccessToken = generateAccessToken(member); // 새로운 AccessToken 발급
-        refreshTokenService.save(memberId, refreshToken);
+        String newAccessToken = generateAccessToken(member);
+        String newRefreshToken = jwtTokenProvider.createRefreshToken(member.getId(), member.getEmail());
+        refreshTokenService.save(memberId, newRefreshToken);
+        response.setHeader("Authorization", "Bearer " + newAccessToken);
+        response.addHeader(HttpHeaders.SET_COOKIE, createRefreshTokenCookie(newRefreshToken).toString());
 
-        return ResponseEntity.ok(TokenDto.builder()
+        return TokenDto.builder()
                 .grantType("Bearer")
                 .accessToken(newAccessToken)
-                .refreshToken(refreshToken)
-                .build());
+                .refreshToken(null)
+                .build();
     }
 
     public String generateAccessToken(Member member) {
@@ -61,10 +65,10 @@ public class AuthService {
                 member.getId(), member.getEmail(), List.of(member.getRole()));
     }
 
-    // 쿠키에서 refreshToken 추출
     private String extractRefreshToken(HttpServletRequest request) {
-        if (request.getCookies() == null)
+        if (request.getCookies() == null) {
             return null;
+        }
 
         for (Cookie cookie : request.getCookies()) {
             if ("refreshToken".equals(cookie.getName())) {
@@ -72,5 +76,15 @@ public class AuthService {
             }
         }
         return null;
+    }
+
+    private ResponseCookie createRefreshTokenCookie(String refreshToken) {
+        return ResponseCookie.from("refreshToken", refreshToken)
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(7 * 24 * 60 * 60L)
+                .build();
     }
 }

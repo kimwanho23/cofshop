@@ -1,114 +1,212 @@
 package kwh.cofshop.item.service;
 
-import kwh.cofshop.TestSettingUtils;
+import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.item.domain.Category;
 import kwh.cofshop.item.dto.CategoryPathDto;
 import kwh.cofshop.item.dto.request.CategoryRequestDto;
 import kwh.cofshop.item.dto.response.CategoryResponseDto;
 import kwh.cofshop.item.mapper.CategoryMapper;
 import kwh.cofshop.item.repository.CategoryRepository;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.transaction.annotation.Transactional;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
+import java.util.Optional;
 
-@Slf4j
-class CategoryServiceTest extends TestSettingUtils {
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-    @Autowired
-    private CategoryMapper categoryMapper;
+@ExtendWith(MockitoExtension.class)
+class CategoryServiceTest {
 
-    /////////////////// Service
-
-    @Autowired
-    private CategoryService categoryService;
-
-    @Autowired
+    @Mock
     private CategoryRepository categoryRepository;
 
+    @Mock
+    private CategoryMapper categoryMapper;
+
+    @InjectMocks
+    private CategoryService categoryService;
 
     @Test
-    @DisplayName("카테고리 생성")
-    @Transactional
-    void createParentCategory() throws Exception {
-        // 부모 카테고리 생성
-        String unique = UUID.randomUUID().toString().substring(0, 6);
+    @DisplayName("카테고리 생성: 부모 없음")
+    void createCategory_withoutParent() {
+        CategoryRequestDto dto = new CategoryRequestDto();
+        dto.setName("원두");
 
-        CategoryRequestDto categoryRequestDto = new CategoryRequestDto();
-        categoryRequestDto.setName("커피" + unique);
+        Category saved = Category.builder().name("원두").build();
+        CategoryResponseDto responseDto = new CategoryResponseDto();
 
-        CategoryResponseDto parentCategory = categoryService.createCategory(categoryRequestDto);
-        log.info(objectMapper.writeValueAsString(parentCategory));
+        when(categoryRepository.save(org.mockito.ArgumentMatchers.any(Category.class))).thenReturn(saved);
+        when(categoryMapper.toResponseDto(saved)).thenReturn(responseDto);
 
-        // 자식 카테고리 1 생성
-        CategoryRequestDto childCategoryDto1 = new CategoryRequestDto();
-        childCategoryDto1.setParentCategoryId(parentCategory.getId());
-        childCategoryDto1.setName("원두커피" + unique);
+        CategoryResponseDto result = categoryService.createCategory(dto);
 
-        CategoryResponseDto childCategoryResponseDto1 = categoryService.createCategory(childCategoryDto1);
-        log.info(objectMapper.writeValueAsString(childCategoryResponseDto1));
-
-        // 자식 카테고리 2 생성
-        CategoryRequestDto childCategoryDto2 = new CategoryRequestDto();
-        childCategoryDto2.setParentCategoryId(parentCategory.getId());
-        childCategoryDto2.setName("캡슐커피" + unique);
-        CategoryResponseDto childCategoryResponseDto2 = categoryService.createCategory(childCategoryDto2);
-        log.info(objectMapper.writeValueAsString(childCategoryResponseDto2));
-
-        // 자식 카테고리 1-2 생성
-        CategoryRequestDto childCategoryDto1to2 = new CategoryRequestDto();
-        childCategoryDto1to2.setParentCategoryId(childCategoryResponseDto1.getId());
-        childCategoryDto1to2.setName("에스프레소" + unique);
-        CategoryResponseDto childCategoryResponseDto1to2 = categoryService.createCategory(childCategoryDto1to2);
-        log.info(objectMapper.writeValueAsString(childCategoryResponseDto1to2));
-
-        CategoryResponseDto updatedParentCategory = categoryService.getCategoryById(parentCategory.getId());
-        log.info(objectMapper.writeValueAsString(updatedParentCategory));
-    }
-
-
-    @Test
-    @DisplayName("특정 카테고리 조회")
-    @Transactional
-    void getIndividualCategory() throws Exception {
-        CategoryResponseDto categoryById = categoryService.getCategoryById(15L);
-        log.info(objectMapper.writeValueAsString(categoryById));
+        assertThat(result).isSameAs(responseDto);
     }
 
     @Test
-    @DisplayName("특정 카테고리 경로 조회")
-    @Transactional
-    void getCategoryPath() throws Exception {
-        List<CategoryPathDto> categoryPath = categoryService.getCategoryPath(15L);
-        log.info(objectMapper.writeValueAsString(categoryPath));
+    @DisplayName("카테고리 생성: 부모 없음")
+    void createCategory_parentNotFound() {
+        CategoryRequestDto dto = new CategoryRequestDto();
+        dto.setName("원두");
+        dto.setParentCategoryId(10L);
+
+        when(categoryRepository.findById(10L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> categoryService.createCategory(dto))
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
-    @DisplayName("특정 카테고리의 자식 조회")
-    @Transactional
-    void getCategoryChild() throws Exception {
-        List<CategoryResponseDto> childCategories = categoryService.getCategoryChild(13L);
-        log.info(objectMapper.writeValueAsString(childCategories));
-    }
+    @DisplayName("카테고리 조회: 대상 없음")
+    void getCategoryById_notFound() {
+        when(categoryRepository.findById(anyLong())).thenReturn(Optional.empty());
 
+        assertThatThrownBy(() -> categoryService.getCategoryById(1L))
+                .isInstanceOf(BusinessException.class);
+    }
 
     @Test
-    @DisplayName("전체 카테고리 목록")
-    @Transactional
-    void getAllCategory() throws Exception {
-        List<CategoryResponseDto> childCategories = categoryService.getCategoryChild(13L);
+    @DisplayName("카테고리 조회: 성공")
+    void getCategoryById_success() {
+        Category category = Category.builder().name("원두").build();
+        CategoryResponseDto responseDto = new CategoryResponseDto();
 
-        for (int i = 0; i < 5; i++) {
-            List<CategoryResponseDto> allCategoryTest = categoryService.getAllCategoryTest();
-            List<CategoryResponseDto> allCategory = categoryService.getAllCategory();
-        }
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(categoryMapper.toResponseDto(category)).thenReturn(responseDto);
 
+        CategoryResponseDto result = categoryService.getCategoryById(1L);
 
-/*        log.info(objectMapper.writeValueAsString(allCategoryTest));
-        log.info(objectMapper.writeValueAsString(allCategory));*/
+        assertThat(result).isSameAs(responseDto);
     }
 
+    @Test
+    @DisplayName("카테고리 경로 조회")
+    void getCategoryPath() {
+        CategoryPathDto path1 = new CategoryPathDto() {
+            @Override
+            public Long getId() {
+                return 1L;
+            }
+
+            @Override
+            public String getName() {
+                return "하위";
+            }
+
+            @Override
+            public Long getParentCategoryId() {
+                return 2L;
+            }
+        };
+        CategoryPathDto path2 = new CategoryPathDto() {
+            @Override
+            public Long getId() {
+                return 2L;
+            }
+
+            @Override
+            public String getName() {
+                return "상위";
+            }
+
+            @Override
+            public Long getParentCategoryId() {
+                return null;
+            }
+        };
+
+        List<CategoryPathDto> paths = new ArrayList<>();
+        paths.add(path1);
+        paths.add(path2);
+
+        when(categoryRepository.findCategoryPath(1L)).thenReturn(paths);
+
+        List<CategoryPathDto> result = categoryService.getCategoryPath(1L);
+
+        assertThat(result.get(0).getName()).isEqualTo("상위");
+        assertThat(result.get(1).getName()).isEqualTo("하위");
+    }
+
+    @Test
+    @DisplayName("카테고리 하위 조회: 없음")
+    void getCategoryChild_none() {
+        when(categoryRepository.existsByParentCategoryId(1L)).thenReturn(false);
+
+        List<CategoryResponseDto> result = categoryService.getCategoryChild(1L);
+
+        assertThat(result).isNull();
+    }
+
+    @Test
+    @DisplayName("카테고리 하위 조회: 있음")
+    void getCategoryChild_hasChild() {
+        when(categoryRepository.existsByParentCategoryId(1L)).thenReturn(true);
+
+        Category child = Category.builder().name("하위").build();
+        when(categoryRepository.findImmediateChildrenNative(1L)).thenReturn(List.of(child));
+        when(categoryMapper.toResponseDto(child)).thenReturn(new CategoryResponseDto());
+
+        List<CategoryResponseDto> result = categoryService.getCategoryChild(1L);
+
+        assertThat(result).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("전체 카테고리 조회(테스트)")
+    void getAllCategoryTest() {
+        Category category = Category.builder().name("원두").build();
+        when(categoryRepository.findAllCategoryWithChild()).thenReturn(List.of(category));
+        when(categoryMapper.toResponseDto(category)).thenReturn(new CategoryResponseDto());
+
+        List<CategoryResponseDto> result = categoryService.getAllCategoryTest();
+
+        assertThat(result).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("전체 카테고리 조회")
+    void getAllCategory() {
+        Category parent = Category.builder().name("상위").build();
+        Category child = Category.builder().name("하위").parent(parent).build();
+        ReflectionTestUtils.setField(parent, "id", 1L);
+        ReflectionTestUtils.setField(child, "id", 2L);
+
+        when(categoryRepository.findAll()).thenReturn(List.of(parent, child));
+
+        List<CategoryResponseDto> result = categoryService.getAllCategory();
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getChildren()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("카테고리 삭제: 대상 없음")
+    void deleteCategory_notFound() {
+        when(categoryRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> categoryService.deleteCategory(1L))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    @DisplayName("카테고리 삭제: 성공")
+    void deleteCategory_success() {
+        Category category = Category.builder().name("원두").build();
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+
+        categoryService.deleteCategory(1L);
+
+        verify(categoryRepository).delete(category);
+    }
 }

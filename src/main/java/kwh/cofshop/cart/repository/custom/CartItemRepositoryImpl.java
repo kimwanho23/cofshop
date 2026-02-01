@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
-public class CartItemRepositoryImpl implements CartItemRepositoryCustom{
+public class CartItemRepositoryImpl implements CartItemRepositoryCustom {
 
     private final JPAQueryFactory queryFactory;
     private final CartItemMapper cartItemMapper;

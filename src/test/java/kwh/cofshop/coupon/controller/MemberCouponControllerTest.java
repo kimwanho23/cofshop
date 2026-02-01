@@ -1,40 +1,77 @@
 package kwh.cofshop.coupon.controller;
 
+import kwh.cofshop.coupon.dto.response.MemberCouponResponseDto;
+import kwh.cofshop.coupon.service.MemberCouponService;
+import kwh.cofshop.support.StandaloneMockMvcFactory;
+import kwh.cofshop.support.TestLoginMemberArgumentResolver;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.web.servlet.MockMvc;
 
-import static org.junit.jupiter.api.Assertions.*;
-import kwh.cofshop.TestSettingUtils;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.transaction.annotation.Transactional;
-
+import java.time.LocalDate;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@ExtendWith(MockitoExtension.class)
+class MemberCouponControllerTest {
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;  // POST 요청
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+    private MockMvc mockMvc;
 
+    @Mock
+    private MemberCouponService memberCouponService;
 
-class MemberCouponControllerTest extends TestSettingUtils  {
+    @InjectMocks
+    private MemberCouponController memberCouponController;
+
+    @BeforeEach
+    void setUp() {
+        mockMvc = StandaloneMockMvcFactory.build(
+                memberCouponController,
+                new TestLoginMemberArgumentResolver()
+        );
+    }
+
     @Test
-    @DisplayName("정상적으로 쿠폰 발급 요청을 보낼 수 있다")
-    @Transactional
-    void requestCouponIssue() throws Exception {
+    @DisplayName("쿠폰 발급 요청")
+    void issueCoupon() throws Exception {
+        mockMvc.perform(post("/api/memberCoupon/me/1"))
+                .andExpect(status().isCreated());
+    }
 
-        Long couponId = 44L;
+    @Test
+    @DisplayName("내 쿠폰 목록 조회")
+    void getMemberCouponList() throws Exception {
+        when(memberCouponService.memberCouponList(anyLong()))
+                .thenReturn(List.of(new MemberCouponResponseDto()));
 
-        mockMvc.perform(post("/api/memberCoupon/me/{couponId}", couponId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                .header("Authorization", "Bearer " + getToken()))
-                .andExpect(status().isCreated())
-                .andDo(print())
-                .andReturn();
+        mockMvc.perform(get("/api/memberCoupon/me"))
+                .andExpect(status().isOk());
+    }
 
-        Thread.sleep(500); // or CountDownLatch.await()
+    @Test
+    @DisplayName("테스트용 쿠폰 발급")
+    void createForTest() throws Exception {
+        mockMvc.perform(post("/api/memberCoupon/10")
+                        .param("memberId", "1"))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    @DisplayName("쿠폰 만료 처리")
+    void expireMemberCoupons() throws Exception {
+        mockMvc.perform(patch("/api/memberCoupon/expire")
+                        .param("date", LocalDate.now().toString()))
+                .andExpect(status().isNoContent());
     }
 }

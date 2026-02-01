@@ -8,13 +8,13 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name="item_img")
+@Table(name = "item_img")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ItemImg extends BaseTimeEntity {
 
     @Id
-    @Column(name="item_img_id")
+    @Column(name = "item_img_id")
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
 

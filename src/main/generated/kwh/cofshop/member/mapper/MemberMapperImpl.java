@@ -2,12 +2,13 @@ package kwh.cofshop.member.mapper;
 
 import javax.annotation.processing.Generated;
 import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.member.dto.MemberResponseDto;
+import kwh.cofshop.member.dto.request.MemberRequestDto;
+import kwh.cofshop.member.dto.response.MemberResponseDto;
 import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-02-15T13:59:40+0900",
+    date = "2026-01-24T00:40:11+0900",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.9 (Oracle Corporation)"
 )
 @Component
@@ -35,18 +36,18 @@ public class MemberMapperImpl implements MemberMapper {
             return null;
         }
 
-        MemberResponseDto memberResponseDto = new MemberResponseDto();
+        MemberResponseDto.MemberResponseDtoBuilder memberResponseDto = MemberResponseDto.builder();
 
-        memberResponseDto.setEmail( member.getEmail() );
-        memberResponseDto.setMemberName( member.getMemberName() );
-        memberResponseDto.setTel( member.getTel() );
-        memberResponseDto.setRole( member.getRole() );
-        memberResponseDto.setMemberState( member.getMemberState() );
-        memberResponseDto.setPoint( member.getPoint() );
-        memberResponseDto.setCreatedAt( member.getCreatedAt() );
-        memberResponseDto.setLastPasswordChange( member.getLastPasswordChange() );
-        memberResponseDto.setLastLogin( member.getLastLogin() );
+        memberResponseDto.email( member.getEmail() );
+        memberResponseDto.memberName( member.getMemberName() );
+        memberResponseDto.tel( member.getTel() );
+        memberResponseDto.role( member.getRole() );
+        memberResponseDto.memberState( member.getMemberState() );
+        memberResponseDto.point( member.getPoint() );
+        memberResponseDto.createdAt( member.getCreatedAt() );
+        memberResponseDto.lastPasswordChange( member.getLastPasswordChange() );
+        memberResponseDto.lastLogin( member.getLastLogin() );
 
-        return memberResponseDto;
+        return memberResponseDto.build();
     }
 }

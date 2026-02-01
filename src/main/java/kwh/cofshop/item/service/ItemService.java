@@ -1,4 +1,3 @@
-
 package kwh.cofshop.item.service;
 
 import kwh.cofshop.global.exception.BusinessException;
@@ -27,8 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -135,7 +134,7 @@ public class ItemService { // 통합 Item 서비스
 
     // 아이템 검색
     @Transactional(readOnly = true)
-    public Page<ItemSearchResponseDto> searchItem(ItemSearchRequestDto itemSearchRequestDto, Pageable pageable){
+    public Page<ItemSearchResponseDto> searchItem(ItemSearchRequestDto itemSearchRequestDto, Pageable pageable) {
         Page<Item> itemPage = itemRepository.searchItems(itemSearchRequestDto, pageable);
         return itemPage.map(itemSearchMapper::toResponseDto);
     }
@@ -150,7 +149,7 @@ public class ItemService { // 통합 Item 서비스
 
     // 특정 아이템 조회
     @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
-    public ItemResponseDto getItem(Long id){
+    public ItemResponseDto getItem(Long id) {
         Item item = itemRepository.findById(id).orElseThrow(
                 () -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
         return itemMapper.toResponseDto(item);

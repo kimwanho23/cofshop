@@ -29,6 +29,8 @@ public class QReview extends EntityPathBase<Review> {
     //inherited
     public final DateTimePath<java.time.LocalDateTime> createDate = _super.createDate;
 
+    public final NumberPath<Long> id = createNumber("id", Long.class);
+
     public final QItem item;
 
     //inherited
@@ -37,8 +39,6 @@ public class QReview extends EntityPathBase<Review> {
     public final kwh.cofshop.member.domain.QMember member;
 
     public final NumberPath<Long> rating = createNumber("rating", Long.class);
-
-    public final NumberPath<Long> reviewId = createNumber("reviewId", Long.class);
 
     public QReview(String variable) {
         this(Review.class, forVariable(variable), INITS);

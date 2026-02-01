@@ -1,18 +1,17 @@
 package kwh.cofshop.cart.mapper;
 
 import javax.annotation.processing.Generated;
+import kwh.cofshop.cart.domain.Cart;
 import kwh.cofshop.cart.domain.CartItem;
 import kwh.cofshop.cart.dto.request.CartItemRequestDto;
 import kwh.cofshop.cart.dto.response.CartItemResponseDto;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemOption;
-import kwh.cofshop.item.dto.response.ItemOptionResponseDto;
-import kwh.cofshop.item.dto.response.ItemResponseDto;
 import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-02-15T13:59:40+0900",
+    date = "2026-01-24T00:40:11+0900",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.9 (Oracle Corporation)"
 )
 @Component
@@ -39,42 +38,56 @@ public class CartItemMapperImpl implements CartItemMapper {
 
         CartItemResponseDto cartItemResponseDto = new CartItemResponseDto();
 
-        cartItemResponseDto.setItem( itemToItemResponseDto( cartItem.getItem() ) );
-        cartItemResponseDto.setItemOption( itemOptionToItemOptionResponseDto( cartItem.getItemOption() ) );
+        cartItemResponseDto.setCartId( cartItemCartId( cartItem ) );
+        cartItemResponseDto.setItemId( cartItemItemId( cartItem ) );
+        cartItemResponseDto.setOptionId( cartItemItemOptionId( cartItem ) );
         cartItemResponseDto.setQuantity( cartItem.getQuantity() );
 
         return cartItemResponseDto;
     }
 
-    protected ItemResponseDto itemToItemResponseDto(Item item) {
+    private Long cartItemCartId(CartItem cartItem) {
+        if ( cartItem == null ) {
+            return null;
+        }
+        Cart cart = cartItem.getCart();
+        if ( cart == null ) {
+            return null;
+        }
+        Long id = cart.getId();
+        if ( id == null ) {
+            return null;
+        }
+        return id;
+    }
+
+    private Long cartItemItemId(CartItem cartItem) {
+        if ( cartItem == null ) {
+            return null;
+        }
+        Item item = cartItem.getItem();
         if ( item == null ) {
             return null;
         }
-
-        ItemResponseDto itemResponseDto = new ItemResponseDto();
-
-        itemResponseDto.setItemName( item.getItemName() );
-        itemResponseDto.setPrice( item.getPrice() );
-        itemResponseDto.setDiscount( item.getDiscount() );
-        itemResponseDto.setDeliveryFee( item.getDeliveryFee() );
-        itemResponseDto.setOrigin( item.getOrigin() );
-        itemResponseDto.setItemLimit( item.getItemLimit() );
-        itemResponseDto.setItemState( item.getItemState() );
-
-        return itemResponseDto;
+        Long id = item.getId();
+        if ( id == null ) {
+            return null;
+        }
+        return id;
     }
 
-    protected ItemOptionResponseDto itemOptionToItemOptionResponseDto(ItemOption itemOption) {
+    private Long cartItemItemOptionId(CartItem cartItem) {
+        if ( cartItem == null ) {
+            return null;
+        }
+        ItemOption itemOption = cartItem.getItemOption();
         if ( itemOption == null ) {
             return null;
         }
-
-        ItemOptionResponseDto itemOptionResponseDto = new ItemOptionResponseDto();
-
-        itemOptionResponseDto.setDescription( itemOption.getDescription() );
-        itemOptionResponseDto.setAdditionalPrice( itemOption.getAdditionalPrice() );
-        itemOptionResponseDto.setStock( itemOption.getStock() );
-
-        return itemOptionResponseDto;
+        Long id = itemOption.getId();
+        if ( id == null ) {
+            return null;
+        }
+        return id;
     }
 }

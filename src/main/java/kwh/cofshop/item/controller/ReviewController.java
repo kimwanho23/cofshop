@@ -5,11 +5,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import kwh.cofshop.argumentResolver.LoginMember;
-import kwh.cofshop.global.response.ApiResponse;
 import kwh.cofshop.item.dto.request.ReviewRequestDto;
 import kwh.cofshop.item.dto.response.ReviewResponseDto;
 import kwh.cofshop.item.service.ReviewService;
-import kwh.cofshop.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -32,39 +30,37 @@ public class ReviewController {
     // 한 상품의 리뷰 목록
     @Operation(summary = "리뷰 목록 조회", description = "조회 결과")
     @GetMapping("/items/{itemId}")
-    public ResponseEntity<ApiResponse<Page<ReviewResponseDto>>> reviewList(
+    public Page<ReviewResponseDto> reviewList(
             @PathVariable Long itemId,
             @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
 
-        Page<ReviewResponseDto> responseDto = reviewService.getReviewsByItem(itemId, pageable);
-        return ResponseEntity.ok(ApiResponse.OK(responseDto));
+        return reviewService.getReviewsByItem(itemId, pageable);
     }
 
     //////////// @POST
     // 리뷰 등록
     @Operation(summary = "리뷰 등록", description = "한 상품에 리뷰를 등록합니다.")
     @PostMapping("/items/{itemId}")
-    public ResponseEntity<ApiResponse<ReviewResponseDto>> addReview(
+    public ResponseEntity<ReviewResponseDto> addReview(
             @PathVariable Long itemId,
-            @Parameter(hidden = true) @LoginMember CustomUserDetails customUserDetails,
+            @Parameter(hidden = true) @LoginMember Long memberId,
             @Valid @RequestBody ReviewRequestDto reviewRequestDto) {
 
-        ReviewResponseDto responseDto = reviewService.save(itemId, reviewRequestDto, customUserDetails.getId());
+        ReviewResponseDto responseDto = reviewService.save(itemId, reviewRequestDto, memberId);
         return ResponseEntity.created(URI.create("/api/reviews/" + responseDto.getReviewId()))
-                .body(ApiResponse.Created(responseDto));
+                .body(responseDto);
     }
 
     //////////// @PUT, PATCH
     // 리뷰 수정
     @Operation(summary = "리뷰 수정", description = "등록했던 리뷰 정보를 변경합니다.")
     @PutMapping("/{reviewId}")
-    public ResponseEntity<ApiResponse<ReviewResponseDto>> updateReview(
+    public ReviewResponseDto updateReview(
             @PathVariable Long reviewId,
-            @Parameter(hidden = true) @LoginMember CustomUserDetails customUserDetails,
+            @Parameter(hidden = true) @LoginMember Long memberId,
             @Valid @RequestBody ReviewRequestDto reviewRequestDto) {
 
-        ReviewResponseDto responseDto = reviewService.updateReview(reviewId, reviewRequestDto, customUserDetails.getId());
-        return ResponseEntity.ok(ApiResponse.OK(responseDto));
+        return reviewService.updateReview(reviewId, reviewRequestDto, memberId);
     }
 
     //////////// @DELETE
@@ -73,9 +69,9 @@ public class ReviewController {
     @DeleteMapping("/{reviewId}")
     public ResponseEntity<Void> deleteReview(
             @PathVariable Long reviewId,
-            @Parameter(hidden = true) @LoginMember CustomUserDetails customUserDetails) {
+            @Parameter(hidden = true) @LoginMember Long memberId) {
 
-        reviewService.deleteReview(reviewId, customUserDetails.getId());
+        reviewService.deleteReview(reviewId, memberId);
         return ResponseEntity.noContent().build();
     }
 

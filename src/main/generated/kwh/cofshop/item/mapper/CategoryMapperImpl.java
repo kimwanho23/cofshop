@@ -1,7 +1,5 @@
 package kwh.cofshop.item.mapper;
 
-import java.util.ArrayList;
-import java.util.List;
 import javax.annotation.processing.Generated;
 import kwh.cofshop.item.domain.Category;
 import kwh.cofshop.item.dto.request.CategoryRequestDto;
@@ -10,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-02-15T13:59:40+0900",
+    date = "2026-01-24T00:40:11+0900",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.9 (Oracle Corporation)"
 )
 @Component
@@ -28,7 +26,6 @@ public class CategoryMapperImpl implements CategoryMapper {
         categoryResponseDto.setId( category.getId() );
         categoryResponseDto.setName( category.getName() );
         categoryResponseDto.setDepth( category.getDepth() );
-        categoryResponseDto.setChildren( categoryListToCategoryResponseDtoList( category.getChildren() ) );
 
         return categoryResponseDto;
     }
@@ -59,18 +56,5 @@ public class CategoryMapperImpl implements CategoryMapper {
             return null;
         }
         return id;
-    }
-
-    protected List<CategoryResponseDto> categoryListToCategoryResponseDtoList(List<Category> list) {
-        if ( list == null ) {
-            return null;
-        }
-
-        List<CategoryResponseDto> list1 = new ArrayList<CategoryResponseDto>( list.size() );
-        for ( Category category : list ) {
-            list1.add( toResponseDto( category ) );
-        }
-
-        return list1;
     }
 }

@@ -22,12 +22,12 @@ public class StatisticsScheduler {
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
 
-        @Scheduled(cron = "0 0 0 * * *")
-        public void saveLast7DaysTopItem() throws JsonProcessingException {
-            List<TopItemDto> last7DaysTopItem = statisticsService.getTopItemsLast7Days();
-            String data = objectMapper.writeValueAsString(last7DaysTopItem);
-            redisTemplate.opsForValue().set("ranking:top_items:last7days", data, Duration.ofDays(1));
+    @Scheduled(cron = "0 0 0 * * *")
+    public void saveLast7DaysTopItem() throws JsonProcessingException {
+        List<TopItemDto> last7DaysTopItem = statisticsService.getTopItemsLast7Days();
+        String data = objectMapper.writeValueAsString(last7DaysTopItem);
+        redisTemplate.opsForValue().set("ranking:top_items:last7days", data, Duration.ofDays(1));
 
-            log.info("[Scheduler] : 7일간의 인기 상품 저장");
-        }
+        log.info("[Scheduler] : 7일간의 인기 상품 저장");
+    }
 }

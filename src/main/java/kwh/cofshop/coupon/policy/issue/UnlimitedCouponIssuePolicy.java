@@ -6,7 +6,6 @@ import kwh.cofshop.member.domain.Member;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
@@ -22,6 +21,6 @@ public class UnlimitedCouponIssuePolicy implements CouponIssuePolicy {
 
     @Override
     public void issue(Member member, Coupon coupon) {
-        memberCouponIssueService.issueUnLimitedCoupon(member.getId(), coupon.getId());
+        memberCouponIssueService.issueCoupon(member.getId(), coupon.getId());
     }
 }

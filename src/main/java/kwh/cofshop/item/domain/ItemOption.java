@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
-@Table(name="item_option")
+@Table(name = "item_option")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ItemOption {
 
@@ -75,11 +75,11 @@ public class ItemOption {
         this.stock = dto.getStock();
     }
 
-    public void addStock(int stock){ // 재고 더하기 (주문 취소, 재고 추가)
+    public void addStock(int stock) { // 재고 더하기 (주문 취소, 재고 추가)
         this.stock += stock;
     }
 
-    public void removeStock(int stock){ // 재고 감소 (주문, 재고 조정)
+    public void removeStock(int stock) { // 재고 감소 (주문, 재고 조정)
         if (this.stock < stock) {
             throw new BusinessException(BusinessErrorCode.ITEM_OUT_OF_STOCK);
         }

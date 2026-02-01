@@ -4,7 +4,6 @@ import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.DateTemplate;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
-import com.querydsl.core.types.dsl.NumberTemplate;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import kwh.cofshop.item.domain.QItem;
 import kwh.cofshop.order.domain.OrderState;
@@ -13,7 +12,6 @@ import kwh.cofshop.order.domain.QOrderItem;
 import kwh.cofshop.statistics.dto.DailySalesDto;
 import kwh.cofshop.statistics.dto.TopItemDto;
 import lombok.RequiredArgsConstructor;
-import org.mapstruct.ap.shaded.freemarker.template.utility.DateUtil;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -23,7 +21,7 @@ import java.util.List;
 
 @Repository
 @RequiredArgsConstructor
-public class StatisticsRepositoryImpl implements StatisticsRepository{
+public class StatisticsRepositoryImpl implements StatisticsRepository {
 
     private final JPAQueryFactory queryFactory;
 

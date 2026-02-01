@@ -3,7 +3,6 @@ package kwh.cofshop.item.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
-import kwh.cofshop.global.response.ApiResponse;
 import kwh.cofshop.item.dto.CategoryPathDto;
 import kwh.cofshop.item.dto.request.CategoryRequestDto;
 import kwh.cofshop.item.dto.response.CategoryResponseDto;
@@ -30,25 +29,25 @@ public class CategoryController {
     // 특정 카테고리의 자식 카테고리
     @Operation(summary = "하위 카테고리 조회", description = "조회 결과")
     @GetMapping("/{categoryId}/children")
-    public ResponseEntity<ApiResponse<List<CategoryResponseDto>>> getCategoryChildren(@PathVariable Long categoryId) {
+    public List<CategoryResponseDto> getCategoryChildren(@PathVariable Long categoryId) {
         List<CategoryResponseDto> children = categoryService.getCategoryChild(categoryId);
-        return ResponseEntity.ok(ApiResponse.OK(children));
+        return children;
     }
 
     // 카테고리 경로
     @Operation(summary = "카테고리 경로 목록", description = "상위 카테고리부터 하위 카테고리를 조회합니다.")
     @GetMapping("/{categoryId}/path")
-    public ResponseEntity<ApiResponse<List<CategoryPathDto>>> getCategoryPath(@PathVariable Long categoryId) {
+    public List<CategoryPathDto> getCategoryPath(@PathVariable Long categoryId) {
         List<CategoryPathDto> categoryPath = categoryService.getCategoryPath(categoryId);
-        return ResponseEntity.ok(ApiResponse.OK(categoryPath));
+        return categoryPath;
     }
 
     // 전체 카테고리 목록 (상위 카테고리와 하위 카테고리의 관계가 트리 구조와 유사함)
     @Operation(summary = "전체 카테고리 조회", description = "전체 카테고리를 조회합니다.")
     @GetMapping
-    public ResponseEntity<ApiResponse<List<CategoryResponseDto>>> getAllCategories() {
+    public List<CategoryResponseDto> getAllCategories() {
         List<CategoryResponseDto> responseDto = categoryService.getAllCategory();
-        return ResponseEntity.ok(ApiResponse.OK(responseDto));
+        return responseDto;
     }
 
     //////////// @POST
@@ -56,17 +55,16 @@ public class CategoryController {
     @Operation(summary = "카테고리 등록", description = "관리자 전용입니다.")
     @PostMapping
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    public ResponseEntity<ApiResponse<CategoryResponseDto>> createCategory(
+    public ResponseEntity<CategoryResponseDto> createCategory(
             @RequestBody @Valid CategoryRequestDto requestDto) {
         CategoryResponseDto responseDto = categoryService.createCategory(requestDto);
 
         return ResponseEntity
                 .created(URI.create("/api/categories/" + responseDto.getId()))
-                .body(ApiResponse.Created(responseDto));
+                .body(responseDto);
     }
 
     //////////// @PUT, PATCH
-
 
 
     //////////// @DELETE

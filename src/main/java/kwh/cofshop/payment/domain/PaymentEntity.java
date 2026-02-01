@@ -24,7 +24,7 @@ public class PaymentEntity {
     private String merchantUid; // 자체 생성 주문번호  ex ) "order-" + order.getId()
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id", nullable = false)
+    @JoinColumn(name = "order_id", nullable = false, unique = true)
     private Order order;
 
     @Column(name = "imp_uid", unique = true)
@@ -73,8 +73,8 @@ public class PaymentEntity {
 
     @Builder
     public PaymentEntity(Order order
-                         , PaymentStatus status, String buyerEmail, String buyerName, String buyerTel, String pgProvider, String payMethod, Member member) {
-        this.merchantUid = "order-" + order.getId();
+            , PaymentStatus status, String buyerEmail, String buyerName, String buyerTel, String pgProvider, String payMethod, Member member) {
+        this.merchantUid = order.getMerchantUid();
         this.order = order;
         this.price = order.getFinalPrice();
         this.status = status != null ? status : PaymentStatus.READY;
@@ -116,7 +116,7 @@ public class PaymentEntity {
     }
 
     // 결제 상태 변경
-    public void paymentStatusChange(PaymentStatus paymentStatus){
+    public void paymentStatusChange(PaymentStatus paymentStatus) {
         this.status = paymentStatus;
     }
 

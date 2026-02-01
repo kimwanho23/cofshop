@@ -1,7 +1,5 @@
 package kwh.cofshop.item.dto.response;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import kwh.cofshop.item.domain.Category;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

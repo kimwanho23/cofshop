@@ -1,7 +1,5 @@
 package kwh.cofshop.statistics.service;
 
-import aj.org.objectweb.asm.TypeReference;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kwh.cofshop.statistics.dto.DailySalesDto;
 import kwh.cofshop.statistics.dto.TopItemDto;
@@ -25,12 +23,12 @@ public class StatisticsService {
     private final StatisticsRepository statisticsRepository;
 
     // 일별 판매량
-    public List<DailySalesDto> getDailySales(LocalDate localDate){
+    public List<DailySalesDto> getDailySales(LocalDate localDate) {
         return statisticsRepository.getDailySales(localDate);
     }
 
     // 최근 7일간 인기 상품
-    public List<TopItemDto> getTopItemsLast7Days(){
+    public List<TopItemDto> getTopItemsLast7Days() {
         LocalDateTime current7days = LocalDateTime.now().minusDays(7);
         return statisticsRepository.getTopItemsLast7Days(current7days);
     }

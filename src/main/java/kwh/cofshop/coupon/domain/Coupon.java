@@ -1,12 +1,7 @@
 package kwh.cofshop.coupon.domain;
 
 import jakarta.persistence.*;
-import kwh.cofshop.coupon.policy.discount.CouponDiscountPolicy;
-import kwh.cofshop.coupon.policy.discount.CouponFixedDiscountPolicy;
-import kwh.cofshop.coupon.policy.discount.CouponRateDiscountPolicy;
 import kwh.cofshop.coupon.dto.request.CouponRequestDto;
-import kwh.cofshop.global.exception.BusinessException;
-import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -89,6 +84,10 @@ public class Coupon {
     // 수량 제한 여부
     public boolean isLimitedQuantity() {
         return this.couponCount != null;
+    }
+
+    public void updateCouponCount(int couponCount) {
+        this.couponCount = couponCount;
     }
 
 /*    public void decreaseCouponCount() {

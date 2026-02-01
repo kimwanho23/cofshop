@@ -1,9 +1,8 @@
 package kwh.cofshop.member.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.member.domain.Role;
 import kwh.cofshop.member.domain.MemberState;
+import kwh.cofshop.member.domain.Role;
 import kwh.cofshop.member.dto.request.MemberRequestDto;
 import kwh.cofshop.member.dto.response.MemberResponseDto;
 import kwh.cofshop.member.mapper.MemberMapper;
@@ -16,7 +15,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
@@ -28,7 +26,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-@AutoConfigureMockMvc
 @Slf4j
 class MemberServiceUnitTest {
 
@@ -97,7 +94,6 @@ class MemberServiceUnitTest {
         // 검증: 요청에 포함된 실제 패스워드가 encode() 호출됐는지 확인
         verify(passwordEncoder).encode(requestDto.getMemberPwd());
     }
-
 
 
     @Test

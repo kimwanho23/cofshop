@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-02-15T13:59:40+0900",
+    date = "2026-01-24T00:40:11+0900",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.9 (Oracle Corporation)"
 )
 @Component
@@ -21,6 +21,7 @@ public class ItemImgMapperImpl implements ItemImgMapper {
 
         ItemImgResponseDto itemImgResponseDto = new ItemImgResponseDto();
 
+        itemImgResponseDto.setId( itemImg.getId() );
         itemImgResponseDto.setImgName( itemImg.getImgName() );
         itemImgResponseDto.setOriImgName( itemImg.getOriImgName() );
         itemImgResponseDto.setImgUrl( itemImg.getImgUrl() );

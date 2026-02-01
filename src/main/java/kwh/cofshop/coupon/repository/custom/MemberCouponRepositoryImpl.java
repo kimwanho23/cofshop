@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Optional;
 
 @RequiredArgsConstructor
-public class MemberCouponRepositoryImpl implements MemberCouponRepositoryCustom{
+public class MemberCouponRepositoryImpl implements MemberCouponRepositoryCustom {
 
     private final JPAQueryFactory queryFactory;
 

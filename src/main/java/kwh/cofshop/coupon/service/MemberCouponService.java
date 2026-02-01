@@ -1,13 +1,11 @@
 package kwh.cofshop.coupon.service;
 
-import kwh.cofshop.argumentResolver.DistributedLock;
 import kwh.cofshop.coupon.domain.Coupon;
 import kwh.cofshop.coupon.domain.CouponState;
 import kwh.cofshop.coupon.domain.MemberCoupon;
 import kwh.cofshop.coupon.dto.response.MemberCouponResponseDto;
 import kwh.cofshop.coupon.factory.CouponIssuePolicyFactory;
 import kwh.cofshop.coupon.mapper.MemberCouponMapper;
-import kwh.cofshop.coupon.policy.issue.CouponIssuePolicy;
 import kwh.cofshop.coupon.repository.CouponRepository;
 import kwh.cofshop.coupon.repository.MemberCouponRepository;
 import kwh.cofshop.global.exception.BusinessException;
@@ -36,7 +34,7 @@ public class MemberCouponService {
 
 
     @Transactional
-   // @DistributedLock(keyName = "#memberId + ':' + #couponId")
+    // @DistributedLock(keyName = "#memberId + ':' + #couponId")
     public void issueCoupon(Long memberId, Long couponId) {
         log.info("[MemberCouponService] 쿠폰 발급 요청 시작: memberId={}, couponId={}", memberId, couponId);
 
@@ -56,7 +54,7 @@ public class MemberCouponService {
     }
 
     // 내 쿠폰 목록
-    public List<MemberCouponResponseDto> memberCouponList(Long memberId){
+    public List<MemberCouponResponseDto> memberCouponList(Long memberId) {
         List<MemberCoupon> couponList = memberCouponRepository.findByMemberId(memberId);
         return couponList.stream()
                 .map(memberCouponMapper::toResponseDto)
@@ -64,12 +62,12 @@ public class MemberCouponService {
     }
 
     // 유효 쿠폰의 정보 조회
-    public MemberCoupon findValidCoupon(Long couponId, Long memberId){
+    public MemberCoupon findValidCoupon(Long couponId, Long memberId) {
         return memberCouponRepository.findValidCouponById(couponId, memberId, LocalDate.now())
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.COUPON_NOT_AVAILABLE));
     }
 
-    public MemberCouponResponseDto findValidCouponResponse(Long couponId, Long memberId){
+    public MemberCouponResponseDto findValidCouponResponse(Long couponId, Long memberId) {
         MemberCoupon validCoupon = findValidCoupon(couponId, memberId);
         return memberCouponMapper.toResponseDto(validCoupon);
     }

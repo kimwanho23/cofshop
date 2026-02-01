@@ -1,17 +1,10 @@
 package kwh.cofshop.cart.service;
 
-import jakarta.persistence.EntityNotFoundException;
 import kwh.cofshop.cart.domain.Cart;
-import kwh.cofshop.cart.domain.CartItem;
-import kwh.cofshop.cart.dto.request.CartItemRequestDto;
-import kwh.cofshop.cart.dto.request.CartRequestDto;
-import kwh.cofshop.cart.dto.response.CartItemResponseDto;
 import kwh.cofshop.cart.dto.response.CartResponseDto;
-import kwh.cofshop.cart.mapper.CartItemMapper;
 import kwh.cofshop.cart.mapper.CartMapper;
 import kwh.cofshop.cart.repository.CartItemRepository;
 import kwh.cofshop.cart.repository.CartRepository;
-import kwh.cofshop.cart.repository.custom.CartRepositoryImpl;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.member.domain.Member;
@@ -20,8 +13,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor

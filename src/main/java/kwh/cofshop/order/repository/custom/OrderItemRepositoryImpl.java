@@ -3,7 +3,6 @@ package kwh.cofshop.order.repository.custom;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.QItem;
-
 import kwh.cofshop.order.domain.QOrderItem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -12,7 +11,7 @@ import java.util.List;
 
 @Repository
 @RequiredArgsConstructor
-public class OrderItemRepositoryImpl implements OrderItemRepositoryCustom{
+public class OrderItemRepositoryImpl implements OrderItemRepositoryCustom {
 
     private final JPAQueryFactory queryFactory;
 

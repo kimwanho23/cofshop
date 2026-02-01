@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-02-15T13:59:40+0900",
+    date = "2026-01-24T00:40:11+0900",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.9 (Oracle Corporation)"
 )
 @Component
@@ -30,7 +30,6 @@ public class ItemMapperImpl implements ItemMapper {
 
         item.itemName( dto.getItemName() );
         item.price( dto.getPrice() );
-        item.discount( dto.getDiscount() );
         item.deliveryFee( dto.getDeliveryFee() );
         item.origin( dto.getOrigin() );
         item.itemLimit( dto.getItemLimit() );
@@ -48,13 +47,15 @@ public class ItemMapperImpl implements ItemMapper {
 
         itemResponseDto.setImgResponseDto( itemImgListToItemImgResponseDtoList( item.getItemImgs() ) );
         itemResponseDto.setOptionResponseDto( itemOptionListToItemOptionResponseDtoList( item.getItemOptions() ) );
+        itemResponseDto.setId( item.getId() );
         itemResponseDto.setItemName( item.getItemName() );
         itemResponseDto.setPrice( item.getPrice() );
-        itemResponseDto.setDiscount( item.getDiscount() );
         itemResponseDto.setDeliveryFee( item.getDeliveryFee() );
         itemResponseDto.setOrigin( item.getOrigin() );
         itemResponseDto.setItemLimit( item.getItemLimit() );
         itemResponseDto.setItemState( item.getItemState() );
+
+        mapCategoryNames( item, itemResponseDto );
 
         return itemResponseDto;
     }
@@ -66,6 +67,7 @@ public class ItemMapperImpl implements ItemMapper {
 
         ItemImgResponseDto itemImgResponseDto = new ItemImgResponseDto();
 
+        itemImgResponseDto.setId( itemImg.getId() );
         itemImgResponseDto.setImgName( itemImg.getImgName() );
         itemImgResponseDto.setOriImgName( itemImg.getOriImgName() );
         itemImgResponseDto.setImgUrl( itemImg.getImgUrl() );
@@ -94,6 +96,7 @@ public class ItemMapperImpl implements ItemMapper {
 
         ItemOptionResponseDto itemOptionResponseDto = new ItemOptionResponseDto();
 
+        itemOptionResponseDto.setId( itemOption.getId() );
         itemOptionResponseDto.setDescription( itemOption.getDescription() );
         itemOptionResponseDto.setAdditionalPrice( itemOption.getAdditionalPrice() );
         itemOptionResponseDto.setStock( itemOption.getStock() );

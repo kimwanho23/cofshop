@@ -3,7 +3,6 @@ package kwh.cofshop.item.repository.custom;
 import kwh.cofshop.item.domain.Review;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
@@ -13,7 +12,7 @@ public interface ReviewRepositoryCustom {
     List<Review> findByItemId(Long itemId);
 
     // 특정 Item에 연관된 리뷰 페이징
-    Page<Review> findByItemId(Long itemId , Pageable pageable);
+    Page<Review> findByItemId(Long itemId, Pageable pageable);
 
 
     // 특정 사용자의 해당 아이템의 리뷰 조회

@@ -11,7 +11,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class MemberRequestDto { // DB에 값을 전달한다.
+public class MemberRequestDto { // DB값을 입력받는다.
 
     @Email(message = "유효한 이메일 주소여야 합니다.")
     @NotBlank(message = "이메일은 필수 입력 항목입니다.")
@@ -22,7 +22,7 @@ public class MemberRequestDto { // DB에 값을 전달한다.
     private String memberName;
 
     @NotBlank(message = "비밀번호는 필수 입력 항목입니다.")
-    // @Size(min = 8, max = 30, message = "비밀번호는 8자 이상 30자 이하여야 합니다.")
+    @Size(min = 8, max = 30, message = "비밀번호는 8자 이상 30자 이하이어야 합니다.")
     private String memberPwd;
 
     @NotBlank(message = "전화번호는 필수 입력 항목입니다.")

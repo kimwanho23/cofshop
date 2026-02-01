@@ -1,4 +1,3 @@
-
 package kwh.cofshop.order.domain;
 
 import jakarta.persistence.*;
@@ -80,7 +79,7 @@ public class OrderItem extends BaseTimeEntity {
         this.itemOption.addStock(this.quantity);
     }
 
-    public int getTotalPrice(){ // 할인 적용 단가 * 수량
+    public int getTotalPrice() { // 할인 적용 단가 * 수량
         return getDiscountedPrice() * quantity;
     }
 }

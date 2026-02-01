@@ -1,4 +1,3 @@
-
 package kwh.cofshop.order.domain;
 
 import jakarta.persistence.*;
@@ -21,7 +20,7 @@ import java.util.UUID;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name="orders")
+@Table(name = "orders")
 public class Order extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -90,8 +89,7 @@ public class Order extends BaseTimeEntity {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> orderItems = new ArrayList<>();
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "payment_id")
+    @OneToOne(mappedBy = "order", fetch = FetchType.LAZY)
     private PaymentEntity payment;
 
     @Builder
@@ -118,7 +116,7 @@ public class Order extends BaseTimeEntity {
     }
 
     // 주문 생성
-    public static Order createOrder(Member member, Address address, List<OrderItem> orderItems){
+    public static Order createOrder(Member member, Address address, List<OrderItem> orderItems) {
         Order order = Order.builder()
                 .member(member)
                 .address(address)
@@ -130,8 +128,8 @@ public class Order extends BaseTimeEntity {
                 .orderDay(LocalDateTime.now().getDayOfMonth())
                 .orderItems(new ArrayList<>())
                 .totalPrice(orderItems.stream()
-                                .mapToLong(OrderItem::getTotalPrice)
-                                .sum()
+                        .mapToLong(OrderItem::getTotalPrice)
+                        .sum()
                 )
                 .build();
         for (OrderItem orderItem : orderItems) {
@@ -140,7 +138,7 @@ public class Order extends BaseTimeEntity {
         return order;
     }
 
-    public void pay(){
+    public void pay() {
 /*        if (this.getOrderState() != OrderState.WAITING_FOR_PAY) {
             throw new BusinessException(BusinessErrorCode.PAYMENT_FAIL); // 결제 대기 상태가 아니면 예외 처리
         }*/
@@ -149,7 +147,7 @@ public class Order extends BaseTimeEntity {
 
 
     // 주문 상태 변경
-    public void changeOrderState(OrderState orderState){
+    public void changeOrderState(OrderState orderState) {
         this.orderState = orderState;
     }
 
@@ -169,8 +167,6 @@ public class Order extends BaseTimeEntity {
     public void finalizePrice(long priceAfterCoupon, int usePoint, int deliveryFee) {
         this.finalPrice = Math.max(priceAfterCoupon - usePoint + deliveryFee, 0);
     }
-
-
 
 
     // 연관관계 편의 메서드

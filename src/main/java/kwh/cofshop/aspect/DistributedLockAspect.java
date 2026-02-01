@@ -11,7 +11,6 @@ import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Component;
 
-import java.lang.reflect.Method;
 
 @Slf4j
 @Aspect
@@ -27,7 +26,6 @@ public class DistributedLockAspect {
     @Around("@annotation(distributedLock)")
     public Object lock(ProceedingJoinPoint joinPoint, DistributedLock distributedLock) throws Throwable {
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
-        Method method = signature.getMethod();
 
         String lockKey = LOCK_PREFIX + CustomSpringELParser.getDynamicValue(
                 signature.getParameterNames(),

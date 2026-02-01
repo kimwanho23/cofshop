@@ -12,9 +12,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 public class CustomAuthenticationProvider implements AuthenticationProvider {
 
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
-
     private final CustomUserDetailsService userDetailsService;
-
 
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
@@ -23,9 +21,9 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
 
         CustomUserDetails customUserDetails = (CustomUserDetails) userDetailsService.loadUserByUsername(email);
 
-        if(!(customUserDetails.getUsername().equals(email) && bCryptPasswordEncoder.matches(password, customUserDetails.getPassword()))){
-            System.out.println("Provider 실패");
-            throw new BadCredentialsException((customUserDetails.getUsername() + "Invalid password"));
+        if (!(customUserDetails.getUsername().equals(email)
+                && bCryptPasswordEncoder.matches(password, customUserDetails.getPassword()))) {
+            throw new BadCredentialsException("Invalid credentials");
         }
         return new UsernamePasswordAuthenticationToken(customUserDetails, password, customUserDetails.getAuthorities());
     }
@@ -35,4 +33,3 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
         return UsernamePasswordAuthenticationToken.class.isAssignableFrom(authentication);
     }
 }
-

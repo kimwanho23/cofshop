@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-02-15T14:55:54+0900",
+    date = "2026-01-24T00:40:11+0900",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.9 (Oracle Corporation)"
 )
 @Component
@@ -31,7 +31,16 @@ public class OrderMapperImpl implements OrderMapper {
 
         Order.OrderBuilder order = Order.builder();
 
-        order.member( member );
+        if ( requestDto != null ) {
+            order.address( requestDto.getAddress() );
+            order.deliveryRequest( requestDto.getDeliveryRequest() );
+            order.discountFromCoupon( (long) requestDto.getDiscountFromCoupon() );
+            order.usePoint( requestDto.getUsePoint() );
+        }
+        if ( member != null ) {
+            order.member( member );
+            order.id( member.getId() );
+        }
 
         return order.build();
     }
@@ -44,9 +53,24 @@ public class OrderMapperImpl implements OrderMapper {
 
         OrderResponseDto orderResponseDto = new OrderResponseDto();
 
-        orderResponseDto.setOrdererResponseDto( toOrdererResponseDto( order ) );
+        orderResponseDto.setOrderId( order.getId() );
         orderResponseDto.setOrderItemResponseDto( orderItemListToOrderItemResponseDtoList( order.getOrderItems() ) );
         orderResponseDto.setOrderState( order.getOrderState() );
+        orderResponseDto.setDeliveryRequest( order.getDeliveryRequest() );
+        orderResponseDto.setAddress( order.getAddress() );
+        orderResponseDto.setDeliveryFee( order.getDeliveryFee() );
+        if ( order.getTotalPrice() != null ) {
+            orderResponseDto.setTotalPrice( order.getTotalPrice().intValue() );
+        }
+        if ( order.getDiscountFromCoupon() != null ) {
+            orderResponseDto.setDiscountFromCoupon( order.getDiscountFromCoupon().intValue() );
+        }
+        if ( order.getUsePoint() != null ) {
+            orderResponseDto.setUsePoint( order.getUsePoint() );
+        }
+        if ( order.getFinalPrice() != null ) {
+            orderResponseDto.setFinalPrice( order.getFinalPrice().intValue() );
+        }
 
         return orderResponseDto;
     }

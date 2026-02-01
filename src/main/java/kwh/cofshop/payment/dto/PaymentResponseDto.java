@@ -4,7 +4,6 @@ import kwh.cofshop.payment.domain.PaymentEntity;
 import kwh.cofshop.payment.domain.PaymentStatus;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.Setter;
 
 
 @Getter

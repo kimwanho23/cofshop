@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 
 @Getter
 @AllArgsConstructor
-public class ApiBody <T>{
+public class ApiBody<T> {
 
     private String message; // 메시지
 

@@ -1,52 +1,105 @@
 package kwh.cofshop.item.controller;
 
-import kwh.cofshop.TestSettingUtils;
-import kwh.cofshop.item.domain.Item;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import kwh.cofshop.item.dto.request.ReviewRequestDto;
-import kwh.cofshop.item.repository.ItemRepository;
-import lombok.extern.slf4j.Slf4j;
+import kwh.cofshop.item.dto.response.ReviewResponseDto;
+import kwh.cofshop.item.service.ReviewService;
+import kwh.cofshop.support.StandaloneMockMvcFactory;
+import kwh.cofshop.support.TestLoginMemberArgumentResolver;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.web.servlet.MockMvc;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;  // POST 요청
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import java.util.List;
 
-@Slf4j
-class ReviewControllerTest extends TestSettingUtils {
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-    @Autowired
-    private ItemRepository itemRepository;
+@ExtendWith(MockitoExtension.class)
+class ReviewControllerTest {
 
-    @Test
-    @DisplayName("리뷰 등록 통합 테스트")
-    @Transactional
-    void addReview_success() throws Exception {
-        Item item = createTestItem();
-        ReviewRequestDto requestDto = getReviewRequestDto(item);
-        String requestJson = objectMapper.writeValueAsString(requestDto);
+    private MockMvc mockMvc;
 
-        log.info(requestJson);
-        // 2. 요청 수행
-        mockMvc.perform(post("/api/reviews/items/{itemId}", item.getId())
-                        .header("Authorization", "Bearer " + getToken())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestJson))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.body.data.content").value("리뷰 평점 테스트")) // 경로 수정
-                .andExpect(jsonPath("$.body.data.rating").value(5)) // 경로 수정
-                .andDo(print());
+    private ObjectMapper objectMapper;
+
+    @Mock
+    private ReviewService reviewService;
+
+    @InjectMocks
+    private ReviewController reviewController;
+
+    @BeforeEach
+    void setUp() {
+        objectMapper = new ObjectMapper();
+        mockMvc = StandaloneMockMvcFactory.build(
+                reviewController,
+                new TestLoginMemberArgumentResolver()
+        );
     }
 
-    private static ReviewRequestDto getReviewRequestDto(Item item) {
-        ReviewRequestDto reviewRequestDto  = new ReviewRequestDto();
-        reviewRequestDto.setContent("리뷰 평점 테스트");
-        reviewRequestDto.setRating(5L);
+    @Test
+    @DisplayName("리뷰 등록")
+    void addReview() throws Exception {
+        ReviewResponseDto responseDto = new ReviewResponseDto();
+        responseDto.setReviewId(1L);
 
-        reviewRequestDto.setItem(item.getId());
-        return reviewRequestDto;
+        when(reviewService.save(anyLong(), any(), anyLong())).thenReturn(responseDto);
+
+        ReviewRequestDto requestDto = new ReviewRequestDto();
+        requestDto.setRating(5L);
+        requestDto.setContent("좋아요");
+
+        mockMvc.perform(post("/api/reviews/items/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    @DisplayName("리뷰 목록 조회")
+    void reviewList() throws Exception {
+        when(reviewService.getReviewsByItem(anyLong(), any()))
+                .thenReturn(new PageImpl<>(List.of(new ReviewResponseDto()), PageRequest.of(0, 20), 1));
+
+        mockMvc.perform(get("/api/reviews/items/1")
+                        .param("page", "0")
+                        .param("size", "20"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("리뷰 수정")
+    void updateReview() throws Exception {
+        when(reviewService.updateReview(anyLong(), any(), anyLong())).thenReturn(new ReviewResponseDto());
+
+        ReviewRequestDto requestDto = new ReviewRequestDto();
+        requestDto.setRating(4L);
+        requestDto.setContent("괜찮아요");
+
+        mockMvc.perform(put("/api/reviews/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("리뷰 삭제")
+    void deleteReview() throws Exception {
+        mockMvc.perform(delete("/api/reviews/1"))
+                .andExpect(status().isNoContent());
     }
 }

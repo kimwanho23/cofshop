@@ -16,7 +16,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @RequiredArgsConstructor
 @Service
@@ -50,7 +51,6 @@ public class ItemImgService {
 
         return itemImgRepository.saveAll(itemImgs);
     }
-
 
 
     // 수정 시 삭제할 이미지 목록

@@ -1,4 +1,3 @@
-
 package kwh.cofshop.config.auditing;
 
 import lombok.NonNull;

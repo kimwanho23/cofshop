@@ -30,8 +30,6 @@ public class QCategory extends EntityPathBase<Category> {
 
     public final ListPath<ItemCategory, QItemCategory> itemCategories = this.<ItemCategory, QItemCategory>createList("itemCategories", ItemCategory.class, QItemCategory.class, PathInits.DIRECT2);
 
-    public final ListPath<Item, QItem> items = this.<Item, QItem>createList("items", Item.class, QItem.class, PathInits.DIRECT2);
-
     public final StringPath name = createString("name");
 
     public final QCategory parent;

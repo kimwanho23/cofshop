@@ -57,7 +57,7 @@ public class ChatRoom extends BaseTimeEntity {
     }
 
     // 채팅방이 이미 종료되었는 지
-    public boolean isClosed(){
+    public boolean isClosed() {
         return this.chatRoomStatus == ChatRoomStatus.CLOSED;
     }
 

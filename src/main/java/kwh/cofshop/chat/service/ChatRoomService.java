@@ -21,41 +21,41 @@ public class ChatRoomService {
     private final MemberRepository memberRepository;
     private final ChatRoomMapper chatRoomMapper;
 
-        // 상담 채팅 생성
-        @Transactional
-        public ChatRoomResponseDto createChatRoom(Long customerId) {
-            Member customer = memberRepository.findById(customerId)
-                    .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
+    // 상담 채팅 생성
+    @Transactional
+    public ChatRoomResponseDto createChatRoom(Long customerId) {
+        Member customer = memberRepository.findById(customerId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
 
-            ChatRoom chatRoom = chatRoomRepository.save(ChatRoom.createChatRoom(customer));
+        ChatRoom chatRoom = chatRoomRepository.save(ChatRoom.createChatRoom(customer));
 
-            return chatRoomMapper.toResponseDto(chatRoom);
+        return chatRoomMapper.toResponseDto(chatRoom);
+    }
+
+    // 상담사 연결
+    @Transactional
+    public void joinChatAgent(Long roomId, Long agentId) {
+        ChatRoom chatRoom = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.CHAT_ROOM_NOT_FOUND));
+
+        if (chatRoom.hasAgent() || chatRoom.getChatRoomStatus() == ChatRoomStatus.IN_PROGRESS) {
+            throw new BusinessException(BusinessErrorCode.CHAT_ROOM_ALREADY_AGENT_EXIST); // 이미 상담사 있음
         }
 
-        // 상담사 연결
-        @Transactional
-        public void joinChatAgent(Long roomId, Long agentId) {
-            ChatRoom chatRoom = chatRoomRepository.findById(roomId)
-                    .orElseThrow(() -> new BusinessException(BusinessErrorCode.CHAT_ROOM_NOT_FOUND));
+        Member agent = memberRepository.findById(agentId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
 
-            if (chatRoom.hasAgent() || chatRoom.getChatRoomStatus() == ChatRoomStatus.IN_PROGRESS) {
-                throw new BusinessException(BusinessErrorCode.CHAT_ROOM_ALREADY_AGENT_EXIST); // 이미 상담사 있음
-            }
+        chatRoom.assignAgent(agent);
+    }
 
-            Member agent = memberRepository.findById(agentId)
-                    .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
-
-            chatRoom.assignAgent(agent);
+    // 상담 채팅 종료(상태 변경)
+    @Transactional
+    public void closeChatRoom(Long roomId) {
+        ChatRoom chatRoom = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.CHAT_ROOM_NOT_FOUND));
+        if (chatRoom.isClosed()) {
+            throw new BusinessException(BusinessErrorCode.CHAT_ROOM_ALREADY_CLOSED); // 채팅 이미 종료됨
         }
-
-        // 상담 채팅 종료(상태 변경)
-        @Transactional
-        public void closeChatRoom(Long roomId){
-            ChatRoom chatRoom = chatRoomRepository.findById(roomId)
-                    .orElseThrow(() -> new BusinessException(BusinessErrorCode.CHAT_ROOM_NOT_FOUND));
-            if (chatRoom.isClosed()) {
-                throw new BusinessException(BusinessErrorCode.CHAT_ROOM_ALREADY_CLOSED); // 채팅 이미 종료됨
-            }
-            chatRoom.close();
-        }
+        chatRoom.close();
+    }
 }

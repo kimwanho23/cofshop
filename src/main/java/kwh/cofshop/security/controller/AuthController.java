@@ -6,10 +6,13 @@ import jakarta.servlet.http.HttpServletResponse;
 import kwh.cofshop.security.dto.TokenDto;
 import kwh.cofshop.security.service.AuthService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -18,30 +21,15 @@ public class AuthController {
 
     private final AuthService authService;
 
-    @Operation(summary = "RefreshToken 재발급", description = "1시간 단위로 RefreshToken을 재발급합니다..")
+    @Operation(summary = "CSRF token")
+    @GetMapping("/csrf")
+    public Map<String, String> csrf(CsrfToken token) {
+        return Map.of("token", token.getToken());
+    }
+
+    @Operation(summary = "Reissue refresh token")
     @PostMapping("/reissue")
-    public ResponseEntity<TokenDto> reissue(HttpServletRequest request) {
-        return authService.reissue(request);
+    public TokenDto reissue(HttpServletRequest request, HttpServletResponse response) {
+        return authService.reissue(request, response);
     }
-
-
-
-/*    // 로그인
-    @PostMapping("/login")
-    @Operation(summary = "로그인", description = "로그인 기능입니다.")
-    public ResponseEntity<ApiResponse<LoginResponseDto>> login(
-            @Valid @RequestBody LoginDto loginDto) {
-        LoginResponseDto loginResponseDto = authService.login(loginDto);
-
-        return ResponseEntity.ok()
-                .body(ApiResponse.OK(loginResponseDto));
-    }
-
-    @PostMapping("/logout")
-    @Operation(summary = "로그아웃")
-    public ResponseEntity<ApiResponse<String>> logout(
-            HttpServletRequest request, HttpServletResponse response) {
-        authService.logout(request, response);
-        return ResponseEntity.ok(ApiResponse.OK("로그아웃 완료"));
-    }*/
 }

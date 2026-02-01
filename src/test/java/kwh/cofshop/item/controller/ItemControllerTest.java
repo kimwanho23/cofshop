@@ -1,141 +1,177 @@
 package kwh.cofshop.item.controller;
 
-import kwh.cofshop.TestSettingUtils;
-import kwh.cofshop.item.domain.ImgType;
-import kwh.cofshop.item.dto.request.ItemImgRequestDto;
-import kwh.cofshop.item.dto.request.ItemOptionRequestDto;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import kwh.cofshop.item.dto.request.ItemRequestDto;
 import kwh.cofshop.item.dto.request.ItemSearchRequestDto;
+import kwh.cofshop.item.dto.request.ItemUpdateRequestDto;
+import kwh.cofshop.item.dto.response.ItemResponseDto;
+import kwh.cofshop.item.dto.response.ItemSearchResponseDto;
 import kwh.cofshop.item.service.ItemService;
-import lombok.extern.slf4j.Slf4j;
+import kwh.cofshop.support.StandaloneMockMvcFactory;
+import kwh.cofshop.support.TestLoginMemberArgumentResolver;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.web.servlet.MockMvc;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@Slf4j
-class ItemControllerTest extends TestSettingUtils {
+@ExtendWith(MockitoExtension.class)
+class ItemControllerTest {
 
-    @Autowired
+    private MockMvc mockMvc;
+
+    private ObjectMapper objectMapper;
+
+    @Mock
     private ItemService itemService;
 
-    @Test
-    @DisplayName("아이템 등록 통합 테스트")
-    @Transactional
-    void addItem() throws Exception {
-        // 1. 멤버 토큰
+    @InjectMocks
+    private ItemController itemController;
 
-        ItemRequestDto requestDto = getItemRequestDto();
-        List<MockMultipartFile> imageFiles = getImageFiles();
-        List<ItemImgRequestDto> itemImgRequestDto = getImgRequestDto();
-
-        // 3. DTO에 데이터 설정
-        requestDto.setItemImgRequestDto(itemImgRequestDto);
-        requestDto.setItemOptionRequestDto(getItemOptionRequestDto());
-        requestDto.setCategoryIds(new ArrayList<>());
-
-
-        // 4. JSON 직렬화 (DTO 객체를 문자열로 변환)
-        String requestDtoJson = objectMapper.writeValueAsString(requestDto);
-        MockMultipartFile itemRequestDtoPart = new MockMultipartFile("itemRequestDto",
-                "itemRequestDto.json", "application/json", requestDtoJson.getBytes(StandardCharsets.UTF_8));
-
-        // 5. MockMvc 요청 수행 (MultipartFile 포함)
-        mockMvc.perform(multipart("/api/item")
-                        .file(itemRequestDtoPart)
-                        .file(imageFiles.get(0))
-                        .file(imageFiles.get(1))
-                        .file(imageFiles.get(2))
-                        .header("Authorization", "Bearer " + getToken())
-                        .contentType(MediaType.MULTIPART_FORM_DATA))
-                .andExpect(status().isCreated())
-                .andDo(print());
-    }
-
-
-    @Test
-    @DisplayName("검색 테스트")
-    @Transactional
-    void SearchItem() throws Exception {
-        // 1. 아이템 검색
-        ItemSearchRequestDto itemSearchRequestDto = new ItemSearchRequestDto();
-        itemSearchRequestDto.setItemName("커피");
-
-        // 2. JSON 직렬화 (DTO 객체를 문자열로 변환)
-        String requestDtoJson = objectMapper.writeValueAsString(itemSearchRequestDto);
-
-        mockMvc.perform(multipart("/api/item/search")
-                        .content(requestDtoJson)
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andDo(print());
-    }
-
-    // 이미지 파일
-    private List<MockMultipartFile> getImageFiles() {
-        List<MockMultipartFile> images = new ArrayList<>();
-        images.add(new MockMultipartFile("images", "test.jpg", "image/jpeg", "test data".getBytes()));
-        images.add(new MockMultipartFile("images", "test1.jpg", "image/jpeg", "test data 1".getBytes()));
-        images.add(new MockMultipartFile("images", "test2.jpg", "image/jpeg", "test data 2".getBytes()));
-        return images;
-    }
-
-    // 이미지 DTO
-    private static List<ItemImgRequestDto> getImgRequestDto() {
-        List<ItemImgRequestDto> imgRequestDto = new ArrayList<>();
-
-        ItemImgRequestDto repDto = new ItemImgRequestDto();
-        repDto.setImgType(ImgType.REPRESENTATIVE);
-        imgRequestDto.add(repDto);
-
-        ItemImgRequestDto subDto1 = new ItemImgRequestDto();
-        subDto1.setImgType(ImgType.SUB);
-        imgRequestDto.add(subDto1);
-
-        ItemImgRequestDto subDto2 = new ItemImgRequestDto();
-        subDto2.setImgType(ImgType.SUB);
-        imgRequestDto.add(subDto2);
-
-        return imgRequestDto;
-    }
-
-
-    // 옵션 DTO
-    private static List<ItemOptionRequestDto> getItemOptionRequestDto() {
-        return List.of(
-                createOption("Small Size", 0, 100, 1),
-                createOption("Large Size", 500, 50, 2)
+    @BeforeEach
+    void setUp() {
+        objectMapper = new ObjectMapper();
+        mockMvc = StandaloneMockMvcFactory.build(
+                itemController,
+                new TestLoginMemberArgumentResolver()
         );
     }
 
-    // 옵션 만들기
-    private static ItemOptionRequestDto createOption(String description, int additionalPrice, int stock, int optionNo) {
-        ItemOptionRequestDto option = new ItemOptionRequestDto();
-        option.setDescription(description);
-        option.setAdditionalPrice(additionalPrice);
-        option.setStock(stock);
-        return option;
+    @Test
+    @DisplayName("상품 검색")
+    void searchItem() throws Exception {
+        ItemSearchResponseDto item = new ItemSearchResponseDto();
+        item.setItemName("커피");
+
+        Page<ItemSearchResponseDto> response = new PageImpl<>(List.of(item), PageRequest.of(0, 20), 1);
+
+        when(itemService.searchItem(any(), any())).thenReturn(response);
+
+        ItemSearchRequestDto requestDto = new ItemSearchRequestDto();
+        requestDto.setItemName("커피");
+
+        mockMvc.perform(post("/api/item/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isOk());
     }
 
-    private static ItemRequestDto getItemRequestDto() {
+    @Test
+    @DisplayName("상품 정보 조회")
+    void inquiryItem() throws Exception {
+        when(itemService.getItem(anyLong())).thenReturn(new ItemResponseDto());
+
+        mockMvc.perform(get("/api/item/1"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("인기 상품 조회")
+    void popularItems() throws Exception {
+        when(itemService.getPopularItem(5)).thenReturn(List.of(new ItemResponseDto()));
+
+        mockMvc.perform(get("/api/item/populars")
+                        .param("limit", "5"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("상품 등록")
+    void addItem() throws Exception {
+        ItemResponseDto responseDto = new ItemResponseDto();
+        responseDto.setId(1L);
+
+        when(itemService.saveItem(any(), anyLong(), anyList())).thenReturn(responseDto);
+
         ItemRequestDto requestDto = new ItemRequestDto();
         requestDto.setItemName("커피 원두");
-        requestDto.setPrice(15000);
-        requestDto.setOrigin("아르헨티나");
-        requestDto.setDiscount(0); // 할인율
-        requestDto.setDeliveryFee(1000); // 배송비
-        requestDto.setItemLimit(5); // 수량 제한
+        requestDto.setPrice(1000);
+        requestDto.setCategoryIds(List.of(1L));
 
-        return requestDto;
+        String requestJson = objectMapper.writeValueAsString(requestDto);
+        MockMultipartFile itemRequestDtoPart = new MockMultipartFile(
+                "itemRequestDto",
+                "itemRequestDto.json",
+                "application/json",
+                requestJson.getBytes(StandardCharsets.UTF_8)
+        );
+
+        MockMultipartFile imageFile = new MockMultipartFile(
+                "images",
+                "test.jpg",
+                "image/jpeg",
+                "test data".getBytes(StandardCharsets.UTF_8)
+        );
+
+        mockMvc.perform(multipart("/api/item")
+                        .file(itemRequestDtoPart)
+                        .file(imageFile)
+                        .contentType(MediaType.MULTIPART_FORM_DATA))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    @DisplayName("상품 수정")
+    void updateItem() throws Exception {
+        ItemResponseDto responseDto = new ItemResponseDto();
+        responseDto.setId(1L);
+
+        when(itemService.updateItem(anyLong(), any(), anyList())).thenReturn(responseDto);
+
+        ItemUpdateRequestDto requestDto = new ItemUpdateRequestDto();
+        requestDto.setItemName("커피 변경");
+
+        String requestJson = objectMapper.writeValueAsString(requestDto);
+        MockMultipartFile itemRequestDtoPart = new MockMultipartFile(
+                "itemRequestDto",
+                "itemRequestDto.json",
+                "application/json",
+                requestJson.getBytes(StandardCharsets.UTF_8)
+        );
+
+        MockMultipartFile imageFile = new MockMultipartFile(
+                "images",
+                "update.jpg",
+                "image/jpeg",
+                "test data".getBytes(StandardCharsets.UTF_8)
+        );
+
+        mockMvc.perform(multipart("/api/item/1")
+                        .file(itemRequestDtoPart)
+                        .file(imageFile)
+                        .with(request -> {
+                            request.setMethod("PUT");
+                            return request;
+                        })
+                        .contentType(MediaType.MULTIPART_FORM_DATA))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("상품 삭제")
+    void deleteItem() throws Exception {
+        mockMvc.perform(delete("/api/item/1"))
+                .andExpect(status().isNoContent());
     }
 }

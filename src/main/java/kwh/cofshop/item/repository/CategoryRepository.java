@@ -12,20 +12,20 @@ import java.util.List;
 public interface CategoryRepository extends JpaRepository<Category, Long>, CategoryRepositoryCustom {
 
     @Query(value = """
-        WITH RECURSIVE category_path AS (
-            SELECT category_id, name, parent_category_id
-            FROM category
-            WHERE category_id = :categoryId
-
-            UNION ALL
-
-            SELECT c.category_id, c.name, c.parent_category_id
-            FROM category c
-            INNER JOIN category_path cp ON c.category_id = cp.parent_category_id
-        )
-        SELECT category_id, name, parent_category_id AS parentCategoryId
-        FROM category_path
-        """, nativeQuery = true)
+            WITH RECURSIVE category_path AS (
+                SELECT category_id, name, parent_category_id
+                FROM category
+                WHERE category_id = :categoryId
+            
+                UNION ALL
+            
+                SELECT c.category_id, c.name, c.parent_category_id
+                FROM category c
+                INNER JOIN category_path cp ON c.category_id = cp.parent_category_id
+            )
+            SELECT category_id, name, parent_category_id AS parentCategoryId
+            FROM category_path
+            """, nativeQuery = true)
     List<CategoryPathDto> findCategoryPath(@Param("categoryId") Long categoryId);
 
     @Query(value = "SELECT * FROM category WHERE parent_category_id = :parentId", nativeQuery = true)

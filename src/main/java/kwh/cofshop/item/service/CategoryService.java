@@ -49,9 +49,9 @@ public class CategoryService {
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.CATEGORY_NOT_FOUND));
         return categoryMapper.toResponseDto(category);
     }
-    
+
     //자식 카테고리 백트래킹
-    public List<CategoryPathDto> getCategoryPath(Long categoryId){
+    public List<CategoryPathDto> getCategoryPath(Long categoryId) {
         List<CategoryPathDto> categoryPath = categoryRepository.findCategoryPath(categoryId);
         Collections.reverse(categoryPath);
         return categoryPath;
@@ -62,12 +62,11 @@ public class CategoryService {
         if (hasChildCategory(categoryId)) {
             List<Category> categories = categoryRepository.findImmediateChildrenNative(categoryId);
             return categories.stream().map(categoryMapper::toResponseDto).toList();
-        }
-        else return null;
+        } else return null;
     }
 
 
-    public boolean hasChildCategory(Long categoryId){
+    public boolean hasChildCategory(Long categoryId) {
         return categoryRepository.existsByParentCategoryId(categoryId);
     }
 

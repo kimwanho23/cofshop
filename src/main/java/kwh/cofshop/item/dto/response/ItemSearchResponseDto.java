@@ -1,6 +1,5 @@
 package kwh.cofshop.item.dto.response;
 
-import kwh.cofshop.item.domain.Category;
 import kwh.cofshop.item.domain.ItemState;
 import lombok.Getter;
 import lombok.Setter;

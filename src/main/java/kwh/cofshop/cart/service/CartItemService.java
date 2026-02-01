@@ -5,7 +5,6 @@ import kwh.cofshop.cart.domain.Cart;
 import kwh.cofshop.cart.domain.CartItem;
 import kwh.cofshop.cart.dto.request.CartItemRequestDto;
 import kwh.cofshop.cart.dto.response.CartItemResponseDto;
-import kwh.cofshop.cart.dto.response.CartResponseDto;
 import kwh.cofshop.cart.mapper.CartItemMapper;
 import kwh.cofshop.cart.repository.CartItemRepository;
 import kwh.cofshop.cart.repository.CartRepository;
@@ -20,7 +19,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -88,7 +88,7 @@ public class CartItemService {
 
     // 장바구니 아이템 수량 변경
     @Transactional
-    public void changeQuantity(Long memberId, CartItemRequestDto cartItemRequestDto){
+    public void changeQuantity(Long memberId, CartItemRequestDto cartItemRequestDto) {
         // 현재 로그인한 사용자의 장바구니 가져오기
         Cart cart = cartRepository.findByMemberId(memberId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.CART_NOT_FOUND));

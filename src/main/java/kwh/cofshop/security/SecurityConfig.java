@@ -18,6 +18,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.LogoutFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 
 @Configuration
@@ -35,14 +36,20 @@ public class SecurityConfig {
     @Bean
     protected SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
-        http.csrf(AbstractHttpConfigurer::disable)
+        http.csrf(csrf -> csrf
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .requireCsrfProtectionMatcher(request -> {
+                            String path = request.getRequestURI();
+                            return "POST".equals(request.getMethod())
+                                    && ("/api/auth/reissue".equals(path) || "/api/auth/logout".equals(path));
+                        }))
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests((authorize) -> authorize
                         .requestMatchers("/css/**", "/js/**", "/favicon.ico").permitAll()
-                        .requestMatchers("/api/member/signup", "/",  "/login", "/api/item/search", "/api/memberCoupon/**",
-                                "/api/review/**",  "/api/auth/login", "/api/auth/reissue", "/api/auth/logout",
-                                "/swagger-ui/**", "/swagger-resources/**", "/v3/api-docs/**", "/api*").permitAll()
+                        .requestMatchers("/api/member/signup", "/", "/api/item/search", "/api/memberCoupon/**",
+                                "/api/review/**", "/api/auth/login", "/api/auth/reissue", "/api/auth/logout", "/api/auth/csrf",
+                                "/swagger-ui/**", "/swagger-resources/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/api/**", "/item/**").authenticated()
                         .anyRequest().authenticated())
                 .exceptionHandling((exceptions) -> exceptions
@@ -50,14 +57,27 @@ public class SecurityConfig {
                         .accessDeniedHandler(new CustomAccessDeniedHandler())  // 권한 부족 처리
                 )
                 .logout((logout) -> logout
-                        .logoutSuccessUrl("/logout")
+                        .logoutSuccessUrl("/api/auth/logout")
                         .invalidateHttpSession(true))
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // 무상태
                 .addFilterBefore(new CustomLogoutFilter(refreshTokenService, jwtTokenProvider), LogoutFilter.class)
                 .addFilterBefore(new JwtFilter(jwtTokenProvider), CustomLoginFilter.class)
-                .addFilterAt(new CustomLoginFilter(authenticationManager(), jwtTokenProvider, objectMapper, refreshTokenService, applicationEventPublisher), UsernamePasswordAuthenticationFilter.class);
+                .addFilterAt(customLoginFilter(), UsernamePasswordAuthenticationFilter.class);
         return http.build();
+    }
+
+    @Bean
+    public CustomLoginFilter customLoginFilter() {
+        CustomLoginFilter loginFilter = new CustomLoginFilter(
+                authenticationManager(),
+                jwtTokenProvider,
+                objectMapper,
+                refreshTokenService,
+                applicationEventPublisher
+        );
+        loginFilter.setFilterProcessesUrl("/api/auth/login");
+        return loginFilter;
     }
 
     @Bean
@@ -79,7 +99,6 @@ public class SecurityConfig {
     public CustomUserDetailsService customUserDetailsService() {
         return new CustomUserDetailsService(memberRepository); // CustomUserDetailsService 빈 등록
     }
-
 
 
 }

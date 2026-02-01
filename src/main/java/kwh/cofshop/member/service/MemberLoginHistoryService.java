@@ -19,7 +19,7 @@ public class MemberLoginHistoryService {
     private final MemberLoginHistoryMapper memberLoginHistoryMapper;
 
     @Transactional
-    public void saveLoginHistory(MemberLoginEvent event){
+    public void saveLoginHistory(MemberLoginEvent event) {
         memberLoginHistoryRepository.save(memberLoginHistoryMapper.toEntity(event));
     }
 

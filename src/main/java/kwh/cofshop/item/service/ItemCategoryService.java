@@ -1,4 +1,5 @@
 package kwh.cofshop.item.service;
+
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemCategory;
 import kwh.cofshop.item.dto.request.ItemUpdateRequestDto;
@@ -9,7 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.List;
 
 @RequiredArgsConstructor
 @Service
@@ -40,7 +41,6 @@ public class ItemCategoryService {
         deleteItemCategories(item, dto.getDeleteCategoryIds());
         addItemCategories(item, dto.getAddCategoryIds());
     }
-
 
 
 }

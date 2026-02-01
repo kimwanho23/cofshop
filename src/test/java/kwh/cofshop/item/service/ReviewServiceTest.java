@@ -1,145 +1,245 @@
 package kwh.cofshop.item.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import kwh.cofshop.TestSettingUtils;
 import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.UnauthorizedRequestException;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.Review;
 import kwh.cofshop.item.dto.request.ReviewRequestDto;
 import kwh.cofshop.item.dto.response.ReviewResponseDto;
+import kwh.cofshop.item.mapper.ReviewMapper;
 import kwh.cofshop.item.repository.ItemRepository;
 import kwh.cofshop.item.repository.ReviewRepository;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.repository.MemberRepository;
-import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.data.domain.Page;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Optional;
 
-@Slf4j
-@AutoConfigureMockMvc
-class ReviewServiceTest extends TestSettingUtils {
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+@ExtendWith(MockitoExtension.class)
+class ReviewServiceTest {
 
-    @Autowired
-    private ItemRepository itemRepository;
-
-    @Autowired
-    private MemberRepository memberRepository;
-
-    @Autowired
+    @Mock
     private ReviewRepository reviewRepository;
 
-    @Autowired
+    @Mock
+    private ReviewMapper reviewMapper;
+
+    @Mock
+    private ItemRepository itemRepository;
+
+    @Mock
+    private MemberRepository memberRepository;
+
+    @InjectMocks
     private ReviewService reviewService;
 
     @Test
-    @DisplayName("리뷰 작성")
-    @Transactional
-    void createReview() throws Exception {
-        Item item = createTestItem();
+    @DisplayName("리뷰 생성: 회원 없음")
+    void save_memberNotFound() {
+        when(memberRepository.findById(anyLong())).thenReturn(Optional.empty());
 
-        Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
-
-        ReviewRequestDto reviewRequestDto = getReviewRequestDto(item, (long) (Math.random() * 5) + 1);
-        ReviewResponseDto responseDto = reviewService.save( item.getId(), reviewRequestDto, member.getId()); // 리뷰 저장
-        String reviewJson = objectMapper.writeValueAsString(responseDto);
-        log.info("review Json : {}", reviewJson);
+        assertThatThrownBy(() -> reviewService.save(1L, new ReviewRequestDto(), 1L))
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
-    @DisplayName("리뷰 중복 작성 시 BusinessException 발생")
-    @Transactional
-    void createDuplicateReview() throws Exception {
-        // Given
-        Item item = createTestItem();
-        Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
-        ReviewRequestDto reviewRequestDto = getReviewRequestDto(item, (long) (Math.random() * 5) + 1);
+    @DisplayName("리뷰 생성: 상품 없음")
+    void save_itemNotFound() {
+        Member member = createMember(1L);
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(itemRepository.findById(1L)).thenReturn(Optional.empty());
 
-        // 첫 번째 리뷰 저장
-        reviewService.save(item.getId(), reviewRequestDto, member.getId());
-
-        // 리뷰 중복 저장 시도
-        Assertions.assertThrows(BusinessException.class,
-                ()-> reviewService.save(item.getId(), reviewRequestDto, member.getId()));
-    }
-
-
-
-    @Test
-    @DisplayName("다수 리뷰 작성 테스트")
-    @Transactional
-    void createReviewRand() throws Exception {
-
-        for (int i = 0; i < 10; i++) {
-            Item item = itemRepository.findById(2L).orElseThrow();
-            Member member = memberRepository.findByEmail("randomMember" + i + "@gmail.com").orElseThrow();
-            ReviewRequestDto reviewRequestDto = getReviewRequestDto(item, (long) (Math.random() * 5) + 1);
-            reviewService.save(item.getId(), reviewRequestDto, member.getId()); // 리뷰 저장
-        }
-    }
-
-
-    @Test
-    @DisplayName("리뷰 제거")
-    @Transactional
-    void deleteReview() throws Exception {
-
-        Item item = itemRepository.findById(2L)
-                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));
-
-        Member member = memberRepository.findByEmail("test@gmail.com").orElseThrow();
-
-        Review byItem = reviewRepository.findByItemAndMember(item.getId(), member.getId());
-
-        reviewRepository.delete(byItem);
-
+        assertThatThrownBy(() -> reviewService.save(1L, new ReviewRequestDto(), 1L))
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
-    @DisplayName("특정 상품의 리뷰 페이징 조회")
-    @Transactional
-    void ReviewListPage() throws Exception {
+    @DisplayName("리뷰 생성: 중복")
+    void save_alreadyExists() {
+        Member member = createMember(1L);
+        Item item = createItem();
 
-        Item item = itemRepository.findById(2L)
-                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+        when(reviewRepository.save(any(Review.class))).thenThrow(new DataIntegrityViolationException("dup"));
 
-        Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "createdDate"));
-        Page<ReviewResponseDto> reviewsByItem = reviewService.getReviewsByItem(item.getId(), pageable);
-        Page<ReviewResponseDto> reviewsByItem2 = reviewService.getReviewsByItem(item.getId(), pageable);
-        log.info(objectMapper.writeValueAsString(reviewsByItem));
+        ReviewRequestDto requestDto = new ReviewRequestDto();
+        requestDto.setRating(5L);
+        requestDto.setContent("좋아요");
 
-
+        assertThatThrownBy(() -> reviewService.save(1L, requestDto, 1L))
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
-    @DisplayName("특정 상품의 리뷰 전체 조회")
-    @Transactional
-    void ReviewList() throws Exception {
-        Item item = itemRepository.findById(2L)
-                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다."));
-        List<ReviewResponseDto> reviewsByItemId = reviewService.getReviewsByItemId(item.getId());
-        log.info(objectMapper.writeValueAsString(reviewsByItemId));
+    @DisplayName("리뷰 생성: 성공")
+    void save_success() {
+        Member member = createMember(1L);
+        Item item = createItem();
+        ReflectionTestUtils.setField(item, "averageRating", 0.0);
+        ReflectionTestUtils.setField(item, "reviewCount", 0L);
+
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+        when(reviewMapper.toResponseDto(any(Review.class))).thenReturn(new ReviewResponseDto());
+
+        ReviewRequestDto requestDto = new ReviewRequestDto();
+        requestDto.setRating(5L);
+        requestDto.setContent("좋아요");
+
+        ReviewResponseDto result = reviewService.save(1L, requestDto, 1L);
+
+        assertThat(result).isNotNull();
+        assertThat(item.getReviewCount()).isEqualTo(1L);
     }
 
+    @Test
+    @DisplayName("리뷰 수정: 대상 없음")
+    void updateReview_notFound() {
+        when(reviewRepository.findById(1L)).thenReturn(Optional.empty());
 
-    private static ReviewRequestDto getReviewRequestDto(Item item, Long rating) {
-        ReviewRequestDto reviewRequestDto  = new ReviewRequestDto();
-        reviewRequestDto.setContent("1 ~ 5의 랜덤 리뷰 값");
-        reviewRequestDto.setRating(rating);
-        reviewRequestDto.setItem(item.getId());
-        return reviewRequestDto;
+        assertThatThrownBy(() -> reviewService.updateReview(1L, new ReviewRequestDto(), 1L))
+                .isInstanceOf(BusinessException.class);
     }
 
+    @Test
+    @DisplayName("리뷰 수정: 권한 없음")
+    void updateReview_notAuthorized() {
+        Review review = Review.builder().member(createMember(2L)).build();
+        when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
+
+        assertThatThrownBy(() -> reviewService.updateReview(1L, new ReviewRequestDto(), 1L))
+                .isInstanceOf(UnauthorizedRequestException.class);
+    }
+
+    @Test
+    @DisplayName("리뷰 수정: 성공")
+    void updateReview_success() {
+        Member member = createMember(1L);
+        Item item = createItem();
+        ReflectionTestUtils.setField(item, "averageRating", 4.0);
+        ReflectionTestUtils.setField(item, "reviewCount", 1L);
+
+        Review review = Review.builder()
+                .member(member)
+                .item(item)
+                .rating(4L)
+                .content("이전")
+                .build();
+
+        when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
+        when(reviewMapper.toResponseDto(review)).thenReturn(new ReviewResponseDto());
+
+        ReviewRequestDto requestDto = new ReviewRequestDto();
+        requestDto.setRating(5L);
+        requestDto.setContent("변경");
+
+        ReviewResponseDto result = reviewService.updateReview(1L, requestDto, 1L);
+
+        assertThat(result).isNotNull();
+        assertThat(review.getRating()).isEqualTo(5L);
+        assertThat(review.getContent()).isEqualTo("변경");
+        assertThat(item.getAverageRating()).isEqualTo(5.0);
+    }
+
+    @Test
+    @DisplayName("리뷰 삭제: 대상 없음")
+    void deleteReview_notFound() {
+        when(reviewRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> reviewService.deleteReview(1L, 1L))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    @DisplayName("리뷰 삭제: 권한 없음")
+    void deleteReview_notAuthorized() {
+        Review review = Review.builder().member(createMember(2L)).build();
+        when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
+
+        assertThatThrownBy(() -> reviewService.deleteReview(1L, 1L))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    @DisplayName("리뷰 삭제: 성공")
+    void deleteReview_success() {
+        Member member = createMember(1L);
+        Item item = createItem();
+        ReflectionTestUtils.setField(item, "averageRating", 4.0);
+        ReflectionTestUtils.setField(item, "reviewCount", 2L);
+
+        Review review = Review.builder()
+                .member(member)
+                .item(item)
+                .rating(4L)
+                .content("삭제")
+                .build();
+
+        when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
+
+        reviewService.deleteReview(1L, 1L);
+
+        verify(reviewRepository).delete(review);
+        assertThat(item.getReviewCount()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("리뷰 목록 조회")
+    void getReviewsByItem() {
+        Review review = Review.builder().build();
+        when(reviewRepository.findByItemId(anyLong(), any()))
+                .thenReturn(new PageImpl<>(List.of(review), PageRequest.of(0, 20), 1));
+        when(reviewMapper.toResponseDto(review)).thenReturn(new ReviewResponseDto());
+
+        assertThat(reviewService.getReviewsByItem(1L, PageRequest.of(0, 20)).getContent()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("리뷰 목록 조회(리스트)")
+    void getReviewsByItemId() {
+        Review review = Review.builder().build();
+        when(reviewRepository.getReviewsByItemId(1L)).thenReturn(List.of(review));
+        when(reviewMapper.toResponseDto(review)).thenReturn(new ReviewResponseDto());
+
+        assertThat(reviewService.getReviewsByItemId(1L)).hasSize(1);
+    }
+
+    private Member createMember(Long id) {
+        return Member.builder()
+                .id(id)
+                .email("user" + id + "@example.com")
+                .memberName("사용자" + id)
+                .memberPwd("pw")
+                .tel("01012341234")
+                .build();
+    }
+
+    private Item createItem() {
+        return Item.builder()
+                .itemName("커피")
+                .price(1000)
+                .deliveryFee(0)
+                .origin("브라질")
+                .itemLimit(10)
+                .seller(createMember(2L))
+                .build();
+    }
 }

@@ -1,18 +1,21 @@
 package kwh.cofshop.payment.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
 public class PaymentVerifyRequestDto {
-    @NotNull
+    @NotBlank
     private String impUid;
 
-    @NotNull
+    @NotBlank
     private String merchantUid;
 
     @NotNull
-    private Long amount; // 백엔드와 일치하는지 검증
+    @Positive
+    private Long amount; // 금액이 일치하는지 검증
 }

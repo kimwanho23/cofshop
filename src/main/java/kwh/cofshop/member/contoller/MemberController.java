@@ -4,14 +4,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import kwh.cofshop.argumentResolver.LoginMember;
-import kwh.cofshop.global.response.ApiResponse;
 import kwh.cofshop.member.domain.MemberState;
 import kwh.cofshop.member.dto.request.MemberRequestDto;
 import kwh.cofshop.member.dto.response.MemberResponseDto;
 import kwh.cofshop.member.event.MemberLoginEvent;
 import kwh.cofshop.member.service.MemberLoginHistoryService;
 import kwh.cofshop.member.service.MemberService;
-import kwh.cofshop.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -36,23 +34,23 @@ public class MemberController {
     // 회원 정보
     @Operation(summary = "회원 정보 열람", description = "회원의 정보를 열람합니다.")
     @GetMapping("/{memberId}")
-    public ResponseEntity<ApiResponse<MemberResponseDto>> getMemberById(@PathVariable Long memberId) {
-        return ResponseEntity.ok(ApiResponse.OK(memberService.findMember(memberId)));
+    public MemberResponseDto getMemberById(@PathVariable Long memberId) {
+        return memberService.findMember(memberId);
     }
 
     // 모든 멤버 리스트 조회 (관리자 권한)
     @Operation(summary = "전체 멤버 조회", description = "관리자 전용, 모든 멤버를 조회합니다.")
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     @GetMapping
-    public ResponseEntity<ApiResponse<List<MemberResponseDto>>> getAllMembers() {
-        return ResponseEntity.ok(ApiResponse.OK(memberService.memberLists()));
+    public List<MemberResponseDto> getAllMembers() {
+        return memberService.memberLists();
     }
 
     // 멤버의 로그인 기록 열람
     @Operation(summary = "멤버 로그인 기록 조회", description = "조회 결과")
     @GetMapping("/history/{memberId}")
-    public ResponseEntity<ApiResponse<List<MemberLoginEvent>>> getLoginMemberHistory(@PathVariable Long memberId){
-        return ResponseEntity.ok(ApiResponse.OK(memberLoginHistoryService.getUserLoginHistory(memberId)));
+    public List<MemberLoginEvent> getLoginMemberHistory(@PathVariable Long memberId) {
+        return memberLoginHistoryService.getUserLoginHistory(memberId);
     }
 
 
@@ -60,10 +58,10 @@ public class MemberController {
     // 회원가입
     @Operation(summary = "회원가입", description = "회원가입 기능입니다.")
     @PostMapping(value = "/signup")
-    public ResponseEntity<ApiResponse<MemberResponseDto>> signup(@Valid @RequestBody MemberRequestDto memberSaveDto) {
+    public ResponseEntity<MemberResponseDto> signup(@Valid @RequestBody MemberRequestDto memberSaveDto) {
         MemberResponseDto responseDto = memberService.signUp(memberSaveDto);
         return ResponseEntity.created(URI.create("/api/members/" + responseDto.getMemberId()))
-                .body(ApiResponse.Created(responseDto));
+                .body(responseDto);
     }
 
     //////////// @PUT, PATCH
@@ -73,42 +71,41 @@ public class MemberController {
     @Operation(summary = "멤버 상태 변경", description = "관리자 전용, 멤버 상태 변경 기능입니다.")
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     @PatchMapping("/{memberId}/state")
-    public ResponseEntity<ApiResponse<String>> updateMemberStateByAdmin(
+    public ResponseEntity<Void> updateMemberStateByAdmin(
             @PathVariable Long memberId,
             @RequestParam MemberState memberState) {
         memberService.changeMemberState(memberId, memberState);
-        return ResponseEntity.ok(ApiResponse.OK("회원 상태를 변경했습니다."));
+        return ResponseEntity.noContent().build();
     }
 
     // 회원 탈퇴
     @Operation(summary = "회원탈퇴", description = "회원탈퇴 기능입니다.")
     @PatchMapping("/me/state")
     @PreAuthorize("hasAuthority('ROLE_USER')")
-    public ResponseEntity<ApiResponse<String>> quitMember(@LoginMember CustomUserDetails user) {
-        memberService.changeMemberState(user.getId(), MemberState.QUIT);
-        return ResponseEntity.ok(ApiResponse.OK("회원 탈퇴가 완료되었습니다."));
+    public ResponseEntity<Void> quitMember(@LoginMember Long memberId) {
+        memberService.changeMemberState(memberId, MemberState.QUIT);
+        return ResponseEntity.noContent().build();
     }
 
     // 회원 비밀 번호 변경
     @Operation(summary = "비밀번호 변경", description = "회원의 비밀번호를 변경합니다.")
     @PatchMapping("/me/password")
     @PreAuthorize("hasAuthority('ROLE_USER')")
-    public ResponseEntity<ApiResponse<String>> changePassword(
-            @LoginMember CustomUserDetails user,
+    public ResponseEntity<Void> changePassword(
+            @LoginMember Long memberId,
             @RequestParam String password) {
-        memberService.updateMemberPassword(user.getId(), password);
-        return ResponseEntity.ok(ApiResponse.OK("비밀번호가 변경되었습니다."));
+        memberService.updateMemberPassword(memberId, password);
+        return ResponseEntity.noContent().build();
     }
 
     // 포인트 변경
     @Operation(summary = "포인트 변경", description = "회원의 포인트를 변경합니다.")
     @PatchMapping("/{memberId}/point")
-    public ResponseEntity<ApiResponse<Integer>> updatePoint(
+    public Integer updatePoint(
             @PathVariable Long memberId,
             @RequestParam int amount // 양수 = 적립, 음수 = 차감
     ) {
-        Integer currentPoint = memberService.updatePoint(memberId, amount);
-        return ResponseEntity.ok(ApiResponse.OK(currentPoint));
+        return memberService.updatePoint(memberId, amount);
     }
 
     // @DELETE

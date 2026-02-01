@@ -3,18 +3,18 @@ package kwh.cofshop.security;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import kwh.cofshop.global.response.ApiResponse;
-import kwh.cofshop.member.event.MemberLoginEvent;
-import kwh.cofshop.security.dto.TokenDto;
 import kwh.cofshop.member.dto.request.LoginDto;
 import kwh.cofshop.member.dto.response.LoginResponseDto;
+import kwh.cofshop.member.event.MemberLoginEvent;
+import kwh.cofshop.security.dto.TokenDto;
 import kwh.cofshop.security.service.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -25,7 +25,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import java.io.IOException;
 import java.time.LocalDateTime;
 
-// Member ID, PASSWORD 전달받아서, 유효 사용자 검증 후 인증 Filter
+// Member ID, PASSWORD -> user validation
 @Slf4j
 @RequiredArgsConstructor
 public class CustomLoginFilter extends UsernamePasswordAuthenticationFilter {
@@ -37,7 +37,8 @@ public class CustomLoginFilter extends UsernamePasswordAuthenticationFilter {
     private final ApplicationEventPublisher applicationEventPublisher;
 
     @Override
-    public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
+    public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
+            throws AuthenticationException {
         try {
             LoginDto loginDto = objectMapper.readValue(request.getInputStream(), LoginDto.class);
             UsernamePasswordAuthenticationToken authRequest =
@@ -46,22 +47,21 @@ public class CustomLoginFilter extends UsernamePasswordAuthenticationFilter {
             setDetails(request, authRequest);
             return authenticationManager.authenticate(authRequest);
         } catch (IOException e) {
-            throw new AuthenticationServiceException("로그인 요청 본문을 읽을 수 없습니다.", e);
+            throw new AuthenticationServiceException("Invalid login payload.", e);
         }
     }
 
-    // attemptAuthentication 인증이 정상적으로 이루어졌다면 해당 메소드 실행된다.
-    // 즉, JWT 토큰을 만들어서 request 요청한 사용자에게 reponse한다.
     @Override
     protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response,
-                                            FilterChain chain, Authentication authResult) throws IOException, ServletException {
+                                            FilterChain chain, Authentication authResult)
+            throws IOException, ServletException {
         CustomUserDetails customUserDetails = (CustomUserDetails) authResult.getPrincipal();
         TokenDto token = jwtTokenProvider.createAuthToken(authResult);
 
-        addRefreshToken(customUserDetails.getId(), token.getRefreshToken()); // 리프레시 토큰을 저장한다.
+        addRefreshToken(customUserDetails.getId(), token.getRefreshToken());
 
-        response.setHeader("Authorization", "Bearer " + token.getAccessToken()); // Access 토큰을 헤더에 저장
-        response.addCookie(createCookie("refreshToken", token.getRefreshToken())); // Refresh 토큰을 쿠키로 넘긴다.
+        response.setHeader("Authorization", "Bearer " + token.getAccessToken());
+        response.addHeader(HttpHeaders.SET_COOKIE, createRefreshTokenCookie(token.getRefreshToken()).toString());
         response.setStatus(HttpServletResponse.SC_OK);
 
         MemberLoginEvent memberLoginHistoryDto = MemberLoginEvent
@@ -74,29 +74,29 @@ public class CustomLoginFilter extends UsernamePasswordAuthenticationFilter {
 
         applicationEventPublisher.publishEvent(memberLoginHistoryDto);
 
-
         LoginResponseDto tokenResponse = LoginResponseDto.builder()
                 .accessToken(token.getAccessToken())
-                .refreshToken(token.getRefreshToken())
                 .memberId(customUserDetails.getId())
                 .email(customUserDetails.getEmail())
-                .passwordChangeRequired(customUserDetails.isCredentialsNonExpired())
+                .passwordChangeRequired(!customUserDetails.isCredentialsNonExpired())
                 .build();
 
-        ApiResponse<LoginResponseDto> apiResponse = ApiResponse.OK(tokenResponse);
-        response.getWriter().write(objectMapper.writeValueAsString(apiResponse));
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        response.getWriter().write(objectMapper.writeValueAsString(tokenResponse));
     }
 
     private void addRefreshToken(Long memberId, String token) {
         refreshTokenService.save(memberId, token);
     }
 
-    private Cookie createCookie(String key, String value) {
-        Cookie cookie = new Cookie(key, value);
-        cookie.setMaxAge(24*60*60);
-        cookie.setSecure(true);
-        cookie.setPath("/");
-        cookie.setHttpOnly(true);
-        return cookie;
+    private ResponseCookie createRefreshTokenCookie(String refreshToken) {
+        return ResponseCookie.from("refreshToken", refreshToken)
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(7 * 24 * 60 * 60L)
+                .build();
     }
 }

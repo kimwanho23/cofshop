@@ -1,6 +1,5 @@
 package kwh.cofshop.order.service;
 
-import kwh.cofshop.argumentResolver.DistributedLock;
 import kwh.cofshop.coupon.domain.MemberCoupon;
 import kwh.cofshop.coupon.factory.CouponDiscountPolicyFactory;
 import kwh.cofshop.coupon.policy.discount.CouponDiscountPolicy;
@@ -9,7 +8,6 @@ import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.item.domain.ItemOption;
 import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.member.repository.MemberRepository;
 import kwh.cofshop.member.service.MemberService;
 import kwh.cofshop.order.domain.Order;
 import kwh.cofshop.order.domain.OrderItem;
@@ -67,13 +65,13 @@ public class OrderService {
         long priceAfterCouponDiscount = applyCoupon(order, orderRequestDto, memberId);
 
         // 포인트 할인 금액
-        applyPoint(order, orderRequestDto, member, priceAfterCouponDiscount);
+        int usedPoint = applyPoint(order, orderRequestDto, member, priceAfterCouponDiscount);
 
         // 배송비
         int deliveryFee = deliveryFeePolicy.calculate(itemOptions);
 
         // 최종 금액 계산
-        order.finalizePrice(priceAfterCouponDiscount, orderRequestDto.getUsePoint(), deliveryFee);
+        order.finalizePrice(priceAfterCouponDiscount, usedPoint, deliveryFee);
 
         // 저장 및 반환
         return orderMapper.toResponseDto(orderRepository.save(order));
@@ -129,13 +127,13 @@ public class OrderService {
 
     // 멤버의 주문 목록
     @Transactional(readOnly = true)
-    public Page<OrderResponseDto> memberOrders(Long id, Pageable pageable){
+    public Page<OrderResponseDto> memberOrders(Long id, Pageable pageable) {
         return orderRepository.findOrderListById(id, pageable);
     }
 
     // 모든 주문 리스트 보기
     @Transactional(readOnly = true)
-    public Page<OrderResponseDto> allOrderList(Pageable pageable){
+    public Page<OrderResponseDto> allOrderList(Pageable pageable) {
         return orderRepository.findAllOrders(pageable);
     }
 
@@ -144,7 +142,7 @@ public class OrderService {
     public void PurchaseConfirmation(Long orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
-        if (order.getOrderState() == OrderState.DELIVERED){ // 배송 완료 시
+        if (order.getOrderState() == OrderState.DELIVERED) { // 배송 완료 시
             order.changeOrderState(OrderState.COMPLETED); // 구매 확정 가능 - 이 시점에서 반품 불가능함
         }
     }
@@ -167,12 +165,21 @@ public class OrderService {
     }
 
     // 포인트 적용
-    private void applyPoint(Order order, OrderRequestDto dto, Member member, long priceAfterCoupon) {
-        int usePoint = dto.getUsePoint();
-
-        if (usePoint > 0 && usePoint <= priceAfterCoupon) {
-            member.usePoint(usePoint);
-            order.addUsePoint(usePoint);
+    private int applyPoint(Order order, OrderRequestDto dto, Member member, long priceAfterCoupon) {
+        Integer requestedPoint = dto.getUsePoint();
+        if (requestedPoint == null || requestedPoint <= 0) {
+            return 0;
         }
+
+        int availablePoint = member.getPoint() == null ? 0 : member.getPoint();
+        int usablePoint = (int) Math.min(Math.min(requestedPoint, availablePoint), priceAfterCoupon);
+
+        if (usablePoint <= 0) {
+            return 0;
+        }
+
+        member.usePoint(usablePoint);
+        order.addUsePoint(usablePoint);
+        return usablePoint;
     }
 }

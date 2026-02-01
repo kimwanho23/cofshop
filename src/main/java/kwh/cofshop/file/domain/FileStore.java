@@ -35,7 +35,7 @@ public class FileStore {
     }
 
     // 파일 개별 저장
-    public UploadFile storeFile(MultipartFile multipartFile) throws IOException  {
+    public UploadFile storeFile(MultipartFile multipartFile) throws IOException {
         if (multipartFile.isEmpty()) {
             return null;
         }

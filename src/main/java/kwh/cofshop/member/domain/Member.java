@@ -4,14 +4,12 @@ import jakarta.persistence.*;
 import kwh.cofshop.cart.domain.Cart;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.Review;
-import kwh.cofshop.member.dto.request.MemberRequestDto;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;

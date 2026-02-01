@@ -22,7 +22,7 @@ public class Review extends BaseTimeEntity { // 리뷰 엔티티 : 1명당 1개�
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name="review_id")
+    @Column(name = "review_id")
     private Long id; // 식별자
 
     @Min(1)

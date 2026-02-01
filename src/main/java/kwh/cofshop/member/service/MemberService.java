@@ -1,12 +1,12 @@
 package kwh.cofshop.member.service;
 
-import kwh.cofshop.member.event.MemberCreatedEvent;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.domain.MemberState;
 import kwh.cofshop.member.dto.request.MemberRequestDto;
 import kwh.cofshop.member.dto.response.MemberResponseDto;
+import kwh.cofshop.member.event.MemberCreatedEvent;
 import kwh.cofshop.member.mapper.MemberMapper;
 import kwh.cofshop.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +16,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -31,8 +30,8 @@ public class MemberService {
 
 
     @Transactional
-    public MemberResponseDto signUp(MemberRequestDto memberDto){ // Save, Update 로직
-        if (memberRepository.findByEmail(memberDto.getEmail()).isPresent()){
+    public MemberResponseDto signUp(MemberRequestDto memberDto) { // Save, Update 로직
+        if (memberRepository.findByEmail(memberDto.getEmail()).isPresent()) {
             throw new BusinessException(BusinessErrorCode.MEMBER_ALREADY_EXISTS); // 이미 존재하는 이메일
         }
 

@@ -27,6 +27,10 @@ public class QOrderItem extends EntityPathBase<OrderItem> {
     //inherited
     public final DateTimePath<java.time.LocalDateTime> createDate = _super.createDate;
 
+    public final NumberPath<Integer> discountRate = createNumber("discountRate", Integer.class);
+
+    public final NumberPath<Long> id = createNumber("id", Long.class);
+
     public final kwh.cofshop.item.domain.QItem item;
 
     public final kwh.cofshop.item.domain.QItemOption itemOption;
@@ -35,8 +39,6 @@ public class QOrderItem extends EntityPathBase<OrderItem> {
     public final DateTimePath<java.time.LocalDateTime> lastModifiedDate = _super.lastModifiedDate;
 
     public final QOrder order;
-
-    public final NumberPath<Long> orderDetailId = createNumber("orderDetailId", Long.class);
 
     public final NumberPath<Integer> orderPrice = createNumber("orderPrice", Integer.class);
 

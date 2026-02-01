@@ -2,7 +2,6 @@ package kwh.cofshop.item.mapper;
 
 import kwh.cofshop.item.domain.Review;
 import kwh.cofshop.item.dto.response.ReviewResponseDto;
-import kwh.cofshop.member.domain.Member;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
@@ -16,7 +15,7 @@ import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
 )
 public interface ReviewMapper {
 
-  //  Review toEntity(ReviewRequestDto reviewRequestDto);
+    //  Review toEntity(ReviewRequestDto reviewRequestDto);
 
     @Mapping(source = "item.id", target = "itemId")
     @Mapping(source = "member.id", target = "memberId")

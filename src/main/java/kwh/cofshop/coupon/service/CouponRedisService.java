@@ -17,36 +17,48 @@ public class CouponRedisService {
     private static final String STOCK_KEY = "coupon:stock:";
     private static final String ISSUED_SET_KEY = "coupon:issued:";
     private static final String ORDER_ZSET_KEY = "coupon:issued:order:";
+    private static final String SEQ_KEY = "coupon:seq:";
 
     // 초기 재고 설정
     public void setInitCouponCount(Long couponId, Integer couponCount) {
         redisTemplate.opsForValue().set("coupon:stock:" + couponId, String.valueOf(couponCount));
     }
+
     // Lua 스크립트
     public CouponIssueState issueCoupon(Long couponId, Long memberId) {
 
         String script = """
-        -- 쿠폰 존재 여부 확인
-        if redis.call('SISMEMBER', KEYS[2], ARGV[1]) == 1 then
-            return {'already_issued', '0'}
-        end
-        -- 재고 확인
-        local stock = redis.call('GET', KEYS[1])
-        if not stock or tonumber(stock) <= 0 then
-            return {'out_of_stock', '0'}
-        end
-        -- 쿠폰 발급
-        redis.call('DECR', KEYS[1])
-        redis.call('SADD', KEYS[2], ARGV[1])
-        redis.call('ZADD', KEYS[3], ARGV[2], ARGV[1])
-        return {'success', '1'}
-    """;
+                -- 1. 이미 발급된 사용자라면 종료
+                if redis.call('SISMEMBER', KEYS[2], ARGV[1]) == 1 then
+                    return {'already_issued', '0'}
+                end
+                
+                -- 2. 재고 확인
+                local stock = redis.call('GET', KEYS[1])
+                if not stock or tonumber(stock) <= 0 then
+                    return {'out_of_stock', '0'}
+                end
+                
+                -- 3. 순차 발급을 위한 score 조합
+                local seq = redis.call('INCR', KEYS[4])
+                local score = tonumber(ARGV[2]) * 1000000 + seq
+                
+                -- 4. 쿠폰 발급 처리
+                redis.call('DECR', KEYS[1])
+                redis.call('SADD', KEYS[2], ARGV[1])
+                redis.call('ZADD', KEYS[3], score, ARGV[1])
+                
+                -- 5. 성공 응답
+                return {'success', '1'}
+                
+                """;
 
-        String stockKey = STOCK_KEY + couponId;
-        String issuedSetKey = ISSUED_SET_KEY + couponId;
-        String orderZSetKey = ORDER_ZSET_KEY + couponId;
+        String stockKey = STOCK_KEY + couponId;       // coupon:stock:{couponId}
+        String issuedSetKey = ISSUED_SET_KEY + couponId; // coupon:issued:{couponId}
+        String orderZSetKey = ORDER_ZSET_KEY + couponId; // coupon:order:{couponId}
+        String seqKey = SEQ_KEY + couponId;              // coupon:seq:{couponId}
 
-        List<String> keys = List.of(stockKey, issuedSetKey, orderZSetKey);
+        List<String> keys = List.of(stockKey, issuedSetKey, orderZSetKey, seqKey); // 재고, 중복, 순서, 발급
         List<String> args = List.of(String.valueOf(memberId), String.valueOf(System.currentTimeMillis()));
 
         List<?> result = redisTemplate.execute(
@@ -64,8 +76,6 @@ public class CouponRedisService {
             default -> throw new IllegalStateException("Unknown Redis Lua result: " + status);
         };
     }
-
-
 
     // 재고 여부 확인
     public boolean hasStock(Long couponId) {

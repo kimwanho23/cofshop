@@ -6,15 +6,15 @@ import org.springframework.stereotype.Service;
 
 import java.util.Map;
 
+import static kwh.cofshop.coupon.worker.CouponStreamConstants.STREAM_KEY;
+
 @RequiredArgsConstructor
 @Service
 public class MemberCouponRedisService {
 
     private final RedisTemplate<String, String> redisTemplate; // Redis
 
-    public static final String STREAM_KEY = "stream:events";
-
-    // Producer - 요청을 큐에 등록
+    // Producer - 발급 요청을 스트림에 적재
     public void enqueueLimitedCouponIssueRequest(Long memberId, Long couponId) {
         // Redis Stream에 메시지 추가
         redisTemplate.opsForStream().add(

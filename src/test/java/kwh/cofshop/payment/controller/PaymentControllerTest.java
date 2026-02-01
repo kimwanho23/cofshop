@@ -1,72 +1,107 @@
 package kwh.cofshop.payment.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import kwh.cofshop.payment.dto.*;
+import com.siot.IamportRestClient.response.Payment;
+import kwh.cofshop.payment.dto.PaymentPrepareRequestDto;
+import kwh.cofshop.payment.dto.PaymentRefundRequestDto;
+import kwh.cofshop.payment.dto.PaymentResponseDto;
+import kwh.cofshop.payment.dto.PaymentVerifyRequestDto;
 import kwh.cofshop.payment.service.PaymentService;
-import kwh.cofshop.security.SecurityConfig;
+import kwh.cofshop.support.StandaloneMockMvcFactory;
+import kwh.cofshop.support.TestLoginMemberArgumentResolver;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.context.annotation.Import;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-
-@WebMvcTest(PaymentController.class)
-@AutoConfigureMockMvc
-@Import(SecurityConfig.class) // Spring Security 커스터마이징 시 필요
+@ExtendWith(MockitoExtension.class)
 class PaymentControllerTest {
 
-    @Autowired
     private MockMvc mockMvc;
 
-    @InjectMocks
+    private ObjectMapper objectMapper;
+
+    @Mock
     private PaymentService paymentService;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    private PaymentVerifyRequestDto verifyRequestDto;
-    private PaymentRefundRequestDto refundRequestDto;
-    private PaymentPrepareRequestDto prepareRequestDto;
-    private PaymentResponseDto responseDto;
+    @InjectMocks
+    private PaymentController paymentController;
 
     @BeforeEach
     void setUp() {
+        objectMapper = new ObjectMapper();
+        mockMvc = StandaloneMockMvcFactory.build(
+                paymentController,
+                new TestLoginMemberArgumentResolver()
+        );
     }
 
     @Test
-    void requestPayment_success() throws Exception {
-        given(paymentService.createPaymentRequest(eq(1L), any(PaymentPrepareRequestDto.class)))
-                .willReturn(responseDto);
+    @DisplayName("결제 요청 생성")
+    void createPayment() throws Exception {
+        PaymentResponseDto responseDto = PaymentResponseDto.builder()
+                .paymentId(1L)
+                .build();
 
-        mockMvc.perform(post("/api/payments/1")
+        when(paymentService.createPaymentRequest(anyLong(), any())).thenReturn(responseDto);
+
+        PaymentPrepareRequestDto requestDto = PaymentPrepareRequestDto.builder()
+                .pgProvider("kakaopay")
+                .payMethod("card")
+                .build();
+
+        mockMvc.perform(post("/api/payments/orders/1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(prepareRequestDto)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.result.paymentId").value(1L))
-                .andExpect(jsonPath("$.result.status").value("PAID"));
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isCreated());
     }
 
+    @Test
+    @DisplayName("결제 검증")
+    void verifyPayment() throws Exception {
+        PaymentVerifyRequestDto requestDto = new PaymentVerifyRequestDto();
+        requestDto.setImpUid("imp_1");
+        requestDto.setMerchantUid("order_1");
+        requestDto.setAmount(1000L);
+
+        mockMvc.perform(post("/api/payments/1/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isNoContent());
+    }
 
     @Test
-    void verifyPayment_success() throws Exception {
-        mockMvc.perform(post("/api/payments/verify/1")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(verifyRequestDto)))
+    @DisplayName("결제 정보 조회")
+    void getPaymentInfo() throws Exception {
+        Payment payment = mock(Payment.class);
+        when(paymentService.getPaymentByImpUid("imp_1")).thenReturn(payment);
+
+        mockMvc.perform(get("/api/payments/iamport/imp_1"))
                 .andExpect(status().isOk());
+    }
 
-        verify(paymentService).verifyPayment(eq(1L), any(PaymentVerifyRequestDto.class));
+    @Test
+    @DisplayName("결제 환불")
+    void refundPayment() throws Exception {
+        PaymentRefundRequestDto requestDto = new PaymentRefundRequestDto();
+        requestDto.setAmount(1000L);
+
+        mockMvc.perform(post("/api/payments/1/refund")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isNoContent());
     }
 }

@@ -26,8 +26,6 @@ public class QItem extends EntityPathBase<Item> {
 
     public final NumberPath<Double> averageRating = createNumber("averageRating", Double.class);
 
-    public final QCategory category;
-
     //inherited
     public final StringPath createBy = _super.createBy;
 
@@ -35,8 +33,6 @@ public class QItem extends EntityPathBase<Item> {
     public final DateTimePath<java.time.LocalDateTime> createDate = _super.createDate;
 
     public final NumberPath<Integer> deliveryFee = createNumber("deliveryFee", Integer.class);
-
-    public final NumberPath<Integer> discount = createNumber("discount", Integer.class);
 
     public final NumberPath<Long> id = createNumber("id", Long.class);
 
@@ -62,7 +58,7 @@ public class QItem extends EntityPathBase<Item> {
 
     public final NumberPath<Integer> price = createNumber("price", Integer.class);
 
-    public final NumberPath<Integer> reviewCount = createNumber("reviewCount", Integer.class);
+    public final NumberPath<Long> reviewCount = createNumber("reviewCount", Long.class);
 
     public final ListPath<Review, QReview> reviews = this.<Review, QReview>createList("reviews", Review.class, QReview.class, PathInits.DIRECT2);
 
@@ -86,7 +82,6 @@ public class QItem extends EntityPathBase<Item> {
 
     public QItem(Class<? extends Item> type, PathMetadata metadata, PathInits inits) {
         super(type, metadata, inits);
-        this.category = inits.isInitialized("category") ? new QCategory(forProperty("category"), inits.get("category")) : null;
         this.seller = inits.isInitialized("seller") ? new kwh.cofshop.member.domain.QMember(forProperty("seller"), inits.get("seller")) : null;
     }
 

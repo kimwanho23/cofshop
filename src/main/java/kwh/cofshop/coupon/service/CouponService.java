@@ -30,7 +30,7 @@ public class CouponService {
 
     // 쿠폰 생성
     @Transactional
-    public Long createCoupon(CouponRequestDto couponRequestDto){
+    public Long createCoupon(CouponRequestDto couponRequestDto) {
         Coupon savedCoupon = couponRepository.save(Coupon.createCoupon(couponRequestDto));
 
         applicationEventPublisher.publishEvent(new CouponCreatedEvent(savedCoupon.getId(), savedCoupon.getCouponCount()));

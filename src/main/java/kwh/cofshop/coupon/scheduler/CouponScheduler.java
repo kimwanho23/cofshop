@@ -1,13 +1,17 @@
 package kwh.cofshop.coupon.scheduler;
 
+import kwh.cofshop.coupon.domain.Coupon;
+import kwh.cofshop.coupon.repository.CouponRepository;
 import kwh.cofshop.coupon.service.CouponService;
 import kwh.cofshop.coupon.service.MemberCouponService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -16,6 +20,8 @@ public class CouponScheduler {
 
     private final CouponService couponService;
     private final MemberCouponService memberCouponService;
+    private final CouponRepository couponRepository;
+    private final RedisTemplate<String, String> redisTemplate;
 
     private static final int MAX_ATTEMPTS = 3;
     private static final int RETRY_DELAY_MS = 3000; // 3초 대기
@@ -25,7 +31,7 @@ public class CouponScheduler {
     public void expireCoupons() {
         try {
             expireAll();
-        } catch (Exception e){
+        } catch (Exception e) {
             log.error("[Scheduler] 쿠폰 만료 시도 실패 - 재시도..");
             retryExpireCoupon();
         }
@@ -62,4 +68,23 @@ public class CouponScheduler {
         int expireMemberCoupons = memberCouponService.expireMemberCoupons(LocalDate.now());// 멤버들의 쿠폰 전체 만료
         log.info("[Scheduler] 쿠폰 만료 성공- 쿠폰: {}건, 멤버 쿠폰: {}건", expireCoupons, expireMemberCoupons);
     }
+
+
+    @Scheduled(cron = "0 0 0 * * *")
+    public void syncCouponStock() {
+        List<Coupon> coupons = couponRepository.findAll();
+
+        for (Coupon coupon : coupons) {
+            String redisKey = "coupon:stock:" + coupon.getId();
+
+            String stock = redisTemplate.opsForValue().get(redisKey);
+            if (stock != null) {
+                int redisStock = Integer.parseInt(stock);
+                coupon.updateCouponCount(redisStock);
+            }
+        }
+
+        couponRepository.saveAll(coupons);
+    }
+
 }

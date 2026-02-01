@@ -26,11 +26,11 @@ public class QItemOption extends EntityPathBase<ItemOption> {
 
     public final StringPath description = createString("description");
 
+    public final NumberPath<Integer> discountRate = createNumber("discountRate", Integer.class);
+
     public final NumberPath<Long> id = createNumber("id", Long.class);
 
     public final QItem item;
-
-    public final NumberPath<Integer> optionNo = createNumber("optionNo", Integer.class);
 
     public final EnumPath<OptionState> optionState = createEnum("optionState", OptionState.class);
 

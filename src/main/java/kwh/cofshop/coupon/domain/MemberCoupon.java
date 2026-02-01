@@ -67,7 +67,7 @@ public class MemberCoupon {
         return this.state == CouponState.AVAILABLE;
     }
 
-    public void useCoupon(){
+    public void useCoupon() {
         this.state = CouponState.USED;
         this.usedAt = LocalDate.now();
     }
@@ -79,7 +79,7 @@ public class MemberCoupon {
         this.state = CouponState.AVAILABLE;
     }
 
-    public void expireCoupon(){
+    public void expireCoupon() {
         this.state = CouponState.EXPIRED;
     }
 }

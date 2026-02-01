@@ -3,7 +3,6 @@ package kwh.cofshop.global.response;
 
 import kwh.cofshop.global.exception.ErrorResponse;
 import org.springframework.core.MethodParameter;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;

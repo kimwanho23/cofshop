@@ -1,14 +1,12 @@
 package kwh.cofshop.item.repository.custom;
 
-import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.Wildcard;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import kwh.cofshop.item.domain.Item;
-import kwh.cofshop.item.domain.QCategory;
 import kwh.cofshop.item.domain.QItem;
-import kwh.cofshop.item.domain.QItemCategory;
 import kwh.cofshop.item.dto.request.ItemSearchRequestDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -21,13 +19,13 @@ import org.springframework.util.StringUtils;
 import java.util.List;
 import java.util.Optional;
 
-import static kwh.cofshop.item.domain.QItem.item;
 import static kwh.cofshop.item.domain.QCategory.category;
+import static kwh.cofshop.item.domain.QItem.item;
 import static kwh.cofshop.item.domain.QItemCategory.itemCategory;
 
 @Repository
 @RequiredArgsConstructor
-public class ItemRepositoryImpl implements ItemRepositoryCustom{
+public class ItemRepositoryImpl implements ItemRepositoryCustom {
 
     private final JPAQueryFactory queryFactory;
 
@@ -53,8 +51,13 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom{
         return PageableExecutionUtils.getPage(result, pageable, totalCount::fetchOne);
     }
 
+    // Full Text Index 기반 검색
     private BooleanExpression nameCondition(String itemName) {
-        return StringUtils.hasText(itemName) ? QItem.item.itemName.containsIgnoreCase(itemName) : null;
+        return StringUtils.hasText(itemName)
+                ? Expressions.booleanTemplate(
+                "MATCH(item_name) AGAINST ({0} IN NATURAL LANGUAGE MODE)",
+                Expressions.constant(itemName))
+                : null;
     }
 
     private BooleanExpression categoryCondition(Long categoryId) {
@@ -77,20 +80,22 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom{
     public Page<Item> findByItemName(String itemName, Pageable pageable) {
         QItem item = QItem.item;
 
+
+        BooleanExpression nameCondition = nameCondition(itemName);
+
         List<Item> content = queryFactory
                 .selectFrom(item)
-                .where(item.itemName.containsIgnoreCase(itemName))
+                .where(nameCondition)
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
 
-        long total = Optional.ofNullable(
+        Long total = Optional.ofNullable(
                 queryFactory.select(Wildcard.count)
                         .from(item)
-                        .where(item.itemName.containsIgnoreCase(itemName))
+                        .where(nameCondition)
                         .fetchOne()
         ).orElse(0L);
-
 
         return new PageImpl<>(content, pageable, total);
     }

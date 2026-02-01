@@ -13,6 +13,4 @@ public class DeleteMessageRequestDto {
 
     @NotNull(message = "메시지 ID는 필수입니다.")
     private Long messageId;   // 삭제 메시지 ID
-
-    private Long senderId;    // 본인 확인용
 }
