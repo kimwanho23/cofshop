@@ -41,6 +41,7 @@ application-key.properties
 application-dev.properties
 application-prod.properties
 .env
+.gradle-user/
 
 # Local artifacts in info folder
 정보/

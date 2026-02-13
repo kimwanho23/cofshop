@@ -1,0 +1,11 @@
+title = "cofshop gitleaks config"
+
+[allowlist]
+description = "ignore generated or non-source artifacts"
+paths = [
+  '''^build/''',
+  '''^out/''',
+  '''^\.gradle/''',
+  '''^src/main/generated/''',
+  '''^index\.html$'''
+]

@@ -1,0 +1,74 @@
+services:
+  app:
+    container_name: cofshop-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${DOCKER_IMAGE_NAME:-32up/cofshop}:${DOCKER_IMAGE_TAG:-dev}
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      TZ: Asia/Seoul
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      SPRING_DATASOURCE_URL: ${DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_REDIS_HOST: ${REDIS_HOST:-redis}
+      SPRING_REDIS_PORT: ${REDIS_PORT:-6379}
+      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_SSL_ENABLED: ${REDIS_SSL_ENABLED:-false}
+      IMP_API_SECRETKEY: ${IMP_API_SECRETKEY}
+      PORTONE_STORE_ID: ${PORTONE_STORE_ID:-}
+      PORTONE_CHANNEL_KEY: ${PORTONE_CHANNEL_KEY:-}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      FILE_DIR: /app/uploads
+    volumes:
+      - uploads_data:/app/uploads
+
+  redis:
+    container_name: cofshop-redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mysql:
+    profiles: ["local-db"]
+    container_name: cofshop-mysql
+    image: mysql:8.0
+    restart: unless-stopped
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-cofshop}
+      MYSQL_USER: ${MYSQL_USER:-cofshop}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-cofshop}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  uploads_data:
+  redis_data:
+  mysql_data:
