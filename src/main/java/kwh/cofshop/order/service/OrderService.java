@@ -5,14 +5,15 @@ import kwh.cofshop.coupon.factory.CouponDiscountPolicyFactory;
 import kwh.cofshop.coupon.policy.discount.CouponDiscountPolicy;
 import kwh.cofshop.coupon.service.MemberCouponService;
 import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.ForbiddenRequestException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
+import kwh.cofshop.global.exception.errorcodes.ForbiddenErrorCode;
 import kwh.cofshop.item.domain.ItemOption;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.service.MemberService;
 import kwh.cofshop.order.domain.Order;
 import kwh.cofshop.order.domain.OrderItem;
 import kwh.cofshop.order.domain.OrderState;
-import kwh.cofshop.order.dto.request.OrderCancelRequestDto;
 import kwh.cofshop.order.dto.request.OrderRequestDto;
 import kwh.cofshop.order.dto.response.OrderCancelResponseDto;
 import kwh.cofshop.order.dto.response.OrderResponseDto;
@@ -79,26 +80,33 @@ public class OrderService {
 
 
     @Transactional // 주문 취소
-    public OrderCancelResponseDto cancelOrder(OrderCancelRequestDto orderCancelRequestDto) {
-        // 1. 주문 찾기
-        Order order = orderRepository.findById(orderCancelRequestDto.getOrderId())
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND)); // 주문 정보
+    public OrderCancelResponseDto cancelOrder(Long memberId, Long orderId, String cancelReason) {
+        Order order = getOrderForMember(memberId, orderId);
 
-        // 2. 주문 상태 변경 (취소 처리)
         order.cancel();
-
-        // 3. 사용 포인트 및 쿠폰 복구 처리
-        restoreMemberPointAndCoupon(order);
+        restoreOrderCompensation(order);
 
         OrderCancelResponseDto orderCancelResponseDto = new OrderCancelResponseDto();
-        orderCancelResponseDto.setOrderId(orderCancelRequestDto.getOrderId());
-        orderCancelResponseDto.setCancelReason(orderCancelRequestDto.getCancelReason());
+        orderCancelResponseDto.setOrderId(orderId);
+        orderCancelResponseDto.setCancelReason(cancelReason);
 
         return orderCancelResponseDto;
     }
 
-    private void restoreMemberPointAndCoupon(Order order) {
-        if (order.getUsePoint() > 0) {
+    private void restoreOrderCompensation(Order order) {
+        restoreStock(order);
+        restoreMemberBenefits(order);
+    }
+
+    private void restoreStock(Order order) {
+        if (order.getOrderItems() == null) {
+            return;
+        }
+        order.getOrderItems().forEach(OrderItem::restoreStock);
+    }
+
+    private void restoreMemberBenefits(Order order) {
+        if (order.getUsePoint() != null && order.getUsePoint() > 0) {
             memberService.restorePoint(order.getMember().getId(), order.getUsePoint());
         }
         if (order.getMemberCoupon() != null) {
@@ -106,23 +114,11 @@ public class OrderService {
         }
     }
 
-    // 포인트, 쿠폰 복구
-    public void restorePointAndCoupon(Order order) {
-        order.getOrderItems().forEach(OrderItem::restoreStock);
-
-        if (order.getUsePoint() > 0) {
-            order.getMember().restorePoint(order.getUsePoint());
-        }
-
-        if (order.getMemberCoupon() != null) {
-            order.getMemberCoupon().restoreCouponStatus();
-        }
-    }
-
     // 하나의 주문 정보
     @Transactional(readOnly = true)
-    public OrderResponseDto orderSummary(Long orderId) {
-        return orderRepository.findByOrderIdWithItems(orderId);
+    public OrderResponseDto orderSummary(Long memberId, Long orderId) {
+        return orderRepository.findByOrderIdWithItemsAndMemberId(orderId, memberId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
     }
 
     // 멤버의 주문 목록
@@ -139,9 +135,8 @@ public class OrderService {
 
     // 구매 확정(소비자)
     @Transactional
-    public void PurchaseConfirmation(Long orderId) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
+    public void purchaseConfirmation(Long memberId, Long orderId) {
+        Order order = getOrderForMember(memberId, orderId);
         if (order.getOrderState() == OrderState.DELIVERED) { // 배송 완료 시
             order.changeOrderState(OrderState.COMPLETED); // 구매 확정 가능 - 이 시점에서 반품 불가능함
         }
@@ -181,5 +176,16 @@ public class OrderService {
         member.usePoint(usablePoint);
         order.addUsePoint(usablePoint);
         return usablePoint;
+    }
+
+    private Order getOrderForMember(Long memberId, Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
+
+        if (!order.getMember().getId().equals(memberId)) {
+            throw new ForbiddenRequestException(ForbiddenErrorCode.MEMBER_UNAUTHORIZED);
+        }
+
+        return order;
     }
 }

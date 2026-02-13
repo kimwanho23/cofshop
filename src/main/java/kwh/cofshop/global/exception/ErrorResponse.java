@@ -9,22 +9,22 @@ import java.time.LocalDateTime;
 @Getter
 public class ErrorResponse {
 
-    private final String codes;         // 비즈니스 에러 코드 (예: F-1)
-    private final HttpStatus status;          // HTTP 상태 코드
+    private final String code;          // 비즈니스 에러 코드 (예: F-1)
+    private final int status;           // HTTP 상태 코드
     private final String message;      // 에러 메시지
     private final LocalDateTime timestamp;  // 에러 발생 시각
 
     // 생성자
     private ErrorResponse(final ErrorCode errorCode) {
-        this.codes = errorCode.getCode();
-        this.status = errorCode.getHttpStatus();
+        this.code = errorCode.getCode();
+        this.status = errorCode.getHttpStatus().value();
         this.message = errorCode.getMessage();
         this.timestamp = LocalDateTime.now();
     }
 
-    private ErrorResponse(String codes, HttpStatus status, String message, LocalDateTime timestamp) {
-        this.codes = codes;
-        this.status = status;
+    private ErrorResponse(String code, HttpStatus status, String message, LocalDateTime timestamp) {
+        this.code = code;
+        this.status = status.value();
         this.message = message;
         this.timestamp = timestamp;
     }

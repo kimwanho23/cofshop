@@ -22,6 +22,7 @@ public class MemberCouponController {
 
     // 내 쿠폰 조회
     @Operation(summary = "쿠폰 목록 조회", description = "사용자의 쿠폰 목록을 조회합니다.")
+    @PreAuthorize("hasRole('MEMBER')")
     @GetMapping("/me")
     public List<MemberCouponResponseDto> getMemberCouponList(
             @LoginMember Long memberId) {
@@ -30,6 +31,7 @@ public class MemberCouponController {
 
     // 쿠폰 발급
     @Operation(summary = "쿠폰 발급", description = "사용자에게 쿠폰을 발급합니다.")
+    @PreAuthorize("hasRole('MEMBER')")
     @PostMapping("/me/{couponId}")
     public ResponseEntity<Void> createMemberCoupon(
             @LoginMember Long memberId,
@@ -41,21 +43,10 @@ public class MemberCouponController {
                 .build();
     }
 
-    @PostMapping("/{couponId}")
-    public ResponseEntity<Void> createForTest(
-            @RequestParam Long memberId,
-            @PathVariable Long couponId) {
-
-        memberCouponService.issueCoupon(memberId, couponId);
-        return ResponseEntity
-                .created(URI.create("/api/memberCoupon/" + couponId))
-                .build();
-    }
-
 
     // 쿠폰 만료 처리
     @Operation(summary = "쿠폰 만료", description = "회원의 쿠폰 상태를 만료 상태로 변경합니다.")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/expire")
     public ResponseEntity<Void> expireMemberCoupons(
             @RequestParam LocalDate date) {

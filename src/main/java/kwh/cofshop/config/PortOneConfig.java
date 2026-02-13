@@ -1,20 +1,23 @@
 package kwh.cofshop.config;
 
-import com.siot.IamportRestClient.IamportClient;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.web.client.RestTemplate;
+
+import java.time.Duration;
 
 @Configuration
 public class PortOneConfig {
 
-    @Value("${imp.api.key}")
-    private String apiKey;
-    @Value("${imp.api.secretkey}")
-    private String secretKey;
-
     @Bean
-    public IamportClient iamportClient() {
-        return new IamportClient(apiKey, secretKey);
+    public RestTemplate portOneRestTemplate(RestTemplateBuilder restTemplateBuilder) {
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout((int) Duration.ofSeconds(3).toMillis());
+        requestFactory.setReadTimeout((int) Duration.ofSeconds(5).toMillis());
+        return restTemplateBuilder
+                .requestFactory(() -> requestFactory)
+                .build();
     }
 }

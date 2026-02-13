@@ -2,10 +2,10 @@ package kwh.cofshop.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import kwh.cofshop.config.properties.JwtProperties;
 import kwh.cofshop.member.domain.Role;
 import kwh.cofshop.security.dto.TokenDto;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -33,8 +33,8 @@ public class JwtTokenProvider {
     private static final long AUTH_TOKEN_EXPIRATION = Duration.ofHours(1).toMillis();
     private static final long REFRESH_TOKEN_EXPIRATION = Duration.ofDays(7).toMillis();
 
-    public JwtTokenProvider(@Value("${jwt.secret-key}") String secretKey) {
-        this.key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
+    public JwtTokenProvider(JwtProperties jwtProperties) {
+        this.key = Keys.hmacShaKeyFor(jwtProperties.getSecretKey().getBytes(StandardCharsets.UTF_8));
     }
 
     private Key getSigningKey() {

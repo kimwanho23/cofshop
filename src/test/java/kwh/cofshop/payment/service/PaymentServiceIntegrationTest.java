@@ -1,7 +1,7 @@
 package kwh.cofshop.payment.service;
 
-import com.siot.IamportRestClient.IamportClient;
 import kwh.cofshop.order.repository.OrderRepository;
+import kwh.cofshop.payment.client.portone.PortOnePaymentClient;
 import kwh.cofshop.payment.repository.PaymentEntityRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,7 +22,7 @@ class PaymentServiceIntegrationTest {
     private PaymentEntityRepository paymentEntityRepository;
 
     @Mock
-    private IamportClient iamportClient;
+    private PortOnePaymentClient portOnePaymentClient;
 
     @InjectMocks
     private PaymentService paymentService;

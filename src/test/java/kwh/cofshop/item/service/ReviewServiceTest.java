@@ -1,7 +1,7 @@
 package kwh.cofshop.item.service;
 
 import kwh.cofshop.global.exception.BusinessException;
-import kwh.cofshop.global.exception.UnauthorizedRequestException;
+import kwh.cofshop.global.exception.ForbiddenRequestException;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.Review;
 import kwh.cofshop.item.dto.request.ReviewRequestDto;
@@ -126,7 +126,7 @@ class ReviewServiceTest {
         when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
 
         assertThatThrownBy(() -> reviewService.updateReview(1L, new ReviewRequestDto(), 1L))
-                .isInstanceOf(UnauthorizedRequestException.class);
+                .isInstanceOf(ForbiddenRequestException.class);
     }
 
     @Test
@@ -175,7 +175,7 @@ class ReviewServiceTest {
         when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
 
         assertThatThrownBy(() -> reviewService.deleteReview(1L, 1L))
-                .isInstanceOf(BusinessException.class);
+                .isInstanceOf(ForbiddenRequestException.class);
     }
 
     @Test

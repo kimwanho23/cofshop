@@ -1,6 +1,8 @@
 package kwh.cofshop.aspect;
 
 import kwh.cofshop.argumentResolver.DistributedLock;
+import kwh.cofshop.global.exception.BadRequestException;
+import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -34,9 +36,10 @@ public class DistributedLockAspect {
         );
 
         RLock lock = redissonClient.getLock(lockKey); // 락 획득
+        boolean isLocked = false;
 
         try {
-            boolean isLocked = lock.tryLock(
+            isLocked = lock.tryLock(
                     distributedLock.waitTime(),
                     distributedLock.leaseTime(),
                     distributedLock.timeUnit()
@@ -44,19 +47,21 @@ public class DistributedLockAspect {
 
             if (!isLocked) {
                 log.warn("락 획득 실패 - {}", lockKey);
-                return false;
+                throw new BadRequestException(BadRequestErrorCode.BAD_REQUEST);
             }
             log.info("락 획득 성공 - {}", lockKey);
             return aopForTransaction.proceed(joinPoint);
 
         } catch (InterruptedException e) {
-            throw new InterruptedException();
+            Thread.currentThread().interrupt();
+            log.warn("락 대기 중 인터럽트 - {}", lockKey);
+            throw new BadRequestException(BadRequestErrorCode.BAD_REQUEST);
         } finally {
-            try {
+            if (isLocked && lock.isHeldByCurrentThread()) {
                 lock.unlock();
                 log.info("락 해제 - {}", lockKey);
-            } catch (IllegalMonitorStateException e) {
-                log.warn("락 해제 실패 - {}", lockKey);
+            } else {
+                log.debug("락 미보유 상태로 해제 생략 - {}", lockKey);
             }
         }
     }

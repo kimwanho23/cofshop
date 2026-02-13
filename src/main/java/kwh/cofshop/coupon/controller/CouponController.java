@@ -42,6 +42,7 @@ public class CouponController {
     /// @POST
     // 쿠폰 생성
     @Operation(summary = "쿠폰 생성", description = "쿠폰을 생성합니다.")
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<Long> createCoupon(
             @RequestBody @Valid CouponRequestDto couponRequestDto) {
@@ -53,7 +54,7 @@ public class CouponController {
     /// @PUT, PATCH
     // 쿠폰 상태 변경
     @Operation(summary = "쿠폰 상태 변경", description = "쿠폰의 사용가능 여부를 변경합니다.")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{couponId}/state")
     public ResponseEntity<Void> updateCouponState(
             @PathVariable Long couponId,
@@ -65,7 +66,7 @@ public class CouponController {
 
     // 쿠폰 발급 취소 (상태를 CANCELLED로 변경)
     @Operation(summary = "쿠폰 발급 취소", description = "쿠폰을 발급 불가능 상태로 변경합니다.")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{couponId}/cancel")
     public ResponseEntity<Void> cancelCoupon(@PathVariable Long couponId) {
         couponService.cancelCoupon(couponId);
@@ -74,7 +75,7 @@ public class CouponController {
 
     // 기간 조회해서 쿠폰 만료 (관리자가 직접)
     @Operation(summary = "쿠폰 만료", description = "관리자 전용입니다, 직접 쿠폰의 상태를 만료시킵니다.")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/expire")
     public ResponseEntity<Void> expireCoupons(@RequestParam LocalDate date) {
         couponService.expireCoupons(date);

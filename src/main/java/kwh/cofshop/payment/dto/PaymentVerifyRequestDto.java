@@ -10,7 +10,7 @@ import lombok.Setter;
 @Setter
 public class PaymentVerifyRequestDto {
     @NotBlank
-    private String impUid;
+    private String impUid; // PortOne v2 transactionId (v1 imp_uid)
 
     @NotBlank
     private String merchantUid;

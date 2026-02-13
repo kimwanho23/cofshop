@@ -1,9 +1,9 @@
 package kwh.cofshop.item.service;
 
 import kwh.cofshop.global.exception.BusinessException;
-import kwh.cofshop.global.exception.UnauthorizedRequestException;
+import kwh.cofshop.global.exception.ForbiddenRequestException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
-import kwh.cofshop.global.exception.errorcodes.UnauthorizedErrorCode;
+import kwh.cofshop.global.exception.errorcodes.ForbiddenErrorCode;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.Review;
 import kwh.cofshop.item.dto.request.ReviewRequestDto;
@@ -69,7 +69,7 @@ public class ReviewService {
 
         // 2. 작성자 확인
         if (!review.getMember().getId().equals(memberId)) {
-            throw new UnauthorizedRequestException(UnauthorizedErrorCode.MEMBER_UNAUTHORIZED);
+            throw new ForbiddenRequestException(ForbiddenErrorCode.MEMBER_UNAUTHORIZED);
         }
 
         Long oldRating = review.getRating(); // 현재 평점
@@ -94,7 +94,7 @@ public class ReviewService {
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.REVIEW_NOT_FOUND));
 
         if (!review.getMember().getId().equals(memberId)) {
-            throw new BusinessException(UnauthorizedErrorCode.MEMBER_UNAUTHORIZED);
+            throw new ForbiddenRequestException(ForbiddenErrorCode.MEMBER_UNAUTHORIZED);
         }
 
         Long rating = review.getRating();

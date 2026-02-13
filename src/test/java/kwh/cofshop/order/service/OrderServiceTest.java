@@ -18,7 +18,6 @@ import kwh.cofshop.order.domain.Address;
 import kwh.cofshop.order.domain.Order;
 import kwh.cofshop.order.domain.OrderItem;
 import kwh.cofshop.order.domain.OrderState;
-import kwh.cofshop.order.dto.request.OrderCancelRequestDto;
 import kwh.cofshop.order.dto.request.OrderItemRequestDto;
 import kwh.cofshop.order.dto.request.OrderRequestDto;
 import kwh.cofshop.order.dto.response.OrderCancelResponseDto;
@@ -45,7 +44,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -117,6 +115,7 @@ class OrderServiceTest {
     @DisplayName("주문 생성: 쿠폰/포인트 적용")
     void createInstanceOrder_withCouponAndPoint() {
         Member member = createMember(1L);
+        ReflectionTestUtils.setField(member, "point", 200);
         when(memberService.getMember(1L)).thenReturn(member);
 
         ItemOption option = createOption(createItem(), 100, 10);
@@ -165,23 +164,21 @@ class OrderServiceTest {
     void cancelOrder_notFound() {
         when(orderRepository.findById(anyLong())).thenReturn(Optional.empty());
 
-        OrderCancelRequestDto requestDto = new OrderCancelRequestDto();
-        requestDto.setOrderId(1L);
-
-        assertThatThrownBy(() -> orderService.cancelOrder(requestDto))
+        assertThatThrownBy(() -> orderService.cancelOrder(1L, 1L, "변경"))
                 .isInstanceOf(BusinessException.class);
     }
 
     @Test
     @DisplayName("주문 취소: 이미 취소")
     void cancelOrder_alreadyCancelled() {
-        Order order = Order.builder().orderState(OrderState.CANCELLED).build();
+        Order order = Order.builder()
+                .orderState(OrderState.CANCELLED)
+                .member(createMember(1L))
+                .orderItems(List.of())
+                .build();
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
 
-        OrderCancelRequestDto requestDto = new OrderCancelRequestDto();
-        requestDto.setOrderId(1L);
-
-        assertThatThrownBy(() -> orderService.cancelOrder(requestDto))
+        assertThatThrownBy(() -> orderService.cancelOrder(1L, 1L, "변경"))
                 .isInstanceOf(BusinessException.class);
     }
 
@@ -191,24 +188,30 @@ class OrderServiceTest {
         Member member = createMember(1L);
         MemberCoupon memberCoupon = MemberCoupon.builder().build();
         ReflectionTestUtils.setField(memberCoupon, "id", 55L);
+        ItemOption option = createOption(createItem(), 100, 1);
+        OrderItem orderItem = OrderItem.builder()
+                .item(option.getItem())
+                .itemOption(option)
+                .orderPrice(1100)
+                .discountRate(0)
+                .quantity(1)
+                .build();
 
         Order order = Order.builder()
                 .orderState(OrderState.WAITING_FOR_PAY)
                 .member(member)
                 .usePoint(100)
                 .memberCoupon(memberCoupon)
+                .orderItems(List.of(orderItem))
                 .build();
 
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
 
-        OrderCancelRequestDto requestDto = new OrderCancelRequestDto();
-        requestDto.setOrderId(1L);
-        requestDto.setCancelReason("변경");
-
-        OrderCancelResponseDto result = orderService.cancelOrder(requestDto);
+        OrderCancelResponseDto result = orderService.cancelOrder(member.getId(), 1L, "변경");
 
         assertThat(result.getOrderId()).isEqualTo(1L);
         assertThat(result.getCancelReason()).isEqualTo("변경");
+        assertThat(option.getStock()).isEqualTo(2);
         verify(memberService).restorePoint(member.getId(), 100);
         verify(memberCouponService).restoreCoupon(55L);
     }
@@ -216,10 +219,12 @@ class OrderServiceTest {
     @Test
     @DisplayName("주문 요약 조회")
     void orderSummary() {
+        Member member = createMember(1L);
         OrderResponseDto responseDto = new OrderResponseDto();
-        when(orderRepository.findByOrderIdWithItems(1L)).thenReturn(responseDto);
+        when(orderRepository.findByOrderIdWithItemsAndMemberId(1L, member.getId()))
+                .thenReturn(Optional.of(responseDto));
 
-        OrderResponseDto result = orderService.orderSummary(1L);
+        OrderResponseDto result = orderService.orderSummary(member.getId(), 1L);
 
         assertThat(result).isSameAs(responseDto);
     }
@@ -245,10 +250,14 @@ class OrderServiceTest {
     @Test
     @DisplayName("구매 확정: 배송 완료")
     void purchaseConfirmation_delivered() {
-        Order order = Order.builder().orderState(OrderState.DELIVERED).build();
+        Member member = createMember(1L);
+        Order order = Order.builder()
+                .orderState(OrderState.DELIVERED)
+                .member(member)
+                .build();
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
 
-        orderService.PurchaseConfirmation(1L);
+        orderService.purchaseConfirmation(member.getId(), 1L);
 
         assertThat(order.getOrderState()).isEqualTo(OrderState.COMPLETED);
     }
@@ -256,43 +265,16 @@ class OrderServiceTest {
     @Test
     @DisplayName("구매 확정: 배송 미완료")
     void purchaseConfirmation_notDelivered() {
-        Order order = Order.builder().orderState(OrderState.SHIPPING).build();
+        Member member = createMember(1L);
+        Order order = Order.builder()
+                .orderState(OrderState.SHIPPING)
+                .member(member)
+                .build();
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
 
-        orderService.PurchaseConfirmation(1L);
+        orderService.purchaseConfirmation(member.getId(), 1L);
 
         assertThat(order.getOrderState()).isEqualTo(OrderState.SHIPPING);
-    }
-
-    @Test
-    @DisplayName("포인트/쿠폰 복구")
-    void restorePointAndCoupon() {
-        Member member = createMember(1L);
-        ReflectionTestUtils.setField(member, "point", 0);
-
-        MemberCoupon memberCoupon = MemberCoupon.builder().state(CouponState.USED).build();
-
-        ItemOption option = createOption(createItem(), 100, 1);
-        OrderItem orderItem = OrderItem.builder()
-                .item(option.getItem())
-                .itemOption(option)
-                .orderPrice(1100)
-                .discountRate(0)
-                .quantity(1)
-                .build();
-
-        Order order = Order.builder()
-                .member(member)
-                .usePoint(100)
-                .memberCoupon(memberCoupon)
-                .orderItems(List.of(orderItem))
-                .build();
-
-        orderService.restorePointAndCoupon(order);
-
-        assertThat(option.getStock()).isEqualTo(2);
-        assertThat(member.getPoint()).isEqualTo(100);
-        assertThat(memberCoupon.getState()).isEqualTo(CouponState.AVAILABLE);
     }
 
     private Member createMember(Long id) {

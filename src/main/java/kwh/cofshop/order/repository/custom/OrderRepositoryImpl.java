@@ -57,22 +57,26 @@ public class OrderRepositoryImpl implements OrderRepositoryCustom {
     }
 
     @Override
-    public OrderResponseDto findByOrderIdWithItems(Long orderId) {
+    public Optional<OrderResponseDto> findByOrderIdWithItemsAndMemberId(Long orderId, Long memberId) {
         QOrder order = QOrder.order;
         QOrderItem orderItem = QOrderItem.orderItem;
+        QMember member = QMember.member;
         QItem item = QItem.item;
         QItemOption itemOption = QItemOption.itemOption;
 
         Order fetchedOrder = queryFactory
                 .select(order)
+                .distinct()
                 .from(order)
+                .join(order.member, member)
                 .join(order.orderItems, orderItem).fetchJoin()
                 .join(orderItem.itemOption, itemOption).fetchJoin()
                 .join(itemOption.item, item).fetchJoin()
-                .where(order.id.eq(orderId))
+                .where(order.id.eq(orderId), member.id.eq(memberId))
                 .fetchOne();
 
-        return orderMapper.toResponseDto(fetchedOrder);
+        return Optional.ofNullable(fetchedOrder)
+                .map(orderMapper::toResponseDto);
 
     }
 

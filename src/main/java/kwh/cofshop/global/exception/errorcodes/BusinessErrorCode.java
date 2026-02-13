@@ -15,7 +15,7 @@ public enum BusinessErrorCode implements ErrorCode {
 
     // 회원 관련
     MEMBER_NOT_FOUND("MEMBER-404", HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."),
-    MEMBER_ALREADY_EXISTS("MEMBER-404", HttpStatus.CONFLICT, "이미 존재하는 회원 이메일입니다."),
+    MEMBER_ALREADY_EXISTS("MEMBER-409", HttpStatus.CONFLICT, "이미 존재하는 회원 이메일입니다."),
 
     // 상품/옵션 관련
     ITEM_NOT_FOUND("ITEM-404", HttpStatus.NOT_FOUND, "상품을 찾을 수 없습니다."),
@@ -47,12 +47,13 @@ public enum BusinessErrorCode implements ErrorCode {
 
     // 결제
     PAYMENT_NOT_FOUND("PAY-404", HttpStatus.NOT_FOUND, "결제 정보를 찾을 수 없습니다."),
-    PAYMENT_UID_DISCREPANCY("CHAT-404", HttpStatus.NOT_FOUND, "결제 UID가 일치하지 않습니다."),
-    PAYMENT_AMOUNT_DISCREPANCY("CHAT-404", HttpStatus.NOT_FOUND, "결제 금액이 일치하지 않습니다."),
+    PAYMENT_PROVIDER_ERROR("PAY-502", HttpStatus.BAD_GATEWAY, "결제사 연동 중 오류가 발생했습니다."),
+    PAYMENT_UID_DISCREPANCY("PAY-UID-MISMATCH", HttpStatus.NOT_FOUND, "결제 UID가 일치하지 않습니다."),
+    PAYMENT_AMOUNT_DISCREPANCY("PAY-AMOUNT-MISMATCH", HttpStatus.NOT_FOUND, "결제 금액이 일치하지 않습니다."),
     PAYMENT_CANNOT_REFUND("CANNOT-REFUND", HttpStatus.CONFLICT, "환불이 불가능합니다"),
     PAYMENT_ALREADY_CANCELLED("ALREADY_CANCELLED", HttpStatus.CONFLICT, "이미 취소된 결제입니다."),
-    PAYMENT_REFUND_FAIL("REFUND_FAILED", HttpStatus.CONFLICT, "환불에 실패했습니다."),
-    PAYMENT_FAIL("REFUND_FAILED", HttpStatus.CONFLICT, "결제에 실패했습니다.");
+    PAYMENT_REFUND_FAIL("PAY-REFUND-FAILED", HttpStatus.CONFLICT, "환불에 실패했습니다."),
+    PAYMENT_FAIL("PAY-FAILED", HttpStatus.CONFLICT, "결제에 실패했습니다.");
 
     private final String code;
     private final HttpStatus httpStatus;

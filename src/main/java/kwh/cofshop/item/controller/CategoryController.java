@@ -54,7 +54,7 @@ public class CategoryController {
     // 카테고리 등록 (관리자)
     @Operation(summary = "카테고리 등록", description = "관리자 전용입니다.")
     @PostMapping
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CategoryResponseDto> createCategory(
             @RequestBody @Valid CategoryRequestDto requestDto) {
         CategoryResponseDto responseDto = categoryService.createCategory(requestDto);
@@ -72,7 +72,7 @@ public class CategoryController {
     // 카테고리 삭제 (관리자)
     @Operation(summary = "카테고리 삭제", description = "관리자 전용입니다.")
     @DeleteMapping("/{categoryId}")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteCategory(@PathVariable Long categoryId) {
         categoryService.deleteCategory(categoryId);
         return ResponseEntity.noContent().build();

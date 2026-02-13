@@ -33,6 +33,7 @@ public class MemberController {
 
     // 회원 정보
     @Operation(summary = "회원 정보 열람", description = "회원의 정보를 열람합니다.")
+    @PreAuthorize("hasRole('ADMIN') or #memberId == authentication.principal.id")
     @GetMapping("/{memberId}")
     public MemberResponseDto getMemberById(@PathVariable Long memberId) {
         return memberService.findMember(memberId);
@@ -40,7 +41,7 @@ public class MemberController {
 
     // 모든 멤버 리스트 조회 (관리자 권한)
     @Operation(summary = "전체 멤버 조회", description = "관리자 전용, 모든 멤버를 조회합니다.")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public List<MemberResponseDto> getAllMembers() {
         return memberService.memberLists();
@@ -48,6 +49,7 @@ public class MemberController {
 
     // 멤버의 로그인 기록 열람
     @Operation(summary = "멤버 로그인 기록 조회", description = "조회 결과")
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/history/{memberId}")
     public List<MemberLoginEvent> getLoginMemberHistory(@PathVariable Long memberId) {
         return memberLoginHistoryService.getUserLoginHistory(memberId);
@@ -69,7 +71,7 @@ public class MemberController {
 
     // 관리자의 멤버 상태 변경
     @Operation(summary = "멤버 상태 변경", description = "관리자 전용, 멤버 상태 변경 기능입니다.")
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{memberId}/state")
     public ResponseEntity<Void> updateMemberStateByAdmin(
             @PathVariable Long memberId,
@@ -81,7 +83,7 @@ public class MemberController {
     // 회원 탈퇴
     @Operation(summary = "회원탈퇴", description = "회원탈퇴 기능입니다.")
     @PatchMapping("/me/state")
-    @PreAuthorize("hasAuthority('ROLE_USER')")
+    @PreAuthorize("hasRole('MEMBER')")
     public ResponseEntity<Void> quitMember(@LoginMember Long memberId) {
         memberService.changeMemberState(memberId, MemberState.QUIT);
         return ResponseEntity.noContent().build();
@@ -90,7 +92,7 @@ public class MemberController {
     // 회원 비밀 번호 변경
     @Operation(summary = "비밀번호 변경", description = "회원의 비밀번호를 변경합니다.")
     @PatchMapping("/me/password")
-    @PreAuthorize("hasAuthority('ROLE_USER')")
+    @PreAuthorize("hasRole('MEMBER')")
     public ResponseEntity<Void> changePassword(
             @LoginMember Long memberId,
             @RequestParam String password) {
@@ -100,6 +102,7 @@ public class MemberController {
 
     // 포인트 변경
     @Operation(summary = "포인트 변경", description = "회원의 포인트를 변경합니다.")
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{memberId}/point")
     public Integer updatePoint(
             @PathVariable Long memberId,

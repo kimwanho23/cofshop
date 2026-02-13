@@ -219,6 +219,9 @@ curl -X POST http://localhost:8080/api/memberCoupon/me/3 \
 
 ### 프로파일별 실행
 ```powershell
+# 초기 1회: 템플릿에서 로컬 설정 파일 생성
+./scripts/init-local-config.sh
+
 # dev
 $env:SPRING_PROFILES_ACTIVE = "dev"
 ./gradlew bootRun
@@ -227,6 +230,24 @@ $env:SPRING_PROFILES_ACTIVE = "dev"
 $env:SPRING_PROFILES_ACTIVE = "prod"
 ./gradlew bootRun
 ```
+
+### Docker Compose 실행
+`compose.yml`은 Git에 포함하고, 실제 값은 `.env`로 분리해서 사용합니다.
+
+```bash
+# 1) .env 준비
+cp .env.example .env
+
+# 2) RDS/외부 DB를 사용하는 기본 실행 (app + redis)
+docker compose up --build -d
+
+# 3) 로컬 MySQL까지 함께 실행 (app + redis + mysql)
+docker compose --profile local-db up --build -d
+```
+
+로컬 MySQL 프로필(`local-db`)을 사용할 때는 `.env`의 `DB_URL`을 `mysql` 컨테이너 기준으로 맞춰야 합니다.
+예: `jdbc:mysql://mysql:3306/cofshop?serverTimezone=UTC&characterEncoding=UTF-8&useUnicode=true`
+PortOne V2 샘플 결제 페이지는 `/payments/sample`에서 확인할 수 있습니다.
 
 ## 환경 변수
 민감정보는 환경 변수로 주입하는 것을 권장합니다. 예시는 `.env.example` 참고.
@@ -238,15 +259,19 @@ $env:SPRING_PROFILES_ACTIVE = "prod"
 | `DB_PASSWORD` | DB 비밀번호 |
 | `REDIS_HOST` | Redis 호스트 |
 | `REDIS_PORT` | Redis 포트 |
-| `IMP_CODE` | PortOne 가맹점 코드 |
-| `IMP_API_KEY` | PortOne API 키 |
+| `REDIS_PASSWORD` | Redis 비밀번호(선택) |
+| `REDIS_SSL_ENABLED` | Redis TLS 사용 여부(`true/false`) |
 | `IMP_API_SECRETKEY` | PortOne API 시크릿 |
+| `PORTONE_STORE_ID` | PortOne Browser SDK Store ID |
+| `PORTONE_CHANNEL_KEY` | PortOne Browser SDK Channel Key |
 | `JWT_SECRET_KEY` | JWT 시크릿 |
+| `SPRING_PROFILES_ACTIVE` | 실행 프로파일 (`dev`/`staging`/`prod`) |
 
 ## 문서/자료
 - `docs/PROJECT_OVERVIEW.md`: 전체 구조 요약
 - `docs/MODULES.md`: 모듈 상세 및 플로우
 - `docs/SECRETS_AND_ENV.md`: 민감정보 분리/운영 설정 가이드
+- `docs/ENVIRONMENT_SETUP_RUNBOOK.md`: DB 생성 + 환경 시크릿 등록 런북
 - `docs/README_ENCODING.md`: README 인코딩 안내
 - `docs/TROUBLESHOOTING.md`: 트러블슈팅 모음
 - `docs/INDEX.md`: 문서 인덱스
@@ -257,7 +282,11 @@ $env:SPRING_PROFILES_ACTIVE = "prod"
 ```
 
 ## 운영/보안 유의사항
-- `application-key.properties`는 템플릿만 포함하며 실제 키는 환경 변수로 주입하세요.
+- `src/main/resources/application*.properties`는 Git 추적에서 제외되어 있으니, 초기 1회 `./scripts/init-local-config.sh`를 실행해 템플릿에서 생성하세요.
+- 추적 가능한 템플릿은 `src/main/resources/application*.properties.template`에 있습니다.
+- 실제 비밀값(DB/Redis/결제/JWT)은 템플릿이 아닌 환경 변수/Secret Manager로 주입하세요.
+- CI는 `gitleaks` 시크릿 스캔을 수행하며, 규칙은 `.gitleaks.toml`에서 관리합니다.
+- GitHub Actions 배포는 `GitHub Environments`(`development`, `production`) 단위로 시크릿을 분리해 관리하세요.
 - GitHub 공개 리포지토리에는 시크릿을 커밋하지 않도록 주의하세요.
 
 ## Trouble Shooting

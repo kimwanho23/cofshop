@@ -57,7 +57,7 @@ class OrderControllerTest {
     @Test
     @DisplayName("주문 상세 조회")
     void getOrderInfo() throws Exception {
-        when(orderService.orderSummary(anyLong())).thenReturn(new OrderResponseDto());
+        when(orderService.orderSummary(anyLong(), anyLong())).thenReturn(new OrderResponseDto());
 
         mockMvc.perform(get("/api/orders/1"))
                 .andExpect(status().isOk());
@@ -120,10 +120,9 @@ class OrderControllerTest {
         OrderCancelResponseDto responseDto = new OrderCancelResponseDto();
         responseDto.setOrderId(1L);
 
-        when(orderService.cancelOrder(any())).thenReturn(responseDto);
+        when(orderService.cancelOrder(anyLong(), anyLong(), any())).thenReturn(responseDto);
 
         OrderCancelRequestDto requestDto = new OrderCancelRequestDto();
-        requestDto.setOrderId(1L);
         requestDto.setCancelReason("변경");
 
         mockMvc.perform(patch("/api/orders/1/cancel")

@@ -9,8 +9,9 @@ import kwh.cofshop.chat.mapper.ChatMessageMapper;
 import kwh.cofshop.chat.repository.ChatMessageRepository;
 import kwh.cofshop.chat.repository.ChatRoomRepository;
 import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.ForbiddenRequestException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
-import kwh.cofshop.global.exception.errorcodes.UnauthorizedErrorCode;
+import kwh.cofshop.global.exception.errorcodes.ForbiddenErrorCode;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +44,7 @@ public class ChatMessageService {
 
         // 3. 해당 유저가 채팅방 참여자인지 검증
         if (!chatRoom.isParticipant(sender)) {
-            throw new BusinessException(UnauthorizedErrorCode.CHAT_ROOM_ACCESS_DENIED);
+            throw new ForbiddenRequestException(ForbiddenErrorCode.CHAT_ROOM_ACCESS_DENIED);
         }
 
         // 4. 메시지 생성 후 저장
@@ -56,7 +57,16 @@ public class ChatMessageService {
 
     // 채팅 메시지 조회
     @Transactional(readOnly = true)
-    public Slice<ChatMessageResponseDto> getChatMessages(Long roomId, Long lastMessageId, int pageSize) {
+    public Slice<ChatMessageResponseDto> getChatMessages(Long roomId, Long lastMessageId, int pageSize, Long memberId) {
+        ChatRoom chatRoom = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.CHAT_ROOM_NOT_FOUND));
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
+
+        if (!chatRoom.isParticipant(member)) {
+            throw new ForbiddenRequestException(ForbiddenErrorCode.CHAT_ROOM_ACCESS_DENIED);
+        }
+
         // 1. Slice로 메시지 조각을 가져온다.
         Slice<ChatMessage> slice = chatMessageRepository.findMessagesByRoom(roomId, lastMessageId, pageSize);
 
@@ -75,7 +85,7 @@ public class ChatMessageService {
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.CHAT_ROOM_ALREADY_CLOSED));
 
         if (!message.getSender().getId().equals(senderId)) {
-            throw new BusinessException(UnauthorizedErrorCode.MEMBER_UNAUTHORIZED);
+            throw new ForbiddenRequestException(ForbiddenErrorCode.MEMBER_UNAUTHORIZED);
         }
 
         String groupId = message.getMessageGroupId();

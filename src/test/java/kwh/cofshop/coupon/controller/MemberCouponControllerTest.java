@@ -60,14 +60,6 @@ class MemberCouponControllerTest {
     }
 
     @Test
-    @DisplayName("테스트용 쿠폰 발급")
-    void createForTest() throws Exception {
-        mockMvc.perform(post("/api/memberCoupon/10")
-                        .param("memberId", "1"))
-                .andExpect(status().isCreated());
-    }
-
-    @Test
     @DisplayName("쿠폰 만료 처리")
     void expireMemberCoupons() throws Exception {
         mockMvc.perform(patch("/api/memberCoupon/expire")

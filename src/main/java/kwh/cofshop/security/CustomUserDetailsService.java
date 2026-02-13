@@ -33,8 +33,12 @@ public class CustomUserDetailsService implements UserDetailsService {
                 new SimpleGrantedAuthority("ROLE_" + member.getRole())
         );
 
-        if (member.getMemberState() == MemberState.SUSPENDED || member.getMemberState() == MemberState.QUIT) {
-            throw new UnauthorizedRequestException(UnauthorizedErrorCode.MEMBER_UNAUTHORIZED);
+        if (member.getMemberState() == MemberState.SUSPENDED) {
+            throw new UnauthorizedRequestException(UnauthorizedErrorCode.MEMBER_SUSPENDED);
+        }
+
+        if (member.getMemberState() == MemberState.QUIT) {
+            throw new UnauthorizedRequestException(UnauthorizedErrorCode.MEMBER_QUIT);
         }
 
         return new CustomUserDetails(

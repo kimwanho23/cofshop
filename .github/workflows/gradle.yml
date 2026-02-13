@@ -1,131 +1,195 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-# This workflow will build a Java project with Gradle and cache/restore any dependencies to improve the workflow execution time
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-gradle
-
 name: Java CI/CD with Gradle and Docker
 
 on:
-  push:
-    branches: [ "main" ]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: "Deploy target environment"
+        required: true
+        type: choice
+        default: production
+        options:
+          - development
+          - staging
+          - production
+      image_tag:
+        description: "Optional Docker image tag override (default: git SHA)"
+        required: false
+        type: string
 
-env:
-  DOCKER_IMAGE_NAME: ${{ secrets.DOCKER_IMAGE_NAME }}
-  EC2_HOST: ${{ secrets.EC2_IP }}
-  EC2_SSH_USER: ${{ secrets.EC2_SSH_USER }}
-  PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
-
+permissions:
+  contents: read
 
 jobs:
-  build:
+  ci:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
+      - uses: actions/checkout@v4
 
-    # Configure Gradle for optimal use in GitHub Actions, including caching of downloaded dependencies.
-    # See: https://github.com/gradle/actions/blob/main/setup-gradle/README.md
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Set up application.properties
-      run: echo "${{ secrets.APPLICATION }}" > ./src/main/resources/application.properties
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: temurin
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582 # v4.0.0
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582 # v4.0.0
 
-    - name: Build with Gradle Wrapper
-      run: |
-        chmod +x ./gradlew
-        ./gradlew clean build -x test
+      - name: Test with Gradle Wrapper
+        run: |
+          chmod +x ./gradlew
+          ./gradlew clean test
 
-    - name: Build Docker image
-      run: docker build -t ${{ env.DOCKER_IMAGE_NAME }}:latest .
+  deploy:
+    # Temporarily disabled until deployment infrastructure (e.g., EC2) is available.
+    if: ${{ false }}
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.target_environment || 'production' }}
 
-    - name: Docker Hub Login
-      run: echo "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+    steps:
+      - uses: actions/checkout@v4
 
-    - name: Push the Docker image
-      run: docker push ${{ env.DOCKER_IMAGE_NAME }}:latest
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: temurin
 
-    - name: Deploy to EC2
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ env.EC2_HOST }}
-        username: ${{ env.EC2_SSH_USER }}
-        key: ${{ env.PRIVATE_KEY }}
-        script: |
-          echo "Stopping and removing existing container (if exists)..."
-          CONTAINER_ID=$(sudo docker ps -aq --filter "name=cofshop")
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582 # v4.0.0
 
-          if [ -n "$CONTAINER_ID" ]; then
-            echo "Removing container ID: $CONTAINER_ID"
-            sudo docker stop $CONTAINER_ID || true
-            sudo docker rm $CONTAINER_ID
+      - name: Resolve image tag
+        id: meta
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            echo "image_tag=${{ github.event.inputs.image_tag }}" >> "$GITHUB_OUTPUT"
           else
-            echo "No container found."
+            echo "image_tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
           fi
 
-          echo "Logging into Docker Hub..."
-          echo "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" | sudo docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+      - name: Validate required environment secrets
+        env:
+          DOCKER_IMAGE_NAME: ${{ secrets.DOCKER_IMAGE_NAME }}
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+          EC2_IP: ${{ secrets.EC2_IP }}
+          EC2_SSH_USER: ${{ secrets.EC2_SSH_USER }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          SPRING_PROFILES_ACTIVE: ${{ secrets.SPRING_PROFILES_ACTIVE }}
+          DB_URL: ${{ secrets.DB_URL }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          REDIS_HOST: ${{ secrets.REDIS_HOST }}
+          REDIS_PORT: ${{ secrets.REDIS_PORT }}
+          IMP_API_SECRETKEY: ${{ secrets.IMP_API_SECRETKEY }}
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+        run: |
+          required=(
+            DOCKER_IMAGE_NAME
+            DOCKER_USERNAME
+            DOCKER_HUB_ACCESS_TOKEN
+            EC2_IP
+            EC2_SSH_USER
+            EC2_SSH_KEY
+            SPRING_PROFILES_ACTIVE
+            DB_URL
+            DB_USERNAME
+            DB_PASSWORD
+            REDIS_HOST
+            REDIS_PORT
+            IMP_API_SECRETKEY
+            JWT_SECRET_KEY
+          )
 
-          echo "Pulling latest image..."
-          sudo docker pull ${{ env.DOCKER_IMAGE_NAME }}
+          missing=0
+          for name in "${required[@]}"; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing required secret: ${name}"
+              missing=1
+            fi
+          done
 
-          echo "Starting new container..."
-          sudo docker run --name cofshop --network my-network -d -p 8080:8080 \
-          -e TZ=Asia/Seoul \
-          -e DB_URL=${{ secrets.DB_URL }} \
-          -e DB_USERNAME=${{ secrets.DB_USERNAME }} \
-          -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-          -e IMP_CODE=${{ secrets.IMP_CODE }} \
-          -e IMP_API_KEY=${{ secrets.IMP_API_KEY }} \
-          -e IMP_API_SECRETKEY=${{ secrets.IMP_API_SECRETKEY }} \
-          -e JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }} \
-          -e REDIS_HOST=${{ secrets.REDIS_HOST }} \
-          -e REDIS_PORT=${{ secrets.REDIS_PORT }} \
-          ${{ env.DOCKER_IMAGE_NAME }}
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
 
+      - name: Build application jar
+        run: |
+          chmod +x ./gradlew
+          ./gradlew clean bootJar -x test
 
+      - name: Build Docker image
+        run: docker build -t ${{ secrets.DOCKER_IMAGE_NAME }}:${{ steps.meta.outputs.image_tag }} .
 
+      - name: Docker Hub Login
+        run: echo "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
 
+      - name: Push Docker image (immutable tag)
+        run: docker push ${{ secrets.DOCKER_IMAGE_NAME }}:${{ steps.meta.outputs.image_tag }}
 
+      - name: Promote latest tag (production only)
+        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.target_environment == 'production') }}
+        run: |
+          docker tag ${{ secrets.DOCKER_IMAGE_NAME }}:${{ steps.meta.outputs.image_tag }} ${{ secrets.DOCKER_IMAGE_NAME }}:latest
+          docker push ${{ secrets.DOCKER_IMAGE_NAME }}:latest
 
-  # NOTE: The Gradle Wrapper is the default and recommended way to run Gradle (https://docs.gradle.org/current/userguide/gradle_wrapper.html).
-    # If your project does not have the Gradle Wrapper configured, you can use the following configuration to run Gradle with a specified version.
-    #
-    # - name: Setup Gradle
-    #   uses: gradle/actions/setup-gradle@af1da67850ed9a4cedd57bfd976089dd991e2582 # v4.0.0
-    #   with:
-    #     gradle-version: '8.9'
-    #
-    # - name: Build with Gradle 8.9
-    #   run: gradle build
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_IP }}
+          username: ${{ secrets.EC2_SSH_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            CONTAINER_ID=$(sudo docker ps -aq --filter "name=cofshop")
+
+            if [ -n "$CONTAINER_ID" ]; then
+              sudo docker stop $CONTAINER_ID || true
+              sudo docker rm $CONTAINER_ID
+            fi
+
+            echo "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" | sudo docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+            sudo docker pull ${{ secrets.DOCKER_IMAGE_NAME }}:${{ steps.meta.outputs.image_tag }}
+
+            sudo docker run --name cofshop --network my-network --restart unless-stopped -d -p 8080:8080 \
+              -e TZ=Asia/Seoul \
+              -e SPRING_PROFILES_ACTIVE=${{ secrets.SPRING_PROFILES_ACTIVE != '' && secrets.SPRING_PROFILES_ACTIVE || 'prod' }} \
+              -e DB_URL=${{ secrets.DB_URL }} \
+              -e DB_USERNAME=${{ secrets.DB_USERNAME }} \
+              -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+              -e IMP_API_SECRETKEY=${{ secrets.IMP_API_SECRETKEY }} \
+              -e PORTONE_STORE_ID=${{ secrets.PORTONE_STORE_ID }} \
+              -e PORTONE_CHANNEL_KEY=${{ secrets.PORTONE_CHANNEL_KEY }} \
+              -e JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }} \
+              -e REDIS_HOST=${{ secrets.REDIS_HOST }} \
+              -e REDIS_PORT=${{ secrets.REDIS_PORT }} \
+              -e REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }} \
+              -e REDIS_SSL_ENABLED=${{ secrets.REDIS_SSL_ENABLED }} \
+              ${{ secrets.DOCKER_IMAGE_NAME }}:${{ steps.meta.outputs.image_tag }}
 
   dependency-submission:
-
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-
-    # Generates and submits a dependency graph, enabling Dependabot Alerts for all project dependencies.
-    # See: https://github.com/gradle/actions/blob/main/dependency-submission/README.md
-    - name: Generate and submit dependency graph
-      uses: gradle/actions/dependency-submission@af1da67850ed9a4cedd57bfd976089dd991e2582 # v4.0.0
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: temurin
+      - name: Generate and submit dependency graph
+        uses: gradle/actions/dependency-submission@af1da67850ed9a4cedd57bfd976089dd991e2582 # v4.0.0

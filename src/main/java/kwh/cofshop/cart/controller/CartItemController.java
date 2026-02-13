@@ -31,13 +31,13 @@ public class CartItemController {
     public List<CartItemResponseDto> getMyCartItems(
             @LoginMember Long memberId) {
 
-        List<CartItemResponseDto> cartItemResponseDtoList = cartItemService.getCartItemsByMemberId(memberId);
-        return cartItemResponseDtoList;
+
+        return cartItemService.getCartItemsByMemberId(memberId);
     }
 
     // 장바구니 총 금액 계산
     @Operation(summary = "장바구니 총 금액 계산", description = "장바구니에 담긴 상품의 총 금액을 계산합니다.")
-    @GetMapping("/me/total-price")
+    @GetMapping("/me체/total-price")
     public Integer getTotalCartPrice(@LoginMember Long memberId) {
         int totalPrice = cartItemService.calculateTotalPrice(memberId);
         return totalPrice;

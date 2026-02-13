@@ -12,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 
@@ -33,7 +34,7 @@ class OrderItemServiceTest {
         OrderItemRequestDto dto = new OrderItemRequestDto();
         dto.setOptionId(10L);
 
-        ItemOption option = createOption(createItem(), 100, 10);
+        ItemOption option = createOption(10L, createItem(1L), 100, 10);
 
         when(itemOptionRepository.findAllByIdInWithLock(List.of(10L))).thenReturn(List.of(option));
 
@@ -46,9 +47,11 @@ class OrderItemServiceTest {
     @DisplayName("주문 아이템 생성")
     void createOrderItems() {
         OrderItemRequestDto dto = new OrderItemRequestDto();
+        dto.setItemId(1L);
+        dto.setOptionId(10L);
         dto.setQuantity(2);
 
-        ItemOption option = createOption(createItem(), 100, 10);
+        ItemOption option = createOption(10L, createItem(1L), 100, 10);
 
         List<OrderItem> result = orderItemService.createOrderItems(List.of(dto), List.of(option));
 
@@ -56,8 +59,8 @@ class OrderItemServiceTest {
         assertThat(result.get(0).getQuantity()).isEqualTo(2);
     }
 
-    private Item createItem() {
-        return Item.builder()
+    private Item createItem(Long id) {
+        Item item = Item.builder()
                 .itemName("커피")
                 .price(1000)
                 .deliveryFee(0)
@@ -71,13 +74,17 @@ class OrderItemServiceTest {
                         .tel("01099998888")
                         .build())
                 .build();
+        ReflectionTestUtils.setField(item, "id", id);
+        return item;
     }
 
-    private ItemOption createOption(Item item, int additionalPrice, int stock) {
-        return ItemOption.builder()
+    private ItemOption createOption(Long id, Item item, int additionalPrice, int stock) {
+        ItemOption option = ItemOption.builder()
                 .item(item)
                 .additionalPrice(additionalPrice)
                 .stock(stock)
                 .build();
+        ReflectionTestUtils.setField(option, "id", id);
+        return option;
     }
 }

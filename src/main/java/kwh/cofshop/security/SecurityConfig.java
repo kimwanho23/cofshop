@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -24,6 +25,7 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 @Configuration
 @RequiredArgsConstructor
 @EnableWebSecurity
+@EnableMethodSecurity
 @Slf4j
 public class SecurityConfig {
 
@@ -32,6 +34,8 @@ public class SecurityConfig {
     private final MemberRepository memberRepository;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final RefreshTokenService refreshTokenService;
+    private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+    private final CustomAccessDeniedHandler customAccessDeniedHandler;
 
     @Bean
     protected SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -47,14 +51,14 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests((authorize) -> authorize
                         .requestMatchers("/css/**", "/js/**", "/favicon.ico").permitAll()
-                        .requestMatchers("/api/member/signup", "/", "/api/item/search", "/api/memberCoupon/**",
-                                "/api/review/**", "/api/auth/login", "/api/auth/reissue", "/api/auth/logout", "/api/auth/csrf",
+                        .requestMatchers("/api/members/signup", "/", "/api/item/search", "/payments/sample",
+                                "/api/reviews/**", "/api/auth/login", "/api/auth/reissue", "/api/auth/logout", "/api/auth/csrf",
                                 "/swagger-ui/**", "/swagger-resources/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/api/**", "/item/**").authenticated()
                         .anyRequest().authenticated())
                 .exceptionHandling((exceptions) -> exceptions
-                        .authenticationEntryPoint(new CustomAuthenticationEntryPoint())  // 인증 실패 처리
-                        .accessDeniedHandler(new CustomAccessDeniedHandler())  // 권한 부족 처리
+                        .authenticationEntryPoint(customAuthenticationEntryPoint)  // 인증 실패 처리
+                        .accessDeniedHandler(customAccessDeniedHandler)  // 권한 부족 처리
                 )
                 .logout((logout) -> logout
                         .logoutSuccessUrl("/api/auth/logout")
@@ -76,6 +80,8 @@ public class SecurityConfig {
                 refreshTokenService,
                 applicationEventPublisher
         );
+        // Required by AbstractAuthenticationProcessingFilter lifecycle.
+        loginFilter.setAuthenticationManager(authenticationManager());
         loginFilter.setFilterProcessesUrl("/api/auth/login");
         return loginFilter;
     }

@@ -44,3 +44,6 @@ application-prod.properties
 
 # Local artifacts in info folder
 정보/
+
+# Local secret files for GitHub environment sync
+.secrets/

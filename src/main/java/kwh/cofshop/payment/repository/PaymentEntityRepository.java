@@ -10,4 +10,6 @@ public interface PaymentEntityRepository extends JpaRepository<PaymentEntity, Lo
 
     Optional<PaymentEntity> findByIdAndMember_Id(Long id, Long memberId);
 
+    Optional<PaymentEntity> findByImpUidAndMember_Id(String impUid, Long memberId);
+
 }
