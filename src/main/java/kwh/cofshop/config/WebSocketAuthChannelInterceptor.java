@@ -2,7 +2,7 @@ package kwh.cofshop.config;
 
 import kwh.cofshop.global.exception.UnauthorizedRequestException;
 import kwh.cofshop.global.exception.errorcodes.UnauthorizedErrorCode;
-import kwh.cofshop.security.JwtTokenProvider;
+import kwh.cofshop.security.token.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -69,3 +69,4 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
         return header.substring(BEARER_PREFIX.length());
     }
 }
+

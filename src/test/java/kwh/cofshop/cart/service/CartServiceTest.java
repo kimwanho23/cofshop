@@ -6,15 +6,15 @@ import kwh.cofshop.cart.mapper.CartMapper;
 import kwh.cofshop.cart.repository.CartItemRepository;
 import kwh.cofshop.cart.repository.CartRepository;
 import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
+import kwh.cofshop.member.api.MemberReadPort;
 import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.member.repository.MemberRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 
@@ -33,7 +33,10 @@ class CartServiceTest {
     private CartRepository cartRepository;
 
     @Mock
-    private MemberRepository memberRepository;
+    private MemberReadPort memberReadPort;
+
+    @Mock
+    private CartItemRepository cartItemRepository;
 
     @Mock
     private CartMapper cartMapper;
@@ -42,52 +45,41 @@ class CartServiceTest {
     private CartService cartService;
 
     @Test
-    @DisplayName("장바구니 생성: 회원 없음")
+    @DisplayName("createCart: member not found")
     void createCart_memberNotFound() {
-        when(memberRepository.findById(anyLong())).thenReturn(Optional.empty());
+        when(cartRepository.findByMemberId(anyLong())).thenReturn(Optional.empty());
+        when(memberReadPort.getById(anyLong())).thenThrow(new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
 
         assertThatThrownBy(() -> cartService.createCart(1L))
                 .isInstanceOf(BusinessException.class);
     }
 
     @Test
-    @DisplayName("장바구니 생성: 기존 장바구니 반환")
+    @DisplayName("createCart: return existing cart")
     void createCart_existingCart() {
-        Member member = Member.builder()
-                .id(1L)
-                .email("user@example.com")
-                .memberName("사용자")
-                .memberPwd("pw")
-                .tel("01012341234")
-                .build();
-        Cart existingCart = member.getCart();
+        Member member = member(1L);
+        Cart existingCart = new Cart(member);
         CartResponseDto responseDto = new CartResponseDto();
 
-        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(cartRepository.findByMemberId(1L)).thenReturn(Optional.of(existingCart));
         when(cartMapper.toResponseDto(existingCart)).thenReturn(responseDto);
 
         CartResponseDto result = cartService.createCart(1L);
 
         assertThat(result).isSameAs(responseDto);
         verify(cartRepository, never()).save(any());
+        verify(memberReadPort, never()).getById(anyLong());
     }
 
     @Test
-    @DisplayName("장바구니 생성: 신규 생성")
+    @DisplayName("createCart: create new cart")
     void createCart_newCart() {
-        Member member = Member.builder()
-                .id(1L)
-                .email("user@example.com")
-                .memberName("사용자")
-                .memberPwd("pw")
-                .tel("01012341234")
-                .build();
-        ReflectionTestUtils.setField(member, "cart", null);
-
+        Member member = member(1L);
         Cart savedCart = new Cart(member);
         CartResponseDto responseDto = new CartResponseDto();
 
-        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(cartRepository.findByMemberId(1L)).thenReturn(Optional.empty());
+        when(memberReadPort.getById(1L)).thenReturn(member);
         when(cartRepository.save(any(Cart.class))).thenReturn(savedCart);
         when(cartMapper.toResponseDto(savedCart)).thenReturn(responseDto);
 
@@ -98,7 +90,7 @@ class CartServiceTest {
     }
 
     @Test
-    @DisplayName("장바구니 존재 여부 조회")
+    @DisplayName("checkCartExistByMemberId")
     void checkCartExistByMemberId() {
         when(cartRepository.existsByMemberId(1L)).thenReturn(true);
 
@@ -108,7 +100,7 @@ class CartServiceTest {
     }
 
     @Test
-    @DisplayName("장바구니 삭제: 대상 없음")
+    @DisplayName("deleteByMemberId: cart not found")
     void deleteByMemberId_notFound() {
         when(cartRepository.findByMemberId(1L)).thenReturn(Optional.empty());
 
@@ -117,21 +109,24 @@ class CartServiceTest {
     }
 
     @Test
-    @DisplayName("장바구니 삭제: 성공")
+    @DisplayName("deleteByMemberId: success")
     void deleteByMemberId_success() {
-        Member member = Member.builder()
-                .id(1L)
-                .email("user@example.com")
-                .memberName("사용자")
-                .memberPwd("pw")
-                .tel("01012341234")
-                .build();
-        Cart cart = new Cart(member);
+        Cart cart = new Cart(member(1L));
 
         when(cartRepository.findByMemberId(1L)).thenReturn(Optional.of(cart));
 
         cartService.deleteByMemberId(1L);
 
         verify(cartRepository).delete(cart);
+    }
+
+    private Member member(Long id) {
+        return Member.builder()
+                .id(id)
+                .email("user@example.com")
+                .memberName("user")
+                .memberPwd("pw")
+                .tel("01012341234")
+                .build();
     }
 }

@@ -2,6 +2,7 @@ package kwh.cofshop.item.service;
 
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.ForbiddenRequestException;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.Review;
 import kwh.cofshop.item.dto.request.ReviewRequestDto;
@@ -9,8 +10,8 @@ import kwh.cofshop.item.dto.response.ReviewResponseDto;
 import kwh.cofshop.item.mapper.ReviewMapper;
 import kwh.cofshop.item.repository.ItemRepository;
 import kwh.cofshop.item.repository.ReviewRepository;
+import kwh.cofshop.member.api.MemberReadPort;
 import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.member.repository.MemberRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,7 +46,7 @@ class ReviewServiceTest {
     private ItemRepository itemRepository;
 
     @Mock
-    private MemberRepository memberRepository;
+    private MemberReadPort memberReadPort;
 
     @InjectMocks
     private ReviewService reviewService;
@@ -53,7 +54,7 @@ class ReviewServiceTest {
     @Test
     @DisplayName("리뷰 생성: 회원 없음")
     void save_memberNotFound() {
-        when(memberRepository.findById(anyLong())).thenReturn(Optional.empty());
+        when(memberReadPort.getById(anyLong())).thenThrow(new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
 
         assertThatThrownBy(() -> reviewService.save(1L, new ReviewRequestDto(), 1L))
                 .isInstanceOf(BusinessException.class);
@@ -63,7 +64,7 @@ class ReviewServiceTest {
     @DisplayName("리뷰 생성: 상품 없음")
     void save_itemNotFound() {
         Member member = createMember(1L);
-        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(memberReadPort.getById(1L)).thenReturn(member);
         when(itemRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> reviewService.save(1L, new ReviewRequestDto(), 1L))
@@ -76,7 +77,7 @@ class ReviewServiceTest {
         Member member = createMember(1L);
         Item item = createItem();
 
-        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(memberReadPort.getById(1L)).thenReturn(member);
         when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
         when(reviewRepository.save(any(Review.class))).thenThrow(new DataIntegrityViolationException("dup"));
 
@@ -96,7 +97,7 @@ class ReviewServiceTest {
         ReflectionTestUtils.setField(item, "averageRating", 0.0);
         ReflectionTestUtils.setField(item, "reviewCount", 0L);
 
-        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(memberReadPort.getById(1L)).thenReturn(member);
         when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
         when(reviewMapper.toResponseDto(any(Review.class))).thenReturn(new ReviewResponseDto());
 

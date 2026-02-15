@@ -7,8 +7,8 @@ import kwh.cofshop.cart.repository.CartItemRepository;
 import kwh.cofshop.cart.repository.CartRepository;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
+import kwh.cofshop.member.api.MemberReadPort;
 import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class CartService {
 
     private final CartRepository cartRepository;
-    private final MemberRepository memberRepository;
+    private final MemberReadPort memberReadPort;
     private final CartItemRepository cartItemRepository;
 
     private final CartMapper cartMapper;
@@ -27,14 +27,11 @@ public class CartService {
     // 장바구니가 없다면 생성을 해준다.
     @Transactional
     public CartResponseDto createCart(Long memberId) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
-
-        Cart cart = member.getCart();
-
-        if (cart == null) {
-            cart = cartRepository.save(member.createCart());
-        }
+        Cart cart = cartRepository.findByMemberId(memberId)
+                .orElseGet(() -> {
+                    Member member = memberReadPort.getById(memberId);
+                    return cartRepository.save(new Cart(member));
+                });
         return cartMapper.toResponseDto(cart);
     }
 

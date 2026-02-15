@@ -149,8 +149,5 @@ public class Item extends BaseEntity {
 
     public void setSeller(Member seller) {
         this.seller = seller;
-        if (!seller.getItemList().contains(this)) {
-            seller.getItemList().add(this);
-        }
     }
 }

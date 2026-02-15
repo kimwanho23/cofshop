@@ -1,8 +1,8 @@
 package kwh.cofshop.support;
 
-import kwh.cofshop.argumentResolver.LoginMember;
+import kwh.cofshop.global.annotation.LoginMember;
 import kwh.cofshop.member.domain.MemberState;
-import kwh.cofshop.security.CustomUserDetails;
+import kwh.cofshop.security.userdetails.CustomUserDetails;
 import org.springframework.core.MethodParameter;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.web.bind.support.WebDataBinderFactory;
@@ -45,3 +45,4 @@ public class TestLoginMemberArgumentResolver implements HandlerMethodArgumentRes
         );
     }
 }
+

@@ -8,10 +8,9 @@ import kwh.cofshop.cart.mapper.CartItemMapper;
 import kwh.cofshop.cart.repository.CartItemRepository;
 import kwh.cofshop.cart.repository.CartRepository;
 import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.item.api.ItemReadPort;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemOption;
-import kwh.cofshop.item.repository.ItemOptionRepository;
-import kwh.cofshop.item.repository.ItemRepository;
 import kwh.cofshop.member.domain.Member;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,10 +38,7 @@ class CartItemServiceTest {
     private CartItemMapper cartItemMapper;
 
     @Mock
-    private ItemRepository itemRepository;
-
-    @Mock
-    private ItemOptionRepository itemOptionRepository;
+    private ItemReadPort itemReadPort;
 
     @Mock
     private CartRepository cartRepository;
@@ -67,7 +63,7 @@ class CartItemServiceTest {
     void addCartItem_itemNotFound() {
         Cart cart = createCartWithId(1L);
         when(cartRepository.findByMemberIdWithLock(1L)).thenReturn(Optional.of(cart));
-        when(itemRepository.findById(10L)).thenReturn(Optional.empty());
+        when(itemReadPort.findItemById(10L)).thenReturn(Optional.empty());
 
         CartItemRequestDto requestDto = new CartItemRequestDto();
         requestDto.setItemId(10L);
@@ -85,8 +81,8 @@ class CartItemServiceTest {
         Item item = createItem(1000);
 
         when(cartRepository.findByMemberIdWithLock(1L)).thenReturn(Optional.of(cart));
-        when(itemRepository.findById(10L)).thenReturn(Optional.of(item));
-        when(itemOptionRepository.findById(100L)).thenReturn(Optional.empty());
+        when(itemReadPort.findItemById(10L)).thenReturn(Optional.of(item));
+        when(itemReadPort.findItemOptionById(100L)).thenReturn(Optional.empty());
 
         CartItemRequestDto requestDto = new CartItemRequestDto();
         requestDto.setItemId(10L);
@@ -115,8 +111,8 @@ class CartItemServiceTest {
         CartItemResponseDto responseDto = new CartItemResponseDto();
 
         when(cartRepository.findByMemberIdWithLock(1L)).thenReturn(Optional.of(cart));
-        when(itemRepository.findById(10L)).thenReturn(Optional.of(item));
-        when(itemOptionRepository.findById(100L)).thenReturn(Optional.of(option));
+        when(itemReadPort.findItemById(10L)).thenReturn(Optional.of(item));
+        when(itemReadPort.findItemOptionById(100L)).thenReturn(Optional.of(option));
         when(cartItemRepository.findByCartIdAndItemOptionIdWithLock(1L, 100L)).thenReturn(Optional.of(existing));
         when(cartItemMapper.toResponseDto(existing)).thenReturn(responseDto);
 
@@ -141,8 +137,8 @@ class CartItemServiceTest {
         ReflectionTestUtils.setField(option, "id", 100L);
 
         when(cartRepository.findByMemberIdWithLock(1L)).thenReturn(Optional.of(cart));
-        when(itemRepository.findById(10L)).thenReturn(Optional.of(item));
-        when(itemOptionRepository.findById(100L)).thenReturn(Optional.of(option));
+        when(itemReadPort.findItemById(10L)).thenReturn(Optional.of(item));
+        when(itemReadPort.findItemOptionById(100L)).thenReturn(Optional.of(option));
         when(cartItemRepository.findByCartIdAndItemOptionIdWithLock(1L, 100L)).thenReturn(Optional.empty());
         when(cartItemMapper.toResponseDto(org.mockito.ArgumentMatchers.any(CartItem.class)))
                 .thenReturn(new CartItemResponseDto());
@@ -167,8 +163,8 @@ class CartItemServiceTest {
         ReflectionTestUtils.setField(option, "id", 100L);
 
         when(cartRepository.findByMemberIdWithLock(1L)).thenReturn(Optional.of(cart));
-        when(itemRepository.findById(10L)).thenReturn(Optional.of(item));
-        when(itemOptionRepository.findById(100L)).thenReturn(Optional.of(option));
+        when(itemReadPort.findItemById(10L)).thenReturn(Optional.of(item));
+        when(itemReadPort.findItemOptionById(100L)).thenReturn(Optional.of(option));
         when(cartItemRepository.findByCartIdAndItemOptionIdWithLock(1L, 100L)).thenReturn(Optional.empty());
         when(cartItemMapper.toResponseDto(org.mockito.ArgumentMatchers.any(CartItem.class)))
                 .thenReturn(new CartItemResponseDto());

@@ -4,7 +4,7 @@ package kwh.cofshop.cart.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
-import kwh.cofshop.argumentResolver.LoginMember;
+import kwh.cofshop.global.annotation.LoginMember;
 import kwh.cofshop.cart.dto.request.CartItemRequestDto;
 import kwh.cofshop.cart.dto.response.CartItemResponseDto;
 import kwh.cofshop.cart.service.CartItemService;

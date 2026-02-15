@@ -3,13 +3,11 @@ package kwh.cofshop.security.service;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.UnauthorizedRequestException;
-import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.global.exception.errorcodes.UnauthorizedErrorCode;
+import kwh.cofshop.member.api.MemberReadPort;
 import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.member.repository.MemberRepository;
-import kwh.cofshop.security.JwtTokenProvider;
+import kwh.cofshop.security.token.JwtTokenProvider;
 import kwh.cofshop.security.dto.TokenResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +23,7 @@ import java.util.List;
 public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final JwtTokenProvider jwtTokenProvider;
-    private final MemberRepository memberRepository;
+    private final MemberReadPort memberReadPort;
 
     public TokenResponseDto reissue(HttpServletRequest request, HttpServletResponse response) {
         String refreshToken = extractRefreshToken(request);
@@ -44,8 +42,7 @@ public class AuthService {
             throw new UnauthorizedRequestException(UnauthorizedErrorCode.TOKEN_INVALID);
         }
 
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
+        Member member = memberReadPort.getById(memberId);
 
         String newAccessToken = generateAccessToken(member);
         String newRefreshToken = jwtTokenProvider.createRefreshToken(member.getId(), member.getEmail());
@@ -88,3 +85,4 @@ public class AuthService {
                 .build();
     }
 }
+

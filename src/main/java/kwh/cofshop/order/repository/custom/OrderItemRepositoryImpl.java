@@ -36,7 +36,7 @@ public class OrderItemRepositoryImpl implements OrderItemRepositoryCustom {
                         OrderState.COMPLETED
                 ))
                 .groupBy(item.id)
-                .orderBy(orderItem.quantity.sum().desc()) // 판매량 순
+                .orderBy(orderItem.quantity.sum().desc())
                 .limit(limit)
                 .fetch();
     }

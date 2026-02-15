@@ -72,9 +72,6 @@ public class Review extends BaseTimeEntity { // 리뷰 엔티티 : 1명당 1개�
     // 연관관계 편의 메서드
     public void setMember(Member member) {
         this.member = member;
-        if (!member.getReviews().contains(this)) {
-            member.getReviews().add(this);
-        }
     }
 
     public void setItem(Item item) {

@@ -8,7 +8,7 @@ import kwh.cofshop.chat.dto.response.DeletedMessageResponseDto;
 import kwh.cofshop.chat.service.ChatMessageService;
 import kwh.cofshop.global.exception.UnauthorizedRequestException;
 import kwh.cofshop.global.exception.errorcodes.UnauthorizedErrorCode;
-import kwh.cofshop.security.CustomUserDetails;
+import kwh.cofshop.security.userdetails.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -28,7 +28,7 @@ public class ChatMessageController {
     private final SimpMessagingTemplate template;
 
     @MessageMapping("/chat.sendMessage")
-    public void handleMessage(@Valid @Payload ChatMessageRequestDto requestDto, Principal principal) { // Principal을 사용해서 인증 사용자 정보를 가져온다
+    public void handleMessage(@Valid @Payload ChatMessageRequestDto requestDto, Principal principal) {
         Long memberId = extractMemberId(principal);
         ChatMessageResponseDto responseDto = chatMessageService.createChatMessage(requestDto, memberId);
 
@@ -60,5 +60,4 @@ public class ChatMessageController {
         }
         return userDetails.getId();
     }
-
 }

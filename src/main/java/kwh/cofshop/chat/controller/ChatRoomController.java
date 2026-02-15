@@ -2,7 +2,7 @@ package kwh.cofshop.chat.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
-import kwh.cofshop.argumentResolver.LoginMember;
+import kwh.cofshop.global.annotation.LoginMember;
 import kwh.cofshop.chat.dto.response.ChatRoomResponseDto;
 import kwh.cofshop.chat.service.ChatRoomService;
 import lombok.RequiredArgsConstructor;

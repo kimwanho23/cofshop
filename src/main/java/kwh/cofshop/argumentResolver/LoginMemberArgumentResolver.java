@@ -1,11 +1,12 @@
 package kwh.cofshop.argumentResolver;
 
 import kwh.cofshop.global.exception.BadRequestException;
+import kwh.cofshop.global.annotation.LoginMember;
 import kwh.cofshop.global.exception.UnauthorizedRequestException;
 import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import kwh.cofshop.global.exception.errorcodes.UnauthorizedErrorCode;
-import kwh.cofshop.security.CustomUserDetails;
-import kwh.cofshop.security.JwtTokenProvider;
+import kwh.cofshop.security.userdetails.CustomUserDetails;
+import kwh.cofshop.security.token.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.MethodParameter;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -95,3 +96,4 @@ public class LoginMemberArgumentResolver implements HandlerMethodArgumentResolve
         return null;
     }
 }
+

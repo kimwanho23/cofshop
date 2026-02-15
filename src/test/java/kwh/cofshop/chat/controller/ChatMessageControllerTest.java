@@ -7,7 +7,7 @@ import kwh.cofshop.chat.dto.response.ChatMessageResponseDto;
 import kwh.cofshop.chat.dto.response.DeletedMessageResponseDto;
 import kwh.cofshop.chat.service.ChatMessageService;
 import kwh.cofshop.member.domain.MemberState;
-import kwh.cofshop.security.CustomUserDetails;
+import kwh.cofshop.security.userdetails.CustomUserDetails;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,11 +39,11 @@ class ChatMessageControllerTest {
     private ChatMessageController chatMessageController;
 
     @Test
-    @DisplayName("메시지 전송")
+    @DisplayName("send message")
     void handleMessage() {
         ChatMessageRequestDto requestDto = new ChatMessageRequestDto();
         requestDto.setRoomId(1L);
-        requestDto.setMessage("안녕하세요");
+        requestDto.setMessage("hello");
         requestDto.setMessageType(MessageType.TEXT);
 
         ChatMessageResponseDto responseDto = new ChatMessageResponseDto();
@@ -57,7 +57,7 @@ class ChatMessageControllerTest {
     }
 
     @Test
-    @DisplayName("메시지 삭제")
+    @DisplayName("delete message")
     void deleteMessage() {
         DeleteMessageRequestDto requestDto = new DeleteMessageRequestDto();
         requestDto.setRoomId(2L);

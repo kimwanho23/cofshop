@@ -2,7 +2,7 @@ package kwh.cofshop.payment.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
-import kwh.cofshop.argumentResolver.LoginMember;
+import kwh.cofshop.global.annotation.LoginMember;
 import kwh.cofshop.payment.dto.request.PaymentPrepareRequestDto;
 import kwh.cofshop.payment.dto.response.PaymentProviderResponseDto;
 import kwh.cofshop.payment.dto.request.PaymentRefundRequestDto;

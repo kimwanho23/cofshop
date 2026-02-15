@@ -1,7 +1,6 @@
 package kwh.cofshop.member.service;
 
 import kwh.cofshop.global.exception.BusinessException;
-import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.domain.MemberState;
 import kwh.cofshop.member.dto.request.MemberRequestDto;
@@ -48,7 +47,7 @@ class MemberServiceTest {
     private MemberService memberService;
 
     @Test
-    @DisplayName("회원 가입: 중복 이메일")
+    @DisplayName("Sign up fails when email already exists")
     void signUp_duplicateEmail() {
         MemberRequestDto requestDto = new MemberRequestDto();
         requestDto.setEmail("user@example.com");
@@ -60,18 +59,18 @@ class MemberServiceTest {
     }
 
     @Test
-    @DisplayName("회원 가입: 성공")
+    @DisplayName("Sign up succeeds")
     void signUp_success() {
         MemberRequestDto requestDto = new MemberRequestDto();
         requestDto.setEmail("user@example.com");
-        requestDto.setMemberName("사용자");
+        requestDto.setMemberName("user");
         requestDto.setMemberPwd("pw");
         requestDto.setTel("01012341234");
 
         Member member = Member.builder()
                 .id(1L)
                 .email("user@example.com")
-                .memberName("사용자")
+                .memberName("user")
                 .memberPwd("encoded")
                 .tel("01012341234")
                 .build();
@@ -92,7 +91,7 @@ class MemberServiceTest {
     }
 
     @Test
-    @DisplayName("회원 단건 조회")
+    @DisplayName("Find member by id")
     void findMember() {
         Member member = Member.builder().build();
         MemberResponseDto responseDto = new MemberResponseDto();
@@ -105,7 +104,7 @@ class MemberServiceTest {
     }
 
     @Test
-    @DisplayName("회원 목록 조회")
+    @DisplayName("Find member list")
     void memberLists() {
         Member member = Member.builder().build();
         when(memberRepository.findAll()).thenReturn(List.of(member));
@@ -117,7 +116,7 @@ class MemberServiceTest {
     }
 
     @Test
-    @DisplayName("회원 상태 변경")
+    @DisplayName("Change member state")
     void changeMemberState() {
         Member member = Member.builder().build();
         ReflectionTestUtils.setField(member, "memberState", MemberState.ACTIVE);
@@ -129,7 +128,7 @@ class MemberServiceTest {
     }
 
     @Test
-    @DisplayName("비밀번호 변경")
+    @DisplayName("Update password")
     void updateMemberPassword() {
         Member member = Member.builder().build();
         when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
@@ -141,7 +140,7 @@ class MemberServiceTest {
     }
 
     @Test
-    @DisplayName("포인트 변경")
+    @DisplayName("Update point")
     void updatePoint() {
         Member member = Member.builder().build();
         ReflectionTestUtils.setField(member, "point", 0);
@@ -153,32 +152,7 @@ class MemberServiceTest {
     }
 
     @Test
-    @DisplayName("포인트 복구: 성공")
-    void restorePoint_success() {
-        Member member = Member.builder().build();
-        ReflectionTestUtils.setField(member, "point", 0);
-        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
-
-        memberService.restorePoint(1L, 100);
-
-        assertThat(member.getPoint()).isEqualTo(100);
-    }
-
-    @Test
-    @DisplayName("포인트 복구: 실패")
-    void restorePoint_invalid() {
-        Member member = Member.builder().build();
-        ReflectionTestUtils.setField(member, "point", 0);
-        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
-
-        assertThatThrownBy(() -> memberService.restorePoint(1L, 0))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode")
-                .isEqualTo(BusinessErrorCode.INVALID_POINT_OPERATION);
-    }
-
-    @Test
-    @DisplayName("회원 조회 실패")
+    @DisplayName("Get member fails when not found")
     void getMember_notFound() {
         when(memberRepository.findById(1L)).thenReturn(Optional.empty());
 

@@ -2,7 +2,7 @@ package kwh.cofshop.cart.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import kwh.cofshop.argumentResolver.LoginMember;
+import kwh.cofshop.global.annotation.LoginMember;
 import kwh.cofshop.cart.dto.response.CartResponseDto;
 import kwh.cofshop.cart.service.CartService;
 import lombok.RequiredArgsConstructor;

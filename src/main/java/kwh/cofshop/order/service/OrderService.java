@@ -1,17 +1,16 @@
 package kwh.cofshop.order.service;
 
-import kwh.cofshop.argumentResolver.DistributedLock;
-import kwh.cofshop.coupon.domain.MemberCoupon;
-import kwh.cofshop.coupon.application.factory.CouponDiscountPolicyFactory;
-import kwh.cofshop.coupon.domain.policy.discount.CouponDiscountPolicy;
-import kwh.cofshop.coupon.application.service.MemberCouponService;
+import kwh.cofshop.global.annotation.DistributedLock;
+import kwh.cofshop.coupon.api.CouponApi;
+import kwh.cofshop.coupon.api.CouponApplyResult;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.ForbiddenRequestException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.global.exception.errorcodes.ForbiddenErrorCode;
 import kwh.cofshop.item.domain.ItemOption;
+import kwh.cofshop.member.api.MemberPointPort;
+import kwh.cofshop.member.api.MemberReadPort;
 import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.member.service.MemberService;
 import kwh.cofshop.order.domain.Address;
 import kwh.cofshop.order.domain.Order;
 import kwh.cofshop.order.domain.OrderItem;
@@ -19,13 +18,11 @@ import kwh.cofshop.order.domain.OrderState;
 import kwh.cofshop.order.dto.request.OrderRequestDto;
 import kwh.cofshop.order.dto.response.OrderCancelResponseDto;
 import kwh.cofshop.order.dto.response.OrderResponseDto;
-import kwh.cofshop.payment.domain.PaymentEntity;
-import kwh.cofshop.payment.domain.PaymentStatus;
+import kwh.cofshop.order.api.OrderPaymentStatusPort;
 import kwh.cofshop.order.mapper.OrderMapper;
 import kwh.cofshop.order.policy.DeliveryFeePolicy;
 import kwh.cofshop.order.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -35,7 +32,6 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class OrderService {
 
 
@@ -46,17 +42,18 @@ public class OrderService {
     private final DeliveryFeePolicy deliveryFeePolicy;
 
     // Member 관련 서비스
-    private final MemberService memberService;
-    private final MemberCouponService memberCouponService;
+    private final MemberReadPort memberReadPort;
+    private final MemberPointPort memberPointPort;
+    private final CouponApi couponApi;
 
     // 쿠폰 할인 정책
-    private final CouponDiscountPolicyFactory couponDiscountPolicyFactory;
+    private final OrderPaymentStatusPort orderPaymentStatusPort;
 
     // 바로구매 로직
     @DistributedLock(keyName = "'order:create:' + #memberId")
     @Transactional
     public OrderResponseDto createInstanceOrder(Long memberId, OrderRequestDto orderRequestDto) {
-        Member member = memberService.getMemberWithLock(memberId);
+        Member member = memberReadPort.getByIdWithLock(memberId);
 
         // 옵션 조회
         List<ItemOption> itemOptions = orderItemService.getItemOptionsWithLock(orderRequestDto.getOrderItemRequestDtoList());
@@ -118,8 +115,7 @@ public class OrderService {
         }
 
         if (order.getOrderState() == OrderState.PAYMENT_PENDING) {
-            PaymentEntity payment = order.getPayment();
-            if (payment != null && payment.getStatus() == PaymentStatus.READY) {
+            if (orderPaymentStatusPort.hasReadyPayment(order.getId())) {
                 return;
             }
         }
@@ -141,10 +137,10 @@ public class OrderService {
 
     private void restoreMemberBenefits(Order order) {
         if (order.getUsePoint() != null && order.getUsePoint() > 0) {
-            memberService.restorePoint(order.getMember().getId(), order.getUsePoint());
+            memberPointPort.restorePoint(order.getMember().getId(), order.getUsePoint());
         }
-        if (order.getMemberCoupon() != null) {
-            memberCouponService.restoreCoupon(order.getMemberCoupon().getId());
+        if (order.getMemberCouponId() != null) {
+            couponApi.restoreCoupon(order.getMemberCouponId());
         }
     }
 
@@ -187,16 +183,11 @@ public class OrderService {
             return order.getTotalPrice();
         }
 
-        MemberCoupon memberCoupon = memberCouponService.findValidCoupon(dto.getMemberCouponId(), memberId);
-        Integer minOrderPrice = memberCoupon.getCoupon().getMinOrderPrice();
-        if (minOrderPrice != null && order.getTotalPrice() < minOrderPrice) {
-            throw new BusinessException(BusinessErrorCode.COUPON_NOT_AVAILABLE);
-        }
-        CouponDiscountPolicy policy = couponDiscountPolicyFactory.getPolicy(memberCoupon.getCoupon().getType());
-        Long discount = policy.calculateDiscount(order.getTotalPrice(), memberCoupon.getCoupon());
+        CouponApplyResult couponApplyResult =
+                couponApi.applyCoupon(dto.getMemberCouponId(), memberId, order.getTotalPrice());
+        long discount = couponApplyResult.discountAmount();
 
-        memberCoupon.useCoupon();
-        order.addUseCoupon(memberCoupon, discount);
+        order.addUseCoupon(couponApplyResult.memberCouponId(), discount);
 
         return order.getTotalPrice() - discount;
     }

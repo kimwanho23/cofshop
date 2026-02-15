@@ -2,6 +2,7 @@ package kwh.cofshop.security;
 
 import kwh.cofshop.global.exception.ForbiddenRequestException;
 import kwh.cofshop.global.exception.errorcodes.ForbiddenErrorCode;
+import kwh.cofshop.security.handler.CustomAccessDeniedHandler;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,7 +26,7 @@ class CustomAccessDeniedHandlerTest {
     private HandlerExceptionResolver handlerExceptionResolver;
 
     @Test
-    @DisplayName("인가 실패는 전역 예외 처리로 위임된다")
+    @DisplayName("?멸? ?ㅽ뙣???꾩뿭 ?덉쇅 泥섎━濡??꾩엫?쒕떎")
     void handle_delegatesToHandlerExceptionResolver() throws Exception {
         CustomAccessDeniedHandler deniedHandler = new CustomAccessDeniedHandler(handlerExceptionResolver);
         MockHttpServletRequest request = new MockHttpServletRequest();

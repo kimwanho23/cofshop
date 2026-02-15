@@ -3,11 +3,28 @@
 이 문서는 `cofshop` 백엔드의 주요 모듈을 패키지 기준으로 요약하고, 각 모듈의 책임과 주요 흐름을 설명합니다.
 
 ## 공통/인프라
-- config: 보안, Swagger, Redis/Stream, Elasticsearch, WebSocket, QueryDSL, CORS, PortOne 설정
-- global: 공통 응답 포맷(ApiResponse)과 예외 처리(GlobalExceptionHandler)
+- config: 보안, Swagger, Redis/Stream, WebSocket, QueryDSL, CORS, PortOne 설정
+- global: 공통 애노테이션/예외/에러코드/공통 도메인 타입
 - aspect: 분산락/로깅/트랜잭션 보조 AOP
 - argumentResolver: 로그인 사용자 주입과 분산락 키 파싱
 - file: 업로드 파일 메타데이터/저장소 추상화
+
+## Spring Modulith 경계(현재)
+- 루트 모듈은 `cart`, `chat`, `coupon`, `file`, `global`, `item`, `member`, `order`, `payment`, `security`, `statistics` 총 11개이며 모두 `CLOSED`로 선언
+- `allowedDependencies`를 통해 모듈 간 허용 의존만 명시
+- 공개 `NamedInterface`
+  - `member::{api,domain,event,dtoRequest,dtoResponse}`
+  - `item::{api,domain}`
+  - `order::{api,domain}`
+  - `coupon::api`
+  - `file::api` (패키지: `file.domain`)
+  - `global::{annotation,domain,exception,errorcodes}`
+  - `security::{userdetails,token}`
+- `payment`/`statistics`는 `order::api`로만 주문 영역에 접근
+- `cart`/`chat`/`coupon`/`item`/`security`/`order`의 회원 접근은 `member::api` 포트(`MemberReadPort`, `MemberPointPort`)를 사용
+- `cart`/`order`의 상품 조회는 `item::api(ItemReadPort)`를 통해 수행
+- `item`은 `file::api`만 참조해 파일 모듈 의존 범위를 최소화
+- 아키텍처 스모크 테스트(`ModularitySmokeTest`)에서 모듈 목록, `CLOSED` 여부, 핵심 의존 관계를 검증
 
 ## 회원(member)
 - 책임: 회원 가입/로그인, 상태(활성/탈퇴/정지) 관리, 멤버십 정책 적용
@@ -17,7 +34,7 @@
 ## 상품(item)
 - 책임: 상품/옵션/이미지/카테고리/리뷰 관리, 검색
 - 주요 구성: 엔티티(`Item`, `ItemOption`, `ItemImg`, `Category`, `Review`) + MapStruct 매퍼
-- 검색: Elasticsearch 연동 레포지토리(`item/repository/elasticSearch`)
+- 검색: 현재는 DB 기반 조회 흐름으로 단순화
 - 흐름 요약: 등록/수정/삭제, 카테고리 트리 구성, 상품 검색/리뷰 관리
 
 ## 주문(order)
@@ -32,6 +49,8 @@
 
 ## 쿠폰(coupon)
 - 책임: 쿠폰 생성/발급/사용/만료, Redis 기반 발급 처리
+- 패키지 구조: `api`, `controller`, `service`, `domain`, `repository`, `dto`, `mapper` 중심으로 단순화
+- 부가 구성: 비동기/운영성 코드는 `messaging`, `scheduler`, `redisstream`, `repository.outbox`, `service.outbox`로 분리
 - Redis 구조
   - 재고/중복/순서 제어: `coupon:stock:*`, `coupon:issued:*`, `coupon:issued:order:*`, `coupon:seq:*`
   - 발급 큐: Redis Stream `stream:events`
@@ -68,19 +87,19 @@
 
 ### 결제(payment) 플로우 (요약 시퀀스)
 1) 클라이언트가 결제 준비 요청 -> `PaymentController`  
-2) `PaymentService.createPaymentRequest()`에서 주문 조회 후 `order.pay()` 처리  
+2) `PaymentService.createPaymentRequest()`에서 `order.api.OrderPaymentPreparePort.prepare()` 호출  
 3) `PaymentEntity` 저장 -> 프론트 결제 화면으로 응답  
 4) 결제 완료 후 검증 호출 -> `verifyPayment()`  
 5) Iamport API 검증 후 금액/merchantUid 대조 -> 결제 상태 확정  
 6) 환불 요청 시 `refundPayment()`에서 상태 확인 + Iamport 취소 호출  
 
 ### 쿠폰(coupon) 플로우 (Limited 쿠폰 발급)
-1) 발급 요청 -> `MemberCouponRedisService.enqueueLimitedCouponIssueRequest()`  
+1) 발급 요청 수신  
 2) Redis Stream `stream:events`에 메시지 적재  
-3) `RedisStreamConfig`의 컨슈머 그룹이 메시지 수신  
-4) `CouponStreamConsumer.onMessage()`에서 `CouponRedisService.issueCoupon()` 실행  
-5) Lua 스크립트로 재고/중복/순서 제어 후 결과 반환  
-6) 성공 시 ACK 처리, 실패 시 pending으로 남아 `PendingMessageCleaner`가 재처리  
+3) 컨슈머가 메시지를 수신해 발급 정책/재고/중복 조건을 검증  
+4) 검증 통과 시 DB 발급 이력 반영  
+5) 성공 메시지는 ACK 처리  
+6) 실패/지연 메시지는 재처리 작업으로 보정  
 
 ### 채팅(chat) 플로우 (STOMP)
 1) 클라이언트가 `/ws-chat` 연결  

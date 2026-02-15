@@ -10,10 +10,9 @@ import kwh.cofshop.cart.repository.CartItemRepository;
 import kwh.cofshop.cart.repository.CartRepository;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
+import kwh.cofshop.item.api.ItemReadPort;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemOption;
-import kwh.cofshop.item.repository.ItemOptionRepository;
-import kwh.cofshop.item.repository.ItemRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,8 +27,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class CartItemService {
     private final CartItemMapper cartItemMapper;
-    private final ItemRepository itemRepository;
-    private final ItemOptionRepository itemOptionRepository;
+    private final ItemReadPort itemReadPort;
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
 
@@ -39,10 +37,10 @@ public class CartItemService {
         Cart cart = cartRepository.findByMemberIdWithLock(memberId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.CART_NOT_FOUND));
 
-        Item item = itemRepository.findById(cartItemRequestDto.getItemId())
+        Item item = itemReadPort.findItemById(cartItemRequestDto.getItemId())
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
 
-        ItemOption itemOption = itemOptionRepository.findById(cartItemRequestDto.getOptionId())
+        ItemOption itemOption = itemReadPort.findItemOptionById(cartItemRequestDto.getOptionId())
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_OPTION_NOT_FOUND));
 
         if (!itemOption.getItem().getId().equals(item.getId())) {

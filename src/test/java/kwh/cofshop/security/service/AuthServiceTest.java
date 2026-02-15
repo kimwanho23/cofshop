@@ -3,10 +3,11 @@ package kwh.cofshop.security.service;
 import jakarta.servlet.http.Cookie;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.UnauthorizedRequestException;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
+import kwh.cofshop.member.api.MemberReadPort;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.domain.Role;
-import kwh.cofshop.member.repository.MemberRepository;
-import kwh.cofshop.security.JwtTokenProvider;
+import kwh.cofshop.security.token.JwtTokenProvider;
 import kwh.cofshop.security.dto.TokenResponseDto;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,8 +19,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -38,7 +37,7 @@ class AuthServiceTest {
     private JwtTokenProvider jwtTokenProvider;
 
     @Mock
-    private MemberRepository memberRepository;
+    private MemberReadPort memberReadPort;
 
     @InjectMocks
     private AuthService authService;
@@ -93,7 +92,7 @@ class AuthServiceTest {
         when(jwtTokenProvider.isRefreshToken("token")).thenReturn(true);
         when(jwtTokenProvider.getMemberId("token")).thenReturn(1L);
         when(refreshTokenService.matches(1L, "token")).thenReturn(true);
-        when(memberRepository.findById(1L)).thenReturn(Optional.empty());
+        when(memberReadPort.getById(1L)).thenThrow(new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
 
         assertThatThrownBy(() -> authService.reissue(request, response))
                 .isInstanceOf(BusinessException.class);
@@ -119,7 +118,7 @@ class AuthServiceTest {
         when(jwtTokenProvider.isRefreshToken("token")).thenReturn(true);
         when(jwtTokenProvider.getMemberId("token")).thenReturn(1L);
         when(refreshTokenService.matches(1L, "token")).thenReturn(true);
-        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(memberReadPort.getById(1L)).thenReturn(member);
         when(jwtTokenProvider.createAccessToken(anyLong(), any(), any())).thenReturn("access");
         when(jwtTokenProvider.createRefreshToken(1L, "user@example.com")).thenReturn("refresh");
 
@@ -134,3 +133,4 @@ class AuthServiceTest {
         verify(refreshTokenService).save(1L, "refresh");
     }
 }
+

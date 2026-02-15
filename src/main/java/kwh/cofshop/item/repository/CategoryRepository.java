@@ -2,7 +2,7 @@ package kwh.cofshop.item.repository;
 
 import kwh.cofshop.item.domain.Category;
 import kwh.cofshop.item.dto.CategoryPathResponseDto;
-import kwh.cofshop.item.repository.custom.CategoryRepositoryCustom;
+import kwh.cofshop.item.repository.query.CategoryRepositoryCustom;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

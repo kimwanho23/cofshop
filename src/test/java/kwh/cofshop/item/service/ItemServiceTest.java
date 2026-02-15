@@ -14,6 +14,7 @@ import kwh.cofshop.item.dto.request.ItemSearchRequestDto;
 import kwh.cofshop.item.dto.request.ItemUpdateRequestDto;
 import kwh.cofshop.item.dto.response.ItemResponseDto;
 import kwh.cofshop.item.dto.response.ItemSearchResponseDto;
+import kwh.cofshop.item.api.PopularItemPort;
 import kwh.cofshop.item.mapper.ItemMapper;
 import kwh.cofshop.item.mapper.ItemSearchMapper;
 import kwh.cofshop.item.repository.CategoryRepository;
@@ -21,9 +22,8 @@ import kwh.cofshop.item.repository.ItemCategoryRepository;
 import kwh.cofshop.item.repository.ItemImgRepository;
 import kwh.cofshop.item.repository.ItemOptionRepository;
 import kwh.cofshop.item.repository.ItemRepository;
+import kwh.cofshop.member.api.MemberReadPort;
 import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.member.repository.MemberRepository;
-import kwh.cofshop.order.repository.OrderItemRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -69,7 +69,7 @@ class ItemServiceTest {
     private ItemCategoryService itemCategoryService;
 
     @Mock
-    private MemberRepository memberRepository;
+    private MemberReadPort memberReadPort;
 
     @Mock
     private CategoryRepository categoryRepository;
@@ -84,7 +84,7 @@ class ItemServiceTest {
     private ItemImgRepository itemImgRepository;
 
     @Mock
-    private OrderItemRepository orderItemRepository;
+    private PopularItemPort popularItemPort;
 
     @InjectMocks
     private ItemService itemService;
@@ -93,7 +93,7 @@ class ItemServiceTest {
     @DisplayName("상품 등록: 카테고리 없음")
     void saveItem_categoryNotFound() throws IOException {
         Member member = createMember(1L);
-        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(memberReadPort.getById(1L)).thenReturn(member);
 
         ItemRequestDto requestDto = createRequestDto();
         when(categoryRepository.findById(1L)).thenReturn(Optional.empty());
@@ -108,7 +108,7 @@ class ItemServiceTest {
     @DisplayName("상품 등록: 성공")
     void saveItem_success() throws IOException {
         Member member = createMember(1L);
-        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(memberReadPort.getById(1L)).thenReturn(member);
 
         Item item = createItem();
         ReflectionTestUtils.setField(item, "id", 1L);
@@ -212,7 +212,7 @@ class ItemServiceTest {
     @DisplayName("인기 상품 조회")
     void getPopularItem() {
         Item item = createItem();
-        when(orderItemRepository.getPopularItems(3)).thenReturn(List.of(item));
+        when(popularItemPort.getPopularItems(3)).thenReturn(List.of(item));
         when(itemMapper.toResponseDto(item)).thenReturn(new ItemResponseDto());
 
         List<ItemResponseDto> result = itemService.getPopularItem(3);

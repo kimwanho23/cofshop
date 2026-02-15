@@ -6,6 +6,7 @@ import kwh.cofshop.global.exception.ForbiddenRequestException;
 import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.global.exception.errorcodes.ForbiddenErrorCode;
+import kwh.cofshop.item.api.PopularItemPort;
 import kwh.cofshop.item.domain.*;
 import kwh.cofshop.item.dto.request.ItemImgRequestDto;
 import kwh.cofshop.item.dto.request.ItemRequestDto;
@@ -17,9 +18,8 @@ import kwh.cofshop.item.mapper.ItemMapper;
 import kwh.cofshop.item.mapper.ItemSearchMapper;
 import kwh.cofshop.item.repository.*;
 import kwh.cofshop.item.vo.ItemImgUploadVO;
+import kwh.cofshop.member.api.MemberReadPort;
 import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.member.repository.MemberRepository;
-import kwh.cofshop.order.repository.OrderItemRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -48,18 +48,17 @@ public class ItemService { // 통합 Item 서비스
     private final ItemOptionService itemOptionService; // 옵션 서비스
     private final ItemCategoryService itemCategoryService;
 
-    private final MemberRepository memberRepository;
+    private final MemberReadPort memberReadPort;
     private final CategoryRepository categoryRepository;
     private final ItemCategoryRepository itemCategoryRepository;
     private final ItemOptionRepository itemOptionRepository;
     private final ItemImgRepository itemImgRepository;
-    private final OrderItemRepository orderItemRepository;
+    private final PopularItemPort popularItemPort;
 
     @Transactional
     public ItemResponseDto saveItem(ItemRequestDto itemRequestDto, Long id, List<MultipartFile> images) throws IOException {
         // 상품 등록자
-        Member member = memberRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
+        Member member = memberReadPort.getById(id);
 
         List<ItemImgRequestDto> imgRequestDtoList = itemRequestDto.getItemImgRequestDto();
         if (images == null || images.isEmpty()
@@ -173,7 +172,7 @@ public class ItemService { // 통합 Item 서비스
 
     // 많이 팔린 상품 조회
     public List<ItemResponseDto> getPopularItem(int limit) {
-        List<Item> popularItems = orderItemRepository.getPopularItems(limit);
+        List<Item> popularItems = popularItemPort.getPopularItems(limit);
         return popularItems.stream()
                 .map(itemMapper::toResponseDto)
                 .toList();

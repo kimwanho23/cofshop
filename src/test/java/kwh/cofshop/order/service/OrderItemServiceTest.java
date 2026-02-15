@@ -3,7 +3,7 @@ package kwh.cofshop.order.service;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemOption;
 import kwh.cofshop.item.domain.OptionState;
-import kwh.cofshop.item.repository.ItemOptionRepository;
+import kwh.cofshop.item.api.ItemReadPort;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.order.domain.OrderItem;
@@ -26,7 +26,7 @@ import static org.mockito.Mockito.when;
 class OrderItemServiceTest {
 
     @Mock
-    private ItemOptionRepository itemOptionRepository;
+    private ItemReadPort itemReadPort;
 
     @InjectMocks
     private OrderItemService orderItemService;
@@ -39,7 +39,7 @@ class OrderItemServiceTest {
 
         ItemOption option = createOption(10L, createItem(1L), 100, 10);
 
-        when(itemOptionRepository.findAllByIdInWithLock(List.of(10L))).thenReturn(List.of(option));
+        when(itemReadPort.findItemOptionsByIdsWithLock(List.of(10L))).thenReturn(List.of(option));
 
         List<ItemOption> result = orderItemService.getItemOptionsWithLock(List.of(dto));
 

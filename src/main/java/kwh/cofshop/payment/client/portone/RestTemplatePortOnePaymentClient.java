@@ -1,6 +1,6 @@
 package kwh.cofshop.payment.client.portone;
 
-import kwh.cofshop.config.properties.PortOneApiProperties;
+import kwh.cofshop.payment.properties.PortOneApiProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;

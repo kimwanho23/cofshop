@@ -1,6 +1,6 @@
 package kwh.cofshop.aspect;
 
-import kwh.cofshop.argumentResolver.DistributedLock;
+import kwh.cofshop.global.annotation.DistributedLock;
 import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import lombok.RequiredArgsConstructor;

@@ -7,9 +7,9 @@ import kwh.cofshop.chat.mapper.ChatRoomMapper;
 import kwh.cofshop.chat.repository.ChatRoomRepository;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
+import kwh.cofshop.member.api.MemberReadPort;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.domain.Role;
-import kwh.cofshop.member.repository.MemberRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,7 +33,7 @@ class ChatRoomServiceTest {
     private ChatRoomRepository chatRoomRepository;
 
     @Mock
-    private MemberRepository memberRepository;
+    private MemberReadPort memberReadPort;
 
     @Mock
     private ChatRoomMapper chatRoomMapper;
@@ -44,7 +44,7 @@ class ChatRoomServiceTest {
     @Test
     @DisplayName("채팅방 생성: 회원 없음")
     void createChatRoom_memberNotFound() {
-        when(memberRepository.findById(anyLong())).thenReturn(Optional.empty());
+        when(memberReadPort.getById(anyLong())).thenThrow(new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
 
         assertThatThrownBy(() -> chatRoomService.createChatRoom(1L))
                 .isInstanceOf(BusinessException.class);
@@ -57,7 +57,7 @@ class ChatRoomServiceTest {
         ChatRoom chatRoom = ChatRoom.createChatRoom(customer);
         ChatRoomResponseDto responseDto = new ChatRoomResponseDto();
 
-        when(memberRepository.findById(1L)).thenReturn(Optional.of(customer));
+        when(memberReadPort.getById(1L)).thenReturn(customer);
         when(chatRoomRepository.save(org.mockito.ArgumentMatchers.any(ChatRoom.class))).thenReturn(chatRoom);
         when(chatRoomMapper.toResponseDto(chatRoom)).thenReturn(responseDto);
 
@@ -122,7 +122,7 @@ class ChatRoomServiceTest {
         ChatRoom chatRoom = ChatRoom.createChatRoom(customer);
 
         when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
-        when(memberRepository.findById(2L)).thenReturn(Optional.empty());
+        when(memberReadPort.getById(2L)).thenThrow(new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
 
         assertThatThrownBy(() -> chatRoomService.joinChatAgent(1L, 2L))
                 .isInstanceOf(BusinessException.class);
@@ -136,7 +136,7 @@ class ChatRoomServiceTest {
         ChatRoom chatRoom = ChatRoom.createChatRoom(customer);
 
         when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
-        when(memberRepository.findById(2L)).thenReturn(Optional.of(agent));
+        when(memberReadPort.getById(2L)).thenReturn(agent);
 
         assertThatThrownBy(() -> chatRoomService.joinChatAgent(1L, 2L))
                 .isInstanceOf(BusinessException.class)
@@ -152,7 +152,7 @@ class ChatRoomServiceTest {
         ChatRoom chatRoom = ChatRoom.createChatRoom(customer);
 
         when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
-        when(memberRepository.findById(2L)).thenReturn(Optional.of(agent));
+        when(memberReadPort.getById(2L)).thenReturn(agent);
 
         chatRoomService.joinChatAgent(1L, 2L);
 

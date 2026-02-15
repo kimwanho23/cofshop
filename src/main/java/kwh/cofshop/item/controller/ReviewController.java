@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
-import kwh.cofshop.argumentResolver.LoginMember;
+import kwh.cofshop.global.annotation.LoginMember;
 import kwh.cofshop.item.dto.request.ReviewRequestDto;
 import kwh.cofshop.item.dto.response.ReviewResponseDto;
 import kwh.cofshop.item.service.ReviewService;

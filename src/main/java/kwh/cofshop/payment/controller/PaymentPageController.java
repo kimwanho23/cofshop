@@ -1,6 +1,6 @@
 package kwh.cofshop.payment.controller;
 
-import kwh.cofshop.config.properties.PortOneBrowserProperties;
+import kwh.cofshop.payment.properties.PortOneBrowserProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;

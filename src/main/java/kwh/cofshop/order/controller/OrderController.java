@@ -3,7 +3,7 @@ package kwh.cofshop.order.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
-import kwh.cofshop.argumentResolver.LoginMember;
+import kwh.cofshop.global.annotation.LoginMember;
 import kwh.cofshop.order.dto.request.OrderCancelRequestDto;
 import kwh.cofshop.order.dto.request.OrderRequestDto;
 import kwh.cofshop.order.dto.response.OrderCancelResponseDto;

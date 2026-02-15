@@ -2,12 +2,11 @@ package kwh.cofshop.order.service;
 
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
+import kwh.cofshop.item.api.ItemReadPort;
 import kwh.cofshop.item.domain.ItemOption;
-import kwh.cofshop.item.repository.ItemOptionRepository;
 import kwh.cofshop.order.domain.OrderItem;
 import kwh.cofshop.order.dto.request.OrderItemRequestDto;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -18,10 +17,9 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class OrderItemService {
 
-    private final ItemOptionRepository itemOptionRepository;
+    private final ItemReadPort itemReadPort;
 
     // 옵션 조회
     public List<ItemOption> getItemOptionsWithLock(List<OrderItemRequestDto> itemDtoList) {
@@ -29,7 +27,7 @@ public class OrderItemService {
                 .map(OrderItemRequestDto::getOptionId)
                 .toList();
 
-        return itemOptionRepository.findAllByIdInWithLock(optionIds);
+        return itemReadPort.findItemOptionsByIdsWithLock(optionIds);
     }
 
     // 주문 생성

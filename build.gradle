@@ -26,6 +26,13 @@ repositories {
 
 ext {
 	set('snippetsDir', file("build/generated-snippets"))
+	set('springModulithVersion', '1.3.12')
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.modulith:spring-modulith-bom:${springModulithVersion}"
+	}
 }
 
 dependencies {
@@ -74,8 +81,9 @@ dependencies {
 	implementation 'org.mapstruct:mapstruct:1.5.5.Final'
 	annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
 
-	//ElasticSearch
-	implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
+	// Spring Modulith
+	implementation 'org.springframework.modulith:spring-modulith-starter-core'
+	testImplementation 'org.springframework.modulith:spring-modulith-starter-test'
 
 }
 

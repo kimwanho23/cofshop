@@ -1,7 +1,7 @@
 package kwh.cofshop.chat.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
-import kwh.cofshop.argumentResolver.LoginMember;
+import kwh.cofshop.global.annotation.LoginMember;
 import kwh.cofshop.chat.dto.response.ChatMessageResponseDto;
 import kwh.cofshop.chat.service.ChatMessageService;
 import lombok.RequiredArgsConstructor;

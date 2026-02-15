@@ -11,8 +11,8 @@ import kwh.cofshop.member.mapper.MemberMapper;
 import kwh.cofshop.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,11 +29,10 @@ public class MemberService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
 
-
     @Transactional
-    public MemberResponseDto signUp(MemberRequestDto memberDto) { // Save, Update 로직
+    public MemberResponseDto signUp(MemberRequestDto memberDto) {
         if (memberRepository.findByEmail(memberDto.getEmail()).isPresent()) {
-            throw new BusinessException(BusinessErrorCode.MEMBER_ALREADY_EXISTS); // 이미 존재하는 이메일
+            throw new BusinessException(BusinessErrorCode.MEMBER_ALREADY_EXISTS);
         }
 
         memberDto.setMemberPwd(passwordEncoder.encode(memberDto.getMemberPwd()));
@@ -44,6 +43,7 @@ public class MemberService {
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(BusinessErrorCode.MEMBER_ALREADY_EXISTS);
         }
+
         eventPublisher.publishEvent(new MemberCreatedEvent(member.getId()));
         return memberMapper.toResponseDto(member);
     }
@@ -59,22 +59,18 @@ public class MemberService {
                 .toList();
     }
 
-    // 회원 상태 변경
     @Transactional
     public void changeMemberState(Long memberId, MemberState newState) {
         Member member = getMember(memberId);
         member.changeMemberState(newState);
     }
 
-    // 비밀번호 변경
     @Transactional
     public void updateMemberPassword(Long memberId, String newPassword) {
         Member member = getMember(memberId);
-        String encodePassword = passwordEncoder.encode(newPassword);
-        member.changePassword(encodePassword);
+        member.changePassword(passwordEncoder.encode(newPassword));
     }
 
-    // 포인트 증가
     @Transactional
     public Integer updatePoint(Long id, int point) {
         Member member = getMember(id);
@@ -82,23 +78,8 @@ public class MemberService {
         return member.getPoint();
     }
 
-
-    // 포인트 복구
-    @Transactional
-    public void restorePoint(Long memberId, int point) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
-        member.restorePoint(point);
-    }
-
     public Member getMember(Long id) {
         return memberRepository.findById(id).orElseThrow(
-                () -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND)
-        );
-    }
-
-    public Member getMemberWithLock(Long id) {
-        return memberRepository.findByIdWithLock(id).orElseThrow(
                 () -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND)
         );
     }

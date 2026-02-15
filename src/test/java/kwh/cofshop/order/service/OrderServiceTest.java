@@ -1,20 +1,16 @@
 package kwh.cofshop.order.service;
 
-import kwh.cofshop.coupon.domain.Coupon;
-import kwh.cofshop.coupon.domain.CouponState;
-import kwh.cofshop.coupon.domain.CouponType;
-import kwh.cofshop.coupon.domain.MemberCoupon;
-import kwh.cofshop.coupon.application.factory.CouponDiscountPolicyFactory;
-import kwh.cofshop.coupon.domain.policy.discount.CouponDiscountPolicy;
-import kwh.cofshop.coupon.application.service.MemberCouponService;
+import kwh.cofshop.coupon.api.CouponApi;
+import kwh.cofshop.coupon.api.CouponApplyResult;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemOption;
+import kwh.cofshop.member.api.MemberPointPort;
+import kwh.cofshop.member.api.MemberReadPort;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.domain.MemberState;
 import kwh.cofshop.member.domain.Role;
-import kwh.cofshop.member.service.MemberService;
 import kwh.cofshop.order.domain.Order;
 import kwh.cofshop.order.domain.OrderItem;
 import kwh.cofshop.order.domain.OrderState;
@@ -26,8 +22,7 @@ import kwh.cofshop.order.dto.response.OrderResponseDto;
 import kwh.cofshop.order.mapper.OrderMapper;
 import kwh.cofshop.order.policy.DeliveryFeePolicy;
 import kwh.cofshop.order.repository.OrderRepository;
-import kwh.cofshop.payment.domain.PaymentEntity;
-import kwh.cofshop.payment.domain.PaymentStatus;
+import kwh.cofshop.order.api.OrderPaymentStatusPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -67,13 +62,16 @@ class OrderServiceTest {
     private DeliveryFeePolicy deliveryFeePolicy;
 
     @Mock
-    private MemberService memberService;
+    private MemberReadPort memberReadPort;
 
     @Mock
-    private MemberCouponService memberCouponService;
+    private MemberPointPort memberPointPort;
 
     @Mock
-    private CouponDiscountPolicyFactory couponDiscountPolicyFactory;
+    private CouponApi couponApi;
+
+    @Mock
+    private OrderPaymentStatusPort orderPaymentStatusPort;
 
     @InjectMocks
     private OrderService orderService;
@@ -82,7 +80,7 @@ class OrderServiceTest {
     @DisplayName("주문 생성: 쿠폰/포인트 없음")
     void createInstanceOrder_noCouponNoPoint() {
         Member member = createMember(1L);
-        when(memberService.getMemberWithLock(1L)).thenReturn(member);
+        when(memberReadPort.getByIdWithLock(1L)).thenReturn(member);
 
         ItemOption option = createOption(createItem(), 100, 10);
         when(orderItemService.getItemOptionsWithLock(any())).thenReturn(List.of(option));
@@ -120,7 +118,7 @@ class OrderServiceTest {
     void createInstanceOrder_withCouponAndPoint() {
         Member member = createMember(1L);
         ReflectionTestUtils.setField(member, "point", 200);
-        when(memberService.getMemberWithLock(1L)).thenReturn(member);
+        when(memberReadPort.getByIdWithLock(1L)).thenReturn(member);
 
         ItemOption option = createOption(createItem(), 100, 10);
         when(orderItemService.getItemOptionsWithLock(any())).thenReturn(List.of(option));
@@ -136,15 +134,8 @@ class OrderServiceTest {
 
         when(deliveryFeePolicy.calculate(any())).thenReturn(2500);
 
-        Coupon coupon = Coupon.builder().type(CouponType.FIXED).state(CouponState.AVAILABLE).build();
-        ReflectionTestUtils.setField(coupon, "id", 999L);
-        MemberCoupon memberCoupon = MemberCoupon.builder().coupon(coupon).state(CouponState.AVAILABLE).build();
-        ReflectionTestUtils.setField(memberCoupon, "id", 500L);
-        when(memberCouponService.findValidCoupon(500L, 1L)).thenReturn(memberCoupon);
-
-        CouponDiscountPolicy policy = org.mockito.Mockito.mock(CouponDiscountPolicy.class);
-        when(couponDiscountPolicyFactory.getPolicy(CouponType.FIXED)).thenReturn(policy);
-        when(policy.calculateDiscount(2200L, coupon)).thenReturn(500L);
+        when(couponApi.applyCoupon(500L, 1L, 2200L))
+                .thenReturn(new CouponApplyResult(500L, 500L));
 
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(orderMapper.toResponseDto(any(Order.class))).thenReturn(new OrderResponseDto());
@@ -162,15 +153,15 @@ class OrderServiceTest {
         verify(orderRepository).save(orderCaptor.capture());
         Order saved = orderCaptor.getValue();
         assertThat(saved.getFinalPrice()).isEqualTo(2200 - 500 - 100 + 2500);
-        assertThat(saved.getMemberCoupon()).isSameAs(memberCoupon);
-        verify(memberCouponService).findValidCoupon(500L, 1L);
+        assertThat(saved.getMemberCouponId()).isEqualTo(500L);
+        verify(couponApi).applyCoupon(500L, 1L, 2200L);
     }
 
     @Test
     @DisplayName("주문 생성: couponId를 memberCouponId로 보내면 쿠폰 조회 실패")
     void createInstanceOrder_withCouponTemplateId_shouldFail() {
         Member member = createMember(1L);
-        when(memberService.getMemberWithLock(1L)).thenReturn(member);
+        when(memberReadPort.getByIdWithLock(1L)).thenReturn(member);
 
         ItemOption option = createOption(createItem(), 100, 10);
         when(orderItemService.getItemOptionsWithLock(any())).thenReturn(List.of(option));
@@ -184,7 +175,7 @@ class OrderServiceTest {
                 .build();
         when(orderItemService.createOrderItems(any(), any())).thenReturn(List.of(orderItem));
 
-        when(memberCouponService.findValidCoupon(10L, 1L))
+        when(couponApi.applyCoupon(10L, 1L, 2200L))
                 .thenThrow(new BusinessException(BusinessErrorCode.COUPON_NOT_AVAILABLE));
 
         OrderRequestDto requestDto = new OrderRequestDto();
@@ -197,7 +188,7 @@ class OrderServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(BusinessErrorCode.COUPON_NOT_AVAILABLE);
 
-        verify(memberCouponService).findValidCoupon(10L, 1L);
+        verify(couponApi).applyCoupon(10L, 1L, 2200L);
         verify(orderRepository, never()).save(any(Order.class));
     }
 
@@ -205,7 +196,7 @@ class OrderServiceTest {
     @DisplayName("주문 생성: 쿠폰 최소 주문 금액 미달이면 실패")
     void createInstanceOrder_couponMinOrderPriceNotMet() {
         Member member = createMember(1L);
-        when(memberService.getMemberWithLock(1L)).thenReturn(member);
+        when(memberReadPort.getByIdWithLock(1L)).thenReturn(member);
 
         ItemOption option = createOption(createItem(), 100, 10);
         when(orderItemService.getItemOptionsWithLock(any())).thenReturn(List.of(option));
@@ -219,16 +210,8 @@ class OrderServiceTest {
                 .build();
         when(orderItemService.createOrderItems(any(), any())).thenReturn(List.of(orderItem));
 
-        Coupon coupon = Coupon.builder()
-                .type(CouponType.FIXED)
-                .state(CouponState.AVAILABLE)
-                .minOrderPrice(5000)
-                .build();
-        MemberCoupon memberCoupon = MemberCoupon.builder()
-                .coupon(coupon)
-                .state(CouponState.AVAILABLE)
-                .build();
-        when(memberCouponService.findValidCoupon(500L, 1L)).thenReturn(memberCoupon);
+        when(couponApi.applyCoupon(500L, 1L, 1100L))
+                .thenThrow(new BusinessException(BusinessErrorCode.COUPON_NOT_AVAILABLE));
 
         OrderRequestDto requestDto = new OrderRequestDto();
         requestDto.setAddress(createAddressRequestDto());
@@ -268,8 +251,6 @@ class OrderServiceTest {
     @DisplayName("주문 취소: 성공")
     void cancelOrder_success() {
         Member member = createMember(1L);
-        MemberCoupon memberCoupon = MemberCoupon.builder().build();
-        ReflectionTestUtils.setField(memberCoupon, "id", 55L);
         ItemOption option = createOption(createItem(), 100, 1);
         OrderItem orderItem = OrderItem.builder()
                 .item(option.getItem())
@@ -283,7 +264,7 @@ class OrderServiceTest {
                 .orderState(OrderState.WAITING_FOR_PAY)
                 .member(member)
                 .usePoint(100)
-                .memberCoupon(memberCoupon)
+                .memberCouponId(55L)
                 .orderItems(List.of(orderItem))
                 .build();
 
@@ -294,8 +275,8 @@ class OrderServiceTest {
         assertThat(result.getOrderId()).isEqualTo(1L);
         assertThat(result.getCancelReason()).isEqualTo("변경");
         assertThat(option.getStock()).isEqualTo(2);
-        verify(memberService).restorePoint(member.getId(), 100);
-        verify(memberCouponService).restoreCoupon(55L);
+        verify(memberPointPort).restorePoint(member.getId(), 100);
+        verify(couponApi).restoreCoupon(55L);
     }
 
     @Test
@@ -318,16 +299,15 @@ class OrderServiceTest {
     @DisplayName("주문 취소: 결제 요청 중(READY)은 취소 가능")
     void cancelOrder_paymentPendingReadyAllowed() {
         Member member = createMember(1L);
-        PaymentEntity payment = org.mockito.Mockito.mock(PaymentEntity.class);
-        when(payment.getStatus()).thenReturn(PaymentStatus.READY);
 
         Order order = Order.builder()
                 .orderState(OrderState.PAYMENT_PENDING)
                 .member(member)
                 .orderItems(List.of())
-                .payment(payment)
                 .build();
+        ReflectionTestUtils.setField(order, "id", 1L);
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderPaymentStatusPort.hasReadyPayment(1L)).thenReturn(true);
 
         OrderCancelResponseDto result = orderService.cancelOrder(member.getId(), 1L, "결제 취소");
 
@@ -359,7 +339,7 @@ class OrderServiceTest {
 
         assertThat(order.getOrderState()).isEqualTo(OrderState.CANCELLED);
         assertThat(option.getStock()).isEqualTo(2);
-        verify(memberService).restorePoint(member.getId(), 50);
+        verify(memberPointPort).restorePoint(member.getId(), 50);
     }
 
     @Test

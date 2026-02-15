@@ -3,8 +3,6 @@ package kwh.cofshop.payment.domain;
 import jakarta.persistence.*;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
-import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.order.domain.Order;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -25,9 +23,11 @@ public class PaymentEntity {
     @Column(nullable = false, unique = true)
     private String merchantUid; // 자체 생성 주문번호  ex ) "order-" + order.getId()
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id", nullable = false, unique = true)
-    private Order order;
+    @Column(name = "order_id", nullable = false, unique = true)
+    private Long orderId;
+
+    @Column(name = "member_id", nullable = false)
+    private Long memberId;
 
     @Column(name = "imp_uid", unique = true)
     private String impUid; // 포트원 결제 고유 ID
@@ -68,37 +68,36 @@ public class PaymentEntity {
 
     // 연관관계
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_id")
-    private Member member;
-
-
     @Builder
-    public PaymentEntity(Order order
-            , PaymentStatus status, String buyerEmail, String buyerName, String buyerTel, String pgProvider, String payMethod, Member member) {
-        this.merchantUid = order.getMerchantUid();
-        this.order = order;
-        this.price = order.getFinalPrice();
+    public PaymentEntity(Long orderId, Long memberId, String merchantUid, Long price, PaymentStatus status,
+                         String buyerEmail, String buyerName, String buyerTel,
+                         String pgProvider, String payMethod) {
+        this.orderId = orderId;
+        this.memberId = memberId;
+        this.merchantUid = merchantUid;
+        this.price = price;
         this.status = status != null ? status : PaymentStatus.READY;
         this.buyerEmail = buyerEmail;
         this.buyerName = buyerName;
         this.buyerTel = buyerTel;
         this.pgProvider = pgProvider;
         this.payMethod = payMethod;
-        this.member = member;
         this.requestedAt = LocalDateTime.now();
     }
 
-    public static PaymentEntity createPayment(Order order, String pgProvider, String payMethod) {
-        Member member = order.getMember();
+    public static PaymentEntity createPayment(Long orderId, Long memberId, String merchantUid, Long finalPrice,
+                                              String buyerEmail, String buyerName, String buyerTel,
+                                              String pgProvider, String payMethod) {
 
         return PaymentEntity.builder()
-                .order(order)
+                .orderId(orderId)
+                .memberId(memberId)
+                .merchantUid(merchantUid)
+                .price(finalPrice)
                 .status(PaymentStatus.READY)
-                .member(member)
-                .buyerEmail(member.getEmail())
-                .buyerName(member.getMemberName())
-                .buyerTel(member.getTel())
+                .buyerEmail(buyerEmail)
+                .buyerName(buyerName)
+                .buyerTel(buyerTel)
                 .pgProvider(pgProvider)
                 .payMethod(payMethod)
                 .build();

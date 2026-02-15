@@ -11,8 +11,9 @@ import kwh.cofshop.chat.repository.ChatMessageRepository;
 import kwh.cofshop.chat.repository.ChatRoomRepository;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.ForbiddenRequestException;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
+import kwh.cofshop.member.api.MemberReadPort;
 import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.member.repository.MemberRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,7 +46,7 @@ class ChatMessageServiceTest {
     private ChatMessageRepository chatMessageRepository;
 
     @Mock
-    private MemberRepository memberRepository;
+    private MemberReadPort memberReadPort;
 
     @Mock
     private ChatMessageMapper chatMessageMapper;
@@ -71,7 +72,7 @@ class ChatMessageServiceTest {
     void createChatMessage_memberNotFound() {
         ChatRoom chatRoom = ChatRoom.createChatRoom(createMember(1L));
         when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
-        when(memberRepository.findById(2L)).thenReturn(Optional.empty());
+        when(memberReadPort.getById(2L)).thenThrow(new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
 
         ChatMessageRequestDto requestDto = new ChatMessageRequestDto();
         requestDto.setRoomId(1L);
@@ -87,7 +88,7 @@ class ChatMessageServiceTest {
         ChatRoom chatRoom = ChatRoom.createChatRoom(createMember(1L));
         Member sender = createMember(2L);
         when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
-        when(memberRepository.findById(2L)).thenReturn(Optional.of(sender));
+        when(memberReadPort.getById(2L)).thenReturn(sender);
 
         ChatMessageRequestDto requestDto = new ChatMessageRequestDto();
         requestDto.setRoomId(1L);
@@ -103,7 +104,7 @@ class ChatMessageServiceTest {
         Member member = createMember(1L);
         ChatRoom chatRoom = ChatRoom.createChatRoom(member);
         when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
-        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(memberReadPort.getById(1L)).thenReturn(member);
         when(chatMessageMapper.toResponseDto(any(ChatMessage.class))).thenReturn(new ChatMessageResponseDto());
 
         ChatMessageRequestDto requestDto = new ChatMessageRequestDto();
@@ -125,7 +126,7 @@ class ChatMessageServiceTest {
         Member loadedMember = createMember(1L);
 
         when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
-        when(memberRepository.findById(1L)).thenReturn(Optional.of(loadedMember));
+        when(memberReadPort.getById(1L)).thenReturn(loadedMember);
         when(chatMessageMapper.toResponseDto(any(ChatMessage.class))).thenReturn(new ChatMessageResponseDto());
 
         ChatMessageRequestDto requestDto = new ChatMessageRequestDto();
@@ -169,7 +170,7 @@ class ChatMessageServiceTest {
         ReflectionTestUtils.setField(message, "id", 10L);
 
         when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
-        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        when(memberReadPort.getById(1L)).thenReturn(member);
         Slice<ChatMessage> slice = new SliceImpl<>(List.of(message), PageRequest.of(0, 20), false);
         when(chatMessageRepository.findMessagesByRoom(anyLong(), any(), anyInt())).thenReturn(slice);
         when(chatMessageMapper.toResponseDto(message)).thenReturn(new ChatMessageResponseDto());
@@ -187,7 +188,7 @@ class ChatMessageServiceTest {
         Member outsider = createMember(2L);
 
         when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
-        when(memberRepository.findById(2L)).thenReturn(Optional.of(outsider));
+        when(memberReadPort.getById(2L)).thenReturn(outsider);
 
         assertThatThrownBy(() -> chatMessageService.getChatMessages(1L, null, 20, 2L))
                 .isInstanceOf(ForbiddenRequestException.class);

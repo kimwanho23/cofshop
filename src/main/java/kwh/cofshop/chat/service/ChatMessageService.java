@@ -12,8 +12,8 @@ import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.ForbiddenRequestException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.global.exception.errorcodes.ForbiddenErrorCode;
+import kwh.cofshop.member.api.MemberReadPort;
 import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.SliceImpl;
@@ -28,7 +28,7 @@ public class ChatMessageService {
 
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
-    private final MemberRepository memberRepository;
+    private final MemberReadPort memberReadPort;
     private final ChatMessageMapper chatMessageMapper;
 
     // 채팅 메시지 생성
@@ -43,8 +43,7 @@ public class ChatMessageService {
         }
 
         // 2. 인증된 유저 탐색
-        Member sender = memberRepository.findById(memberId)
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
+        Member sender = memberReadPort.getById(memberId);
 
         // 3. 해당 유저가 채팅방 참여자인지 검증
         if (!chatRoom.isParticipant(sender)) {
@@ -70,8 +69,7 @@ public class ChatMessageService {
     public Slice<ChatMessageResponseDto> getChatMessages(Long roomId, Long lastMessageId, int pageSize, Long memberId) {
         ChatRoom chatRoom = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.CHAT_ROOM_NOT_FOUND));
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
+        Member member = memberReadPort.getById(memberId);
 
         if (!chatRoom.isParticipant(member)) {
             throw new ForbiddenRequestException(ForbiddenErrorCode.CHAT_ROOM_ACCESS_DENIED);

@@ -7,9 +7,9 @@ import kwh.cofshop.chat.mapper.ChatRoomMapper;
 import kwh.cofshop.chat.repository.ChatRoomRepository;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
+import kwh.cofshop.member.api.MemberReadPort;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.domain.Role;
-import kwh.cofshop.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,14 +19,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class ChatRoomService {
 
     private final ChatRoomRepository chatRoomRepository;
-    private final MemberRepository memberRepository;
+    private final MemberReadPort memberReadPort;
     private final ChatRoomMapper chatRoomMapper;
 
     // 상담 채팅 생성
     @Transactional
     public ChatRoomResponseDto createChatRoom(Long customerId) {
-        Member customer = memberRepository.findById(customerId)
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
+        Member customer = memberReadPort.getById(customerId);
 
         ChatRoom chatRoom = chatRoomRepository.save(ChatRoom.createChatRoom(customer));
 
@@ -47,8 +46,7 @@ public class ChatRoomService {
             throw new BusinessException(BusinessErrorCode.CHAT_ROOM_ALREADY_AGENT_EXIST); // 이미 상담사 있음
         }
 
-        Member agent = memberRepository.findById(agentId)
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
+        Member agent = memberReadPort.getById(agentId);
         if (agent.getRole() != Role.ADMIN) {
             throw new BusinessException(BusinessErrorCode.MEMBER_NOT_ADMIN);
         }

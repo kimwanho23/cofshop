@@ -1,12 +1,10 @@
 package kwh.cofshop.order.domain;
 
 import jakarta.persistence.*;
-import kwh.cofshop.coupon.domain.MemberCoupon;
 import kwh.cofshop.global.domain.BaseTimeEntity;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.payment.domain.PaymentEntity;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -81,20 +79,16 @@ public class Order extends BaseTimeEntity {
     private Long finalPrice;
 
     // 쿠폰
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_coupon_id")
-    private MemberCoupon memberCoupon;
+    @Column(name = "member_coupon_id")
+    private Long memberCouponId;
 
     // 연관 관계
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> orderItems = new ArrayList<>();
 
-    @OneToOne(mappedBy = "order", fetch = FetchType.LAZY)
-    private PaymentEntity payment;
-
     @Builder
     public Order(Long id, Member member, String merchantUid, LocalDateTime orderDate, Integer orderYear, Integer orderMonth, Integer orderDay, OrderState orderState, Address address, String deliveryRequest, int deliveryFee, Long totalPrice,
-                 Long discountFromCoupon, Integer usePoint, Long finalPrice, MemberCoupon memberCoupon, List<OrderItem> orderItems, PaymentEntity payment) {
+                 Long discountFromCoupon, Integer usePoint, Long finalPrice, Long memberCouponId, List<OrderItem> orderItems) {
         this.id = id;
         this.member = member;
         this.merchantUid = merchantUid;
@@ -110,9 +104,8 @@ public class Order extends BaseTimeEntity {
         this.discountFromCoupon = discountFromCoupon;
         this.usePoint = usePoint;
         this.finalPrice = finalPrice;
-        this.memberCoupon = memberCoupon;
+        this.memberCouponId = memberCouponId;
         this.orderItems = orderItems;
-        this.payment = payment;
     }
 
     // 주문 생성
@@ -155,8 +148,8 @@ public class Order extends BaseTimeEntity {
 
 
     // 사용할 쿠폰 등록
-    public void addUseCoupon(MemberCoupon memberCoupon, Long discountAmount) {
-        this.memberCoupon = memberCoupon;
+    public void addUseCoupon(Long memberCouponId, Long discountAmount) {
+        this.memberCouponId = memberCouponId;
         this.discountFromCoupon = discountAmount;
     }
 

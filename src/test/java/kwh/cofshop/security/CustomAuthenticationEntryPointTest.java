@@ -2,6 +2,7 @@ package kwh.cofshop.security;
 
 import kwh.cofshop.global.exception.UnauthorizedRequestException;
 import kwh.cofshop.global.exception.errorcodes.UnauthorizedErrorCode;
+import kwh.cofshop.security.handler.CustomAuthenticationEntryPoint;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,7 +26,7 @@ class CustomAuthenticationEntryPointTest {
     private HandlerExceptionResolver handlerExceptionResolver;
 
     @Test
-    @DisplayName("인증 실패는 전역 예외 처리로 위임된다")
+    @DisplayName("?몄쬆 ?ㅽ뙣???꾩뿭 ?덉쇅 泥섎━濡??꾩엫?쒕떎")
     void commence_delegatesToHandlerExceptionResolver() throws Exception {
         CustomAuthenticationEntryPoint entryPoint = new CustomAuthenticationEntryPoint(handlerExceptionResolver);
         MockHttpServletRequest request = new MockHttpServletRequest();
