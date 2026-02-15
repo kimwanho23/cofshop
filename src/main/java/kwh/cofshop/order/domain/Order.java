@@ -58,7 +58,7 @@ public class Order extends BaseTimeEntity {
     private OrderState orderState;
 
     // 주소
-    @Column(nullable = false)
+    @Embedded
     private Address address;
 
     // 주문 요청 사항
@@ -116,16 +116,18 @@ public class Order extends BaseTimeEntity {
     }
 
     // 주문 생성
-    public static Order createOrder(Member member, Address address, List<OrderItem> orderItems) {
+    public static Order createOrder(Member member, Address address, String deliveryRequest, List<OrderItem> orderItems) {
+        LocalDateTime now = LocalDateTime.now();
         Order order = Order.builder()
                 .member(member)
                 .address(address)
+                .deliveryRequest(deliveryRequest)
                 .merchantUid("cofshop" + UUID.randomUUID())
                 .orderState(OrderState.WAITING_FOR_PAY)
-                .orderDate(LocalDateTime.now())
-                .orderYear(LocalDateTime.now().getYear())
-                .orderMonth(LocalDateTime.now().getMonthValue())
-                .orderDay(LocalDateTime.now().getDayOfMonth())
+                .orderDate(now)
+                .orderYear(now.getYear())
+                .orderMonth(now.getMonthValue())
+                .orderDay(now.getDayOfMonth())
                 .orderItems(new ArrayList<>())
                 .totalPrice(orderItems.stream()
                         .mapToLong(OrderItem::getTotalPrice)
@@ -139,9 +141,9 @@ public class Order extends BaseTimeEntity {
     }
 
     public void pay() {
-/*        if (this.getOrderState() != OrderState.WAITING_FOR_PAY) {
-            throw new BusinessException(BusinessErrorCode.PAYMENT_FAIL); // 결제 대기 상태가 아니면 예외 처리
-        }*/
+        if (this.getOrderState() != OrderState.WAITING_FOR_PAY) {
+            throw new BusinessException(BusinessErrorCode.PAYMENT_FAIL);
+        }
         this.changeOrderState(OrderState.PAYMENT_PENDING); // Order 테이블에 결제 저장
     }
 
@@ -165,6 +167,7 @@ public class Order extends BaseTimeEntity {
 
     // 최종 금액 환산
     public void finalizePrice(long priceAfterCoupon, int usePoint, int deliveryFee) {
+        this.deliveryFee = deliveryFee;
         this.finalPrice = Math.max(priceAfterCoupon - usePoint + deliveryFee, 0);
     }
 
@@ -180,6 +183,15 @@ public class Order extends BaseTimeEntity {
     public void cancel() {
         if (this.orderState == OrderState.CANCELLED) {
             throw new BusinessException(BusinessErrorCode.ORDER_ALREADY_CANCELLED);
+        }
+        if (this.orderState == OrderState.COMPLETED) {
+            throw new BusinessException(BusinessErrorCode.ORDER_ALREADY_COMPLETED);
+        }
+        if (this.orderState != OrderState.WAITING_FOR_PAY
+                && this.orderState != OrderState.PAYMENT_PENDING
+                && this.orderState != OrderState.REFUND_PENDING
+                && this.orderState != OrderState.PAID) {
+            throw new BusinessException(BusinessErrorCode.ORDER_CANNOT_CANCEL);
         }
         this.orderState = OrderState.CANCELLED;
     }

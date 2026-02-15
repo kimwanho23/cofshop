@@ -1,9 +1,10 @@
 package kwh.cofshop.order.service;
 
+import kwh.cofshop.argumentResolver.DistributedLock;
 import kwh.cofshop.coupon.domain.MemberCoupon;
-import kwh.cofshop.coupon.factory.CouponDiscountPolicyFactory;
-import kwh.cofshop.coupon.policy.discount.CouponDiscountPolicy;
-import kwh.cofshop.coupon.service.MemberCouponService;
+import kwh.cofshop.coupon.application.factory.CouponDiscountPolicyFactory;
+import kwh.cofshop.coupon.domain.policy.discount.CouponDiscountPolicy;
+import kwh.cofshop.coupon.application.service.MemberCouponService;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.ForbiddenRequestException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
@@ -11,12 +12,15 @@ import kwh.cofshop.global.exception.errorcodes.ForbiddenErrorCode;
 import kwh.cofshop.item.domain.ItemOption;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.service.MemberService;
+import kwh.cofshop.order.domain.Address;
 import kwh.cofshop.order.domain.Order;
 import kwh.cofshop.order.domain.OrderItem;
 import kwh.cofshop.order.domain.OrderState;
 import kwh.cofshop.order.dto.request.OrderRequestDto;
 import kwh.cofshop.order.dto.response.OrderCancelResponseDto;
 import kwh.cofshop.order.dto.response.OrderResponseDto;
+import kwh.cofshop.payment.domain.PaymentEntity;
+import kwh.cofshop.payment.domain.PaymentStatus;
 import kwh.cofshop.order.mapper.OrderMapper;
 import kwh.cofshop.order.policy.DeliveryFeePolicy;
 import kwh.cofshop.order.repository.OrderRepository;
@@ -49,9 +53,10 @@ public class OrderService {
     private final CouponDiscountPolicyFactory couponDiscountPolicyFactory;
 
     // 바로구매 로직
+    @DistributedLock(keyName = "'order:create:' + #memberId")
     @Transactional
     public OrderResponseDto createInstanceOrder(Long memberId, OrderRequestDto orderRequestDto) {
-        Member member = memberService.getMember(memberId);
+        Member member = memberService.getMemberWithLock(memberId);
 
         // 옵션 조회
         List<ItemOption> itemOptions = orderItemService.getItemOptionsWithLock(orderRequestDto.getOrderItemRequestDtoList());
@@ -60,7 +65,12 @@ public class OrderService {
         List<OrderItem> orderItems = orderItemService.createOrderItems(orderRequestDto.getOrderItemRequestDtoList(), itemOptions);
 
         // 주문 생성
-        Order order = Order.createOrder(member, orderRequestDto.getAddress(), orderItems);
+        Address address = Address.builder()
+                .city(orderRequestDto.getAddress().getCity())
+                .street(orderRequestDto.getAddress().getStreet())
+                .zipCode(orderRequestDto.getAddress().getZipCode())
+                .build();
+        Order order = Order.createOrder(member, address, orderRequestDto.getDeliveryRequest(), orderItems);
 
         // 쿠폰 할인 적용 금액
         long priceAfterCouponDiscount = applyCoupon(order, orderRequestDto, memberId);
@@ -83,14 +93,38 @@ public class OrderService {
     public OrderCancelResponseDto cancelOrder(Long memberId, Long orderId, String cancelReason) {
         Order order = getOrderForMember(memberId, orderId);
 
-        order.cancel();
-        restoreOrderCompensation(order);
+        validateCancelableByOrderApi(order);
+        cancelAndRestore(order);
 
         OrderCancelResponseDto orderCancelResponseDto = new OrderCancelResponseDto();
         orderCancelResponseDto.setOrderId(orderId);
         orderCancelResponseDto.setCancelReason(cancelReason);
 
         return orderCancelResponseDto;
+    }
+
+    @Transactional
+    public void cancelAndRestore(Order order) {
+        if (order.getOrderState() == OrderState.CANCELLED) {
+            return;
+        }
+        order.cancel();
+        restoreOrderCompensation(order);
+    }
+
+    private void validateCancelableByOrderApi(Order order) {
+        if (order.getOrderState() == OrderState.WAITING_FOR_PAY) {
+            return;
+        }
+
+        if (order.getOrderState() == OrderState.PAYMENT_PENDING) {
+            PaymentEntity payment = order.getPayment();
+            if (payment != null && payment.getStatus() == PaymentStatus.READY) {
+                return;
+            }
+        }
+
+        throw new BusinessException(BusinessErrorCode.ORDER_CANNOT_CANCEL);
     }
 
     private void restoreOrderCompensation(Order order) {
@@ -137,9 +171,13 @@ public class OrderService {
     @Transactional
     public void purchaseConfirmation(Long memberId, Long orderId) {
         Order order = getOrderForMember(memberId, orderId);
-        if (order.getOrderState() == OrderState.DELIVERED) { // 배송 완료 시
-            order.changeOrderState(OrderState.COMPLETED); // 구매 확정 가능 - 이 시점에서 반품 불가능함
+        if (order.getOrderState() == OrderState.COMPLETED) {
+            throw new BusinessException(BusinessErrorCode.ORDER_ALREADY_COMPLETED);
         }
+        if (order.getOrderState() != OrderState.DELIVERED) {
+            throw new BusinessException(BusinessErrorCode.ORDER_CANNOT_CONFIRM);
+        }
+        order.changeOrderState(OrderState.COMPLETED); // 구매 확정 가능 - 이 시점에서 반품 불가능함
     }
 
 
@@ -150,8 +188,12 @@ public class OrderService {
         }
 
         MemberCoupon memberCoupon = memberCouponService.findValidCoupon(dto.getMemberCouponId(), memberId);
+        Integer minOrderPrice = memberCoupon.getCoupon().getMinOrderPrice();
+        if (minOrderPrice != null && order.getTotalPrice() < minOrderPrice) {
+            throw new BusinessException(BusinessErrorCode.COUPON_NOT_AVAILABLE);
+        }
         CouponDiscountPolicy policy = couponDiscountPolicyFactory.getPolicy(memberCoupon.getCoupon().getType());
-        Long discount = policy.calculateDiscount(order.getTotalPrice());
+        Long discount = policy.calculateDiscount(order.getTotalPrice(), memberCoupon.getCoupon());
 
         memberCoupon.useCoupon();
         order.addUseCoupon(memberCoupon, discount);

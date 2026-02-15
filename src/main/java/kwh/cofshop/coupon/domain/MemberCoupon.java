@@ -1,6 +1,8 @@
 package kwh.cofshop.coupon.domain;
 
 import jakarta.persistence.*;
+import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.member.domain.Member;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -74,7 +76,7 @@ public class MemberCoupon {
 
     public void restoreCouponStatus() {
         if (this.state != CouponState.USED) {
-            throw new IllegalStateException("사용된 쿠폰만 복구할 수 있습니다.");
+            throw new BusinessException(BusinessErrorCode.COUPON_NOT_AVAILABLE);
         }
         this.state = CouponState.AVAILABLE;
     }

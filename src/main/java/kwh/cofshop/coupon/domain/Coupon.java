@@ -1,7 +1,6 @@
 package kwh.cofshop.coupon.domain;
 
 import jakarta.persistence.*;
-import kwh.cofshop.coupon.dto.request.CouponRequestDto;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -62,18 +61,25 @@ public class Coupon {
         this.validTo = validTo;
     }
 
-    public static Coupon createCoupon(CouponRequestDto dto) {
+    public static Coupon createCoupon(String name,
+                                      Integer minOrderPrice,
+                                      int discountValue,
+                                      Integer maxDiscount,
+                                      CouponType type,
+                                      Integer couponCount,
+                                      LocalDate validFrom,
+                                      LocalDate validTo) {
         return Coupon.builder()
-                .name(dto.getName())
-                .minOrderPrice(dto.getMinOrderPrice())
-                .discountValue(dto.getDiscountValue())
-                .maxDiscount(dto.getMaxDiscountAmount())
-                .type(dto.getType())
+                .name(name)
+                .minOrderPrice(minOrderPrice)
+                .discountValue(discountValue)
+                .maxDiscount(maxDiscount)
+                .type(type)
                 .state(CouponState.AVAILABLE)
                 .couponCreatedAt(LocalDate.now())
-                .couponCount(dto.getCouponCount())
-                .validFrom(dto.getValidFrom())
-                .validTo(dto.getValidTo())
+                .couponCount(couponCount)
+                .validFrom(validFrom)
+                .validTo(validTo)
                 .build();
     }
 
