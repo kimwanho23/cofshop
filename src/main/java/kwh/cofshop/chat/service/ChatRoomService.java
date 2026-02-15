@@ -8,6 +8,7 @@ import kwh.cofshop.chat.repository.ChatRoomRepository;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.member.domain.Member;
+import kwh.cofshop.member.domain.Role;
 import kwh.cofshop.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -38,12 +39,19 @@ public class ChatRoomService {
         ChatRoom chatRoom = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.CHAT_ROOM_NOT_FOUND));
 
+        if (chatRoom.isClosed()) {
+            throw new BusinessException(BusinessErrorCode.CHAT_ROOM_ALREADY_CLOSED);
+        }
+
         if (chatRoom.hasAgent() || chatRoom.getChatRoomStatus() == ChatRoomStatus.IN_PROGRESS) {
             throw new BusinessException(BusinessErrorCode.CHAT_ROOM_ALREADY_AGENT_EXIST); // 이미 상담사 있음
         }
 
         Member agent = memberRepository.findById(agentId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
+        if (agent.getRole() != Role.ADMIN) {
+            throw new BusinessException(BusinessErrorCode.MEMBER_NOT_ADMIN);
+        }
 
         chatRoom.assignAgent(agent);
     }

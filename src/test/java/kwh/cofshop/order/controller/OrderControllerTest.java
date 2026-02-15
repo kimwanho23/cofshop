@@ -1,7 +1,9 @@
 package kwh.cofshop.order.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import kwh.cofshop.order.domain.Address;
+import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
+import kwh.cofshop.order.dto.request.AddressRequestDto;
 import kwh.cofshop.order.dto.request.OrderCancelRequestDto;
 import kwh.cofshop.order.dto.request.OrderItemRequestDto;
 import kwh.cofshop.order.dto.request.OrderRequestDto;
@@ -14,6 +16,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -24,8 +27,11 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -101,17 +107,48 @@ class OrderControllerTest {
         orderItemRequestDto.setQuantity(2);
 
         OrderRequestDto requestDto = new OrderRequestDto();
-        requestDto.setAddress(Address.builder()
-                .city("서울")
-                .street("강남대로")
-                .zipCode("12345")
-                .build());
+        AddressRequestDto addressRequestDto = new AddressRequestDto();
+        addressRequestDto.setCity("서울");
+        addressRequestDto.setStreet("강남대로");
+        addressRequestDto.setZipCode("12345");
+        requestDto.setAddress(addressRequestDto);
         requestDto.setOrderItemRequestDtoList(List.of(orderItemRequestDto));
+        requestDto.setMemberCouponId(500L);
 
         mockMvc.perform(post("/api/orders")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isCreated());
+
+        ArgumentCaptor<OrderRequestDto> captor = ArgumentCaptor.forClass(OrderRequestDto.class);
+        verify(orderService).createInstanceOrder(eq(1L), captor.capture());
+        assertThat(captor.getValue().getMemberCouponId()).isEqualTo(500L);
+    }
+
+    @Test
+    @DisplayName("주문 생성: 유효하지 않은 memberCouponId면 409")
+    void createOrder_invalidMemberCouponId() throws Exception {
+        when(orderService.createInstanceOrder(anyLong(), any()))
+                .thenThrow(new BusinessException(BusinessErrorCode.COUPON_NOT_AVAILABLE));
+
+        OrderItemRequestDto orderItemRequestDto = new OrderItemRequestDto();
+        orderItemRequestDto.setItemId(1L);
+        orderItemRequestDto.setOptionId(10L);
+        orderItemRequestDto.setQuantity(2);
+
+        OrderRequestDto requestDto = new OrderRequestDto();
+        AddressRequestDto addressRequestDto = new AddressRequestDto();
+        addressRequestDto.setCity("서울");
+        addressRequestDto.setStreet("강남대로");
+        addressRequestDto.setZipCode("12345");
+        requestDto.setAddress(addressRequestDto);
+        requestDto.setOrderItemRequestDtoList(List.of(orderItemRequestDto));
+        requestDto.setMemberCouponId(10L);
+
+        mockMvc.perform(post("/api/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isConflict());
     }
 
     @Test

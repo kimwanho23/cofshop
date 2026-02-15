@@ -2,6 +2,8 @@ package kwh.cofshop.item.service;
 
 import kwh.cofshop.file.domain.FileStore;
 import kwh.cofshop.file.domain.UploadFile;
+import kwh.cofshop.global.exception.BadRequestException;
+import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemImg;
 import kwh.cofshop.item.dto.request.ItemImgRequestDto;
@@ -61,11 +63,11 @@ public class ItemImgService {
 
             // 실제 파일 삭제
             for (ItemImg img : deleteItems) {
-                if (StringUtils.hasText(img.getImgUrl())) {
+                if (StringUtils.hasText(img.getImgName())) {
                     try {
-                        fileStore.deleteFile(img.getImgUrl());
+                        fileStore.deleteFile(img.getImgName());
                     } catch (Exception e) {
-                        log.error("파일 삭제 실패: {}", img.getImgUrl(), e);
+                        log.error("파일 삭제 실패: {}", img.getImgName(), e);
                     }
                 }
             }
@@ -82,7 +84,7 @@ public class ItemImgService {
     public void addItemImages(Item item, List<ItemImgRequestDto> addItemImgs, List<MultipartFile> imageFiles) throws IOException {
         if (addItemImgs != null && !addItemImgs.isEmpty() && imageFiles != null && !imageFiles.isEmpty()) {
             if (addItemImgs.size() != imageFiles.size()) {
-                throw new IllegalArgumentException("추가할 이미지 정보와 실제 파일 개수가 일치하지 않습니다.");
+                throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
             }
 
             List<UploadFile> uploadFiles = fileStore.storeFiles(imageFiles);

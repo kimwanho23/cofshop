@@ -1,7 +1,7 @@
 package kwh.cofshop.statistics.controller;
 
-import kwh.cofshop.statistics.dto.DailySalesDto;
-import kwh.cofshop.statistics.dto.TopItemDto;
+import kwh.cofshop.statistics.dto.DailySalesResponseDto;
+import kwh.cofshop.statistics.dto.TopItemResponseDto;
 import kwh.cofshop.statistics.service.StatisticsService;
 import kwh.cofshop.support.StandaloneMockMvcFactory;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,7 +42,7 @@ class StatisticsControllerTest {
     @DisplayName("일일 매출 조회")
     void getDailySales() throws Exception {
         when(statisticsService.getDailySales(any()))
-                .thenReturn(List.of(new DailySalesDto(LocalDate.now(), 10L, 1000L)));
+                .thenReturn(List.of(new DailySalesResponseDto(LocalDate.now(), 10L, 1000L)));
 
         mockMvc.perform(get("/api/statistics/daily-sales")
                         .param("date", LocalDate.now().toString()))
@@ -53,7 +53,7 @@ class StatisticsControllerTest {
     @DisplayName("최근 7일 인기 상품 조회")
     void getTopItemsLast7Days() throws Exception {
         when(statisticsService.getTopItemsLast7Days())
-                .thenReturn(List.of(new TopItemDto(1L, "커피", 10, 1000, LocalDateTime.now())));
+                .thenReturn(List.of(new TopItemResponseDto(1L, "커피", 10, 1000, LocalDateTime.now())));
 
         mockMvc.perform(get("/api/statistics/last-7days"))
                 .andExpect(status().isOk());
@@ -63,7 +63,7 @@ class StatisticsControllerTest {
     @DisplayName("기간 매출 조회")
     void getSalesBetween() throws Exception {
         when(statisticsService.getDailySalesBetween(any(), any()))
-                .thenReturn(List.of(new DailySalesDto(LocalDate.now(), 10L, 1000L)));
+                .thenReturn(List.of(new DailySalesResponseDto(LocalDate.now(), 10L, 1000L)));
 
         mockMvc.perform(get("/api/statistics/sales-between")
                         .param("start", LocalDate.now().minusDays(7).toString())

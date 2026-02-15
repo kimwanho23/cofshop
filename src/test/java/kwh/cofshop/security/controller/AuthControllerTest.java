@@ -1,6 +1,6 @@
 package kwh.cofshop.security.controller;
 
-import kwh.cofshop.security.dto.TokenDto;
+import kwh.cofshop.security.dto.TokenResponseDto;
 import kwh.cofshop.security.service.AuthService;
 import kwh.cofshop.support.StandaloneMockMvcFactory;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,7 +36,7 @@ class AuthControllerTest {
     @Test
     @DisplayName("Reissue returns 200")
     void reissueToken() throws Exception {
-        TokenDto tokenDto = TokenDto.builder()
+        TokenResponseDto tokenDto = TokenResponseDto.builder()
                 .grantType("Bearer")
                 .accessToken("access")
                 .refreshToken("refresh")

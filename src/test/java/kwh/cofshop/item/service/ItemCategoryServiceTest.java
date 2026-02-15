@@ -6,6 +6,7 @@ import kwh.cofshop.item.domain.ItemCategory;
 import kwh.cofshop.item.dto.request.ItemUpdateRequestDto;
 import kwh.cofshop.item.repository.CategoryRepository;
 import kwh.cofshop.item.repository.ItemCategoryRepository;
+import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.member.domain.Member;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -63,7 +64,7 @@ class ItemCategoryServiceTest {
         when(categoryRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> itemCategoryService.addItemCategories(item, List.of(1L)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test

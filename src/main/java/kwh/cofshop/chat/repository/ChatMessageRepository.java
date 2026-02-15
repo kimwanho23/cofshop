@@ -11,4 +11,6 @@ import java.util.List;
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long>, ChatMessageRepositoryCustom {
 
     List<ChatMessage> findAllByMessageGroupId(String groupId);
+
+    List<ChatMessage> findAllByMessageGroupIdAndSender_IdAndChatRoom_Id(String groupId, Long senderId, Long roomId);
 }

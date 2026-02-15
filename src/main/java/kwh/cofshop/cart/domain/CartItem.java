@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"cart_id", "option_id"}))
 public class CartItem {
 
     @Id
@@ -58,6 +59,6 @@ public class CartItem {
 
     // 총 가격
     public int getTotalPrice() {
-        return (item.getPrice() + itemOption.getAdditionalPrice()) * quantity;
+        return itemOption.getTotalPrice() * quantity;
     }
 }

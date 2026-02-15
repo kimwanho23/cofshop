@@ -9,8 +9,8 @@ import kwh.cofshop.item.domain.QItem;
 import kwh.cofshop.order.domain.OrderState;
 import kwh.cofshop.order.domain.QOrder;
 import kwh.cofshop.order.domain.QOrderItem;
-import kwh.cofshop.statistics.dto.DailySalesDto;
-import kwh.cofshop.statistics.dto.TopItemDto;
+import kwh.cofshop.statistics.dto.DailySalesResponseDto;
+import kwh.cofshop.statistics.dto.TopItemResponseDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
@@ -37,13 +37,16 @@ public class StatisticsRepositoryImpl implements StatisticsRepository {
 
     // 일별 판매량
     @Override
-    public List<DailySalesDto> getDailySales(LocalDate date) {
+    public List<DailySalesResponseDto> getDailySales(LocalDate date) {
+        NumberExpression<Long> totalSales = orderItem.quantity.sum().longValue();
+        NumberExpression<Long> totalRevenue = discountedUnitPrice().multiply(orderItem.quantity).sum().longValue();
 
         return queryFactory
                 .select(Projections.constructor(
-                        DailySalesDto.class,
+                        DailySalesResponseDto.class,
                         dateOnly,
-                        orderItem.orderPrice.multiply(orderItem.quantity).sum()
+                        totalSales,
+                        totalRevenue
                 ))
                 .from(order)
                 .join(order.orderItems, orderItem)
@@ -55,13 +58,13 @@ public class StatisticsRepositoryImpl implements StatisticsRepository {
 
     // 최근 일주일 간 TOP 5 품목
     @Override
-    public List<TopItemDto> getTopItemsLast7Days(LocalDateTime time) {
+    public List<TopItemResponseDto> getTopItemsLast7Days(LocalDateTime time) {
 
         NumberExpression<Integer> totalSold = orderItem.quantity.sum(); // 판매량
-        NumberExpression<Integer> totalRevenue = orderItem.orderPrice.multiply(orderItem.quantity).sum(); // 매출
+        NumberExpression<Integer> totalRevenue = discountedUnitPrice().multiply(orderItem.quantity).sum(); // 매출
 
         return queryFactory.select(Projections.constructor(
-                        TopItemDto.class,
+                        TopItemResponseDto.class,
                         item.id,
                         item.itemName,
                         totalSold,
@@ -83,14 +86,14 @@ public class StatisticsRepositoryImpl implements StatisticsRepository {
     }
 
     @Override
-    public List<DailySalesDto> getDailySalesBetween(LocalDate start, LocalDate end) {
+    public List<DailySalesResponseDto> getDailySalesBetween(LocalDate start, LocalDate end) {
 
-        NumberExpression<Integer> totalSales = orderItem.quantity.sum(); // 판매량
-        NumberExpression<Integer> totalRevenue = orderItem.orderPrice.multiply(orderItem.quantity).sum(); // 매출
+        NumberExpression<Long> totalSales = orderItem.quantity.sum().longValue(); // 판매량
+        NumberExpression<Long> totalRevenue = discountedUnitPrice().multiply(orderItem.quantity).sum().longValue(); // 매출
 
         return queryFactory
                 .select(Projections.constructor(
-                        DailySalesDto.class,
+                        DailySalesResponseDto.class,
                         dateOnly,
                         totalSales,
                         totalRevenue
@@ -102,5 +105,14 @@ public class StatisticsRepositoryImpl implements StatisticsRepository {
                 .groupBy(dateOnly)
                 .orderBy(dateOnly.asc())
                 .fetch();
+    }
+
+    private NumberExpression<Integer> discountedUnitPrice() {
+        return Expressions.numberTemplate(
+                Integer.class,
+                "({0} * (100 - {1}) / 100)",
+                orderItem.orderPrice,
+                orderItem.discountRate
+        );
     }
 }

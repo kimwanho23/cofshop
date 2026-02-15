@@ -118,6 +118,45 @@ class ChatMessageServiceTest {
     }
 
     @Test
+    @DisplayName("메시지 생성: 같은 ID 다른 인스턴스도 참여자로 인정")
+    void createChatMessage_success_sameIdDifferentInstance() {
+        Member customer = createMember(1L);
+        ChatRoom chatRoom = ChatRoom.createChatRoom(customer);
+        Member loadedMember = createMember(1L);
+
+        when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(loadedMember));
+        when(chatMessageMapper.toResponseDto(any(ChatMessage.class))).thenReturn(new ChatMessageResponseDto());
+
+        ChatMessageRequestDto requestDto = new ChatMessageRequestDto();
+        requestDto.setRoomId(1L);
+        requestDto.setMessage("같은 회원");
+        requestDto.setMessageType(MessageType.TEXT);
+
+        ChatMessageResponseDto result = chatMessageService.createChatMessage(requestDto, 1L);
+
+        assertThat(result).isNotNull();
+        verify(chatMessageRepository).save(any(ChatMessage.class));
+    }
+
+    @Test
+    @DisplayName("메시지 생성: 종료된 채팅방")
+    void createChatMessage_closedRoom() {
+        Member customer = createMember(1L);
+        ChatRoom chatRoom = ChatRoom.createChatRoom(customer);
+        chatRoom.close();
+
+        when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
+
+        ChatMessageRequestDto requestDto = new ChatMessageRequestDto();
+        requestDto.setRoomId(1L);
+        requestDto.setMessageType(MessageType.TEXT);
+
+        assertThatThrownBy(() -> chatMessageService.createChatMessage(requestDto, 1L))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
     @DisplayName("채팅 메시지 조회")
     void getChatMessages() {
         Member member = createMember(1L);
@@ -159,7 +198,7 @@ class ChatMessageServiceTest {
     void deleteMessage_notFound() {
         when(chatMessageRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> chatMessageService.deleteMessage(1L, 1L))
+        assertThatThrownBy(() -> chatMessageService.deleteMessage(1L, 1L, 1L))
                 .isInstanceOf(BusinessException.class);
     }
 
@@ -169,33 +208,75 @@ class ChatMessageServiceTest {
         Member sender = createMember(1L);
         ChatMessage message = ChatMessage.builder()
                 .sender(sender)
+                .chatRoom(ChatRoom.builder().id(1L).build())
                 .messageGroupId("group")
                 .build();
         when(chatMessageRepository.findById(1L)).thenReturn(Optional.of(message));
 
-        assertThatThrownBy(() -> chatMessageService.deleteMessage(1L, 2L))
+        assertThatThrownBy(() -> chatMessageService.deleteMessage(1L, 1L, 2L))
                 .isInstanceOf(ForbiddenRequestException.class);
+    }
+
+    @Test
+    @DisplayName("메시지 삭제: 다른 채팅방 메시지")
+    void deleteMessage_differentRoom() {
+        Member sender = createMember(1L);
+        ChatRoom chatRoom = ChatRoom.builder().id(2L).build();
+        ChatMessage message = ChatMessage.builder()
+                .sender(sender)
+                .chatRoom(chatRoom)
+                .messageGroupId("group")
+                .build();
+        when(chatMessageRepository.findById(1L)).thenReturn(Optional.of(message));
+
+        assertThatThrownBy(() -> chatMessageService.deleteMessage(1L, 1L, 1L))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    @DisplayName("메시지 삭제: 같은 그룹이라도 다른 작성자 메시지는 제외")
+    void deleteMessage_onlySenderMessages() {
+        Member sender = createMember(1L);
+        ChatRoom chatRoom = ChatRoom.builder().id(1L).build();
+        ChatMessage message = ChatMessage.builder()
+                .sender(sender)
+                .chatRoom(chatRoom)
+                .messageGroupId("group")
+                .build();
+        ReflectionTestUtils.setField(message, "id", 10L);
+        when(chatMessageRepository.findById(10L)).thenReturn(Optional.of(message));
+        when(chatMessageRepository.findAllByMessageGroupIdAndSender_IdAndChatRoom_Id("group", 1L, 1L))
+                .thenReturn(List.of(message));
+
+        DeletedMessageResponseDto result = chatMessageService.deleteMessage(1L, 10L, 1L);
+
+        assertThat(result.getMessageIds()).containsExactly(10L);
+        assertThat(message.isDeleted()).isTrue();
     }
 
     @Test
     @DisplayName("메시지 삭제: 성공")
     void deleteMessage_success() {
         Member sender = createMember(1L);
+        ChatRoom chatRoom = ChatRoom.builder().id(1L).build();
         ChatMessage message1 = ChatMessage.builder()
                 .sender(sender)
+                .chatRoom(chatRoom)
                 .messageGroupId("group")
                 .build();
         ChatMessage message2 = ChatMessage.builder()
                 .sender(sender)
+                .chatRoom(chatRoom)
                 .messageGroupId("group")
                 .build();
         ReflectionTestUtils.setField(message1, "id", 1L);
         ReflectionTestUtils.setField(message2, "id", 2L);
 
         when(chatMessageRepository.findById(1L)).thenReturn(Optional.of(message1));
-        when(chatMessageRepository.findAllByMessageGroupId("group")).thenReturn(List.of(message1, message2));
+        when(chatMessageRepository.findAllByMessageGroupIdAndSender_IdAndChatRoom_Id("group", 1L, 1L))
+                .thenReturn(List.of(message1, message2));
 
-        DeletedMessageResponseDto result = chatMessageService.deleteMessage(1L, 1L);
+        DeletedMessageResponseDto result = chatMessageService.deleteMessage(1L, 1L, 1L);
 
         assertThat(result.getGroupId()).isEqualTo("group");
         assertThat(result.getMessageIds()).containsExactly(1L, 2L);

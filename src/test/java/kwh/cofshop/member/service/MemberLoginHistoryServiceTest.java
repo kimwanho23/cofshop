@@ -51,11 +51,12 @@ class MemberLoginHistoryServiceTest {
     @DisplayName("로그인 이력 조회")
     void getUserLoginHistory() {
         MemberLoginHistory history = MemberLoginHistory.builder().build();
-        when(memberLoginHistoryRepository.findAll()).thenReturn(List.of(history));
+        when(memberLoginHistoryRepository.findAllByMemberIdOrderByLoginDtDesc(1L)).thenReturn(List.of(history));
         when(memberLoginHistoryMapper.toResponseDto(history)).thenReturn(MemberLoginEvent.builder().build());
 
         List<MemberLoginEvent> results = memberLoginHistoryService.getUserLoginHistory(1L);
 
         assertThat(results).hasSize(1);
+        verify(memberLoginHistoryRepository).findAllByMemberIdOrderByLoginDtDesc(1L);
     }
 }

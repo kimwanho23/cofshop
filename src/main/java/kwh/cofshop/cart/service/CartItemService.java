@@ -36,17 +36,21 @@ public class CartItemService {
     // 장바구니에 상품 단일 등록
     @Transactional
     public CartItemResponseDto addCartItem(CartItemRequestDto cartItemRequestDto, Long memberId) {
-        Cart cart = cartRepository.findByMemberId(memberId)
+        Cart cart = cartRepository.findByMemberIdWithLock(memberId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.CART_NOT_FOUND));
 
         Item item = itemRepository.findById(cartItemRequestDto.getItemId())
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
 
         ItemOption itemOption = itemOptionRepository.findById(cartItemRequestDto.getOptionId())
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_OPTION_NOT_FOUND));
+
+        if (!itemOption.getItem().getId().equals(item.getId())) {
+            throw new BusinessException(BusinessErrorCode.ITEM_OPTION_NOT_FOUND);
+        }
 
         Optional<CartItem> optionalCartItem = cartItemRepository
-                .findByCartIdAndItemOptionId(cart.getId(), itemOption.getId());
+                .findByCartIdAndItemOptionIdWithLock(cart.getId(), itemOption.getId());
 
         CartItem cartItem;
         if (optionalCartItem.isPresent()) {
@@ -102,9 +106,8 @@ public class CartItemService {
     // 회원 장바구니 조회 ( 장바구니에 있는 물건 )
     @Transactional(readOnly = true)
     public List<CartItemResponseDto> getCartItemsByMemberId(Long memberId) {
-        Cart cart = cartRepository.findByMemberId(memberId)
+        cartRepository.findByMemberId(memberId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.CART_NOT_FOUND));
-
         return cartItemRepository.findCartItemsByMemberId(memberId);
     }
 

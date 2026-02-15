@@ -2,7 +2,6 @@ package kwh.cofshop.item.domain;
 
 import jakarta.persistence.*;
 import kwh.cofshop.global.domain.BaseEntity;
-import kwh.cofshop.item.dto.request.ItemUpdateRequestDto;
 import kwh.cofshop.member.domain.Member;
 import lombok.*;
 
@@ -25,6 +24,9 @@ public class Item extends BaseEntity {
 
     @Column(nullable = false)
     private int price; // 가격
+
+    @Column(nullable = false)
+    private Integer discount; // 상품 할인율(%)
 
     @Enumerated(EnumType.STRING)
     @Column(name = "item_state", nullable = false)
@@ -64,9 +66,10 @@ public class Item extends BaseEntity {
 
     @Builder
     public Item(String itemName, Integer price,
-                Integer deliveryFee, List<ItemCategory> itemCategories, String origin, Integer itemLimit, Member seller) {
+                Integer discount, Integer deliveryFee, List<ItemCategory> itemCategories, String origin, Integer itemLimit, Member seller) {
         this.itemName = itemName;
         this.price = price;
+        this.discount = discount;
         this.deliveryFee = deliveryFee;
         this.itemCategories = itemCategories;
         this.origin = origin;
@@ -78,6 +81,7 @@ public class Item extends BaseEntity {
     @PrePersist
     public void prePersist() {
         this.itemState = ItemState.SELL;
+        this.discount = this.discount == null ? 0 : this.discount;
         this.averageRating = 0.0;
         this.reviewCount = 0L;
     }
@@ -111,12 +115,25 @@ public class Item extends BaseEntity {
     }
 
 
-    public void updateItem(ItemUpdateRequestDto dto) {
-        this.itemName = dto.getItemName();
-        this.price = dto.getPrice();
-        this.deliveryFee = dto.getDeliveryFee();
-        this.origin = dto.getOrigin();
-        this.itemLimit = dto.getItemLimit();
+    public void updateItem(String itemName, Integer price, Integer discount, Integer deliveryFee, String origin, Integer itemLimit) {
+        if (itemName != null) {
+            this.itemName = itemName;
+        }
+        if (price != null) {
+            this.price = price;
+        }
+        if (discount != null) {
+            this.discount = discount;
+        }
+        if (deliveryFee != null) {
+            this.deliveryFee = deliveryFee;
+        }
+        if (origin != null) {
+            this.origin = origin;
+        }
+        if (itemLimit != null) {
+            this.itemLimit = itemLimit;
+        }
     }
     ///// 연관관계 편의 메서드
 

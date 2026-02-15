@@ -11,6 +11,7 @@ import kwh.cofshop.member.mapper.MemberMapper;
 import kwh.cofshop.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -37,7 +38,12 @@ public class MemberService {
 
         memberDto.setMemberPwd(passwordEncoder.encode(memberDto.getMemberPwd()));
 
-        Member member = memberRepository.save(memberMapper.toEntity(memberDto));
+        Member member;
+        try {
+            member = memberRepository.save(memberMapper.toEntity(memberDto));
+        } catch (DataIntegrityViolationException e) {
+            throw new BusinessException(BusinessErrorCode.MEMBER_ALREADY_EXISTS);
+        }
         eventPublisher.publishEvent(new MemberCreatedEvent(member.getId()));
         return memberMapper.toResponseDto(member);
     }
@@ -81,12 +87,18 @@ public class MemberService {
     @Transactional
     public void restorePoint(Long memberId, int point) {
         Member member = memberRepository.findById(memberId)
-                .orElseThrow();
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
         member.restorePoint(point);
     }
 
     public Member getMember(Long id) {
         return memberRepository.findById(id).orElseThrow(
+                () -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND)
+        );
+    }
+
+    public Member getMemberWithLock(Long id) {
+        return memberRepository.findByIdWithLock(id).orElseThrow(
                 () -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND)
         );
     }

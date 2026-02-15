@@ -1,7 +1,11 @@
 package kwh.cofshop.item.service;
 
+import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.ForbiddenRequestException;
+import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
+import kwh.cofshop.global.exception.errorcodes.ForbiddenErrorCode;
 import kwh.cofshop.item.domain.*;
 import kwh.cofshop.item.dto.request.ItemImgRequestDto;
 import kwh.cofshop.item.dto.request.ItemRequestDto;
@@ -54,13 +58,26 @@ public class ItemService { // 통합 Item 서비스
     @Transactional
     public ItemResponseDto saveItem(ItemRequestDto itemRequestDto, Long id, List<MultipartFile> images) throws IOException {
         // 상품 등록자
-        Member member = memberRepository.findById(id).orElseThrow();
+        Member member = memberRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
+
+        List<ItemImgRequestDto> imgRequestDtoList = itemRequestDto.getItemImgRequestDto();
+        if (images == null || images.isEmpty()
+                || imgRequestDtoList == null || imgRequestDtoList.isEmpty()
+                || imgRequestDtoList.size() != images.size()) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+
+        if (itemRequestDto.getItemOptionRequestDto() == null || itemRequestDto.getItemOptionRequestDto().isEmpty()) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+
+        List<Category> categories = getValidatedCategories(itemRequestDto.getCategoryIds());
 
         // 1. 상품 저장
         Item savedItem = getSavedItem(itemRequestDto, member);
 
         // 2. DTO + 파일 VO 리스트 생성
-        List<ItemImgRequestDto> imgRequestDtoList = itemRequestDto.getItemImgRequestDto();
         List<ItemImgUploadVO> imgUploadVOList = new ArrayList<>();
         for (int i = 0; i < images.size(); i++) {
             imgUploadVOList.add(new ItemImgUploadVO(imgRequestDtoList.get(i), images.get(i)));
@@ -73,13 +90,9 @@ public class ItemService { // 통합 Item 서비스
         List<ItemOption> itemOptions = itemOptionService.saveItemOptions(savedItem, itemRequestDto.getItemOptionRequestDto());
 
         // 5. 카테고리 저장
-        List<ItemCategory> itemCategories = new ArrayList<>();
-        for (Long categoryId : itemRequestDto.getCategoryIds()) {
-            Category category = categoryRepository.findById(categoryId)
-                    .orElseThrow(() -> new BusinessException(BusinessErrorCode.CATEGORY_NOT_FOUND));
-
-            itemCategories.add(new ItemCategory(savedItem, category));
-        }
+        List<ItemCategory> itemCategories = categories.stream()
+                .map(category -> new ItemCategory(savedItem, category))
+                .toList();
         itemCategoryRepository.saveAll(itemCategories);
 
         // 6. Response 생성 및 반환
@@ -90,13 +103,21 @@ public class ItemService { // 통합 Item 서비스
 
 
     @Transactional
-    public ItemResponseDto updateItem(Long itemId, ItemUpdateRequestDto dto, List<MultipartFile> newImages) throws IOException {
+    public ItemResponseDto updateItem(Long memberId, Long itemId, ItemUpdateRequestDto dto, List<MultipartFile> newImages) throws IOException {
         // 1. 상품 조회
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
+        validateSellerAuthority(memberId, item);
 
         // 2. 상품 기본 정보 업데이트
-        item.updateItem(dto);
+        item.updateItem(
+                dto.getItemName(),
+                dto.getPrice(),
+                dto.getDiscount(),
+                dto.getDeliveryFee(),
+                dto.getOrigin(),
+                dto.getItemLimit()
+        );
 
         itemCategoryService.updateItemCategories(item, dto);
 
@@ -132,6 +153,17 @@ public class ItemService { // 통합 Item 서비스
         return itemRepository.save(item);
     }
 
+    private List<Category> getValidatedCategories(List<Long> categoryIds) {
+        if (categoryIds == null || categoryIds.isEmpty()) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+
+        return categoryIds.stream()
+                .map(categoryId -> categoryRepository.findById(categoryId)
+                        .orElseThrow(() -> new BusinessException(BusinessErrorCode.CATEGORY_NOT_FOUND)))
+                .toList();
+    }
+
     // 아이템 검색
     @Transactional(readOnly = true)
     public Page<ItemSearchResponseDto> searchItem(ItemSearchRequestDto itemSearchRequestDto, Pageable pageable) {
@@ -156,10 +188,18 @@ public class ItemService { // 통합 Item 서비스
     }
 
     // 아이템 삭제
-    public void deleteItem(Long id) {
+    @Transactional
+    public void deleteItem(Long memberId, Long id) {
         Item item = itemRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
+        validateSellerAuthority(memberId, item);
         itemRepository.delete(item);
+    }
+
+    private void validateSellerAuthority(Long memberId, Item item) {
+        if (!item.getSeller().getId().equals(memberId)) {
+            throw new ForbiddenRequestException(ForbiddenErrorCode.MEMBER_UNAUTHORIZED);
+        }
     }
 
 

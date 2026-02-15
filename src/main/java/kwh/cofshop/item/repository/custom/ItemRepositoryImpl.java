@@ -32,7 +32,8 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom {
     @Override
     public Page<Item> searchItems(ItemSearchRequestDto requestDto, Pageable pageable) {
         List<Item> result = queryFactory
-                .selectFrom(item)
+                .selectDistinct(item)
+                .from(item)
                 .leftJoin(itemCategory).on(itemCategory.item.eq(item))
                 .where(nameCondition(requestDto.getItemName()),
                         categoryCondition(requestDto.getCategoryId()))
@@ -42,7 +43,7 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom {
 
         // 총 개수 계산
         JPAQuery<Long> totalCount = queryFactory
-                .select(item.count())
+                .select(item.id.countDistinct())
                 .from(item)
                 .leftJoin(itemCategory).on(itemCategory.item.eq(item))
                 .where(nameCondition(requestDto.getItemName()),
@@ -72,7 +73,10 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom {
                         .or(category.parent.id.eq(categoryId)))
                 .fetch();
 
-        return categoryIds.isEmpty() ? null : itemCategory.category.id.in(categoryIds);
+        if (categoryIds.isEmpty()) {
+            return Expressions.asBoolean(false).isTrue();
+        }
+        return itemCategory.category.id.in(categoryIds);
     }
 
 

@@ -38,6 +38,10 @@ public class ChatMessageService {
         ChatRoom chatRoom = chatRoomRepository.findById(requestDto.getRoomId())
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.CHAT_ROOM_NOT_FOUND));
 
+        if (chatRoom.isClosed()) {
+            throw new BusinessException(BusinessErrorCode.CHAT_ROOM_ALREADY_CLOSED);
+        }
+
         // 2. 인증된 유저 탐색
         Member sender = memberRepository.findById(memberId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
@@ -48,7 +52,13 @@ public class ChatMessageService {
         }
 
         // 4. 메시지 생성 후 저장
-        ChatMessage message = ChatMessage.createMessage(chatRoom, sender, requestDto);
+        ChatMessage message = ChatMessage.createMessage(
+                chatRoom,
+                sender,
+                requestDto.getMessage(),
+                requestDto.getMessageGroupId(),
+                requestDto.getMessageType()
+        );
         chatMessageRepository.save(message);
 
         return chatMessageMapper.toResponseDto(message);
@@ -80,9 +90,13 @@ public class ChatMessageService {
 
     // 메시지 삭제
     @Transactional
-    public DeletedMessageResponseDto deleteMessage(Long messageId, Long senderId) {
+    public DeletedMessageResponseDto deleteMessage(Long roomId, Long messageId, Long senderId) {
         ChatMessage message = chatMessageRepository.findById(messageId)
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.CHAT_ROOM_ALREADY_CLOSED));
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.CHAT_MESSAGE_NOT_FOUND));
+
+        if (!message.getChatRoom().getId().equals(roomId)) {
+            throw new BusinessException(BusinessErrorCode.CHAT_MESSAGE_NOT_FOUND);
+        }
 
         if (!message.getSender().getId().equals(senderId)) {
             throw new ForbiddenRequestException(ForbiddenErrorCode.MEMBER_UNAUTHORIZED);
@@ -90,8 +104,9 @@ public class ChatMessageService {
 
         String groupId = message.getMessageGroupId();
 
-        // 그룹에 속한 전체 메시지 삭제
-        List<ChatMessage> messages = chatMessageRepository.findAllByMessageGroupId(groupId);
+        // 동일 채팅방 + 동일 작성자의 같은 그룹 메시지만 삭제
+        List<ChatMessage> messages =
+                chatMessageRepository.findAllByMessageGroupIdAndSender_IdAndChatRoom_Id(groupId, senderId, roomId);
         messages.forEach(ChatMessage::markAsDeleted);
 
         List<Long> deletedMessageIds = messages.stream()

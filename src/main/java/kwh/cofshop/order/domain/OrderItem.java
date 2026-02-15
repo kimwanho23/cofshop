@@ -62,11 +62,13 @@ public class OrderItem extends BaseTimeEntity {
 
     public static OrderItem createOrderItem(ItemOption itemOption, int quantity) {
         itemOption.removeStock(quantity);
+        int optionDiscountRate = itemOption.getDiscountRate() == null ? 0 : itemOption.getDiscountRate();
         return OrderItem.builder()
                 .item(itemOption.getItem())
                 .itemOption(itemOption)
                 .quantity(quantity)
-                .orderPrice(itemOption.getBasePrice()) // 개별 상품 가격
+                .orderPrice(itemOption.getBasePrice()) // 상품 할인 반영 기본 단가 + 옵션 추가금
+                .discountRate(optionDiscountRate)
                 .build();
     }
 

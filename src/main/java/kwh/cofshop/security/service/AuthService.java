@@ -10,7 +10,7 @@ import kwh.cofshop.global.exception.errorcodes.UnauthorizedErrorCode;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.repository.MemberRepository;
 import kwh.cofshop.security.JwtTokenProvider;
-import kwh.cofshop.security.dto.TokenDto;
+import kwh.cofshop.security.dto.TokenResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -27,7 +27,7 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final MemberRepository memberRepository;
 
-    public TokenDto reissue(HttpServletRequest request, HttpServletResponse response) {
+    public TokenResponseDto reissue(HttpServletRequest request, HttpServletResponse response) {
         String refreshToken = extractRefreshToken(request);
 
         if (refreshToken == null) {
@@ -53,7 +53,7 @@ public class AuthService {
         response.setHeader("Authorization", "Bearer " + newAccessToken);
         response.addHeader(HttpHeaders.SET_COOKIE, createRefreshTokenCookie(newRefreshToken).toString());
 
-        return TokenDto.builder()
+        return TokenResponseDto.builder()
                 .grantType("Bearer")
                 .accessToken(newAccessToken)
                 .refreshToken(null)

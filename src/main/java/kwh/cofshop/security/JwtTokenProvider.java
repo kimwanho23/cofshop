@@ -4,7 +4,7 @@ import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import kwh.cofshop.config.properties.JwtProperties;
 import kwh.cofshop.member.domain.Role;
-import kwh.cofshop.security.dto.TokenDto;
+import kwh.cofshop.security.dto.TokenResponseDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -85,7 +85,7 @@ public class JwtTokenProvider {
         }
     }
 
-    public TokenDto createAuthToken(Authentication authentication) {
+    public TokenResponseDto createAuthToken(Authentication authentication) {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
         List<String> authorities = authentication.getAuthorities().stream()
@@ -110,7 +110,7 @@ public class JwtTokenProvider {
                 .signWith(getSigningKey(), SignatureAlgorithm.HS512)
                 .compact();
 
-        return TokenDto.builder()
+        return TokenResponseDto.builder()
                 .grantType(BEARER_TYPE)
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)

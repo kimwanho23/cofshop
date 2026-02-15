@@ -1,7 +1,6 @@
 package kwh.cofshop.chat.domain;
 
 import jakarta.persistence.*;
-import kwh.cofshop.chat.dto.request.ChatMessageRequestDto;
 import kwh.cofshop.global.domain.BaseTimeEntity;
 import kwh.cofshop.member.domain.Member;
 import lombok.AccessLevel;
@@ -52,16 +51,16 @@ public class ChatMessage extends BaseTimeEntity {
         this.isDeleted = isDeleted;
     }
 
-    public static ChatMessage createMessage(ChatRoom chatRoom, Member sender, ChatMessageRequestDto requestDto) {
-        String groupId = Optional.ofNullable(requestDto.getMessageGroupId())
+    public static ChatMessage createMessage(ChatRoom chatRoom, Member sender, String message, String messageGroupId, MessageType messageType) {
+        String groupId = Optional.ofNullable(messageGroupId)
                 .orElse(UUID.randomUUID().toString()); // 묶음 메시지를 그룹으로
 
         return ChatMessage.builder()
                 .chatRoom(chatRoom)
                 .sender(sender)
-                .message(requestDto.getMessage())
+                .message(message)
                 .messageGroupId(groupId)
-                .messageType(requestDto.getMessageType())
+                .messageType(messageType)
                 .isDeleted(false)
                 .build();
     }

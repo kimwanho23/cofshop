@@ -2,8 +2,8 @@ package kwh.cofshop.file.domain;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
-import org.thymeleaf.util.StringUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,7 +20,7 @@ public class FileStore {
     private String fileDir;
 
     public String getFullPath(String filename) {
-        return fileDir + filename;
+        return Paths.get(fileDir, filename).normalize().toString();
     }
 
     // 파일 다수 저장
@@ -60,13 +60,28 @@ public class FileStore {
 
     // 파일 삭제
     public void deleteFile(String storeFileName) {
-        if (!StringUtils.isEmpty(storeFileName)) {
-            Path path = Paths.get(getFullPath(storeFileName));
-            try {
-                Files.deleteIfExists(path);
-            } catch (IOException e) {
-                throw new RuntimeException("파일 삭제 실패: " + path.toString(), e);
-            }
+        String normalizedFileName = sanitizeFileName(storeFileName);
+        if (!StringUtils.hasText(normalizedFileName)) {
+            return;
         }
+
+        Path path = Paths.get(getFullPath(normalizedFileName));
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException e) {
+            throw new RuntimeException("파일 삭제 실패: " + path, e);
+        }
+    }
+
+    private String sanitizeFileName(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        String normalized = value.replace("\\", "/");
+        if (normalized.startsWith("/")) {
+            normalized = normalized.substring(1);
+        }
+        Path path = Paths.get(normalized).getFileName();
+        return path == null ? null : path.toString();
     }
 }

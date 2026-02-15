@@ -56,7 +56,7 @@ class CartItemServiceTest {
     @Test
     @DisplayName("장바구니 단건 추가: 장바구니 없음")
     void addCartItem_cartNotFound() {
-        when(cartRepository.findByMemberId(anyLong())).thenReturn(Optional.empty());
+        when(cartRepository.findByMemberIdWithLock(anyLong())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> cartItemService.addCartItem(new CartItemRequestDto(), 1L))
                 .isInstanceOf(BusinessException.class);
@@ -66,7 +66,7 @@ class CartItemServiceTest {
     @DisplayName("장바구니 단건 추가: 상품 없음")
     void addCartItem_itemNotFound() {
         Cart cart = createCartWithId(1L);
-        when(cartRepository.findByMemberId(1L)).thenReturn(Optional.of(cart));
+        when(cartRepository.findByMemberIdWithLock(1L)).thenReturn(Optional.of(cart));
         when(itemRepository.findById(10L)).thenReturn(Optional.empty());
 
         CartItemRequestDto requestDto = new CartItemRequestDto();
@@ -84,7 +84,7 @@ class CartItemServiceTest {
         Cart cart = createCartWithId(1L);
         Item item = createItem(1000);
 
-        when(cartRepository.findByMemberId(1L)).thenReturn(Optional.of(cart));
+        when(cartRepository.findByMemberIdWithLock(1L)).thenReturn(Optional.of(cart));
         when(itemRepository.findById(10L)).thenReturn(Optional.of(item));
         when(itemOptionRepository.findById(100L)).thenReturn(Optional.empty());
 
@@ -114,10 +114,10 @@ class CartItemServiceTest {
 
         CartItemResponseDto responseDto = new CartItemResponseDto();
 
-        when(cartRepository.findByMemberId(1L)).thenReturn(Optional.of(cart));
+        when(cartRepository.findByMemberIdWithLock(1L)).thenReturn(Optional.of(cart));
         when(itemRepository.findById(10L)).thenReturn(Optional.of(item));
         when(itemOptionRepository.findById(100L)).thenReturn(Optional.of(option));
-        when(cartItemRepository.findByCartIdAndItemOptionId(1L, 100L)).thenReturn(Optional.of(existing));
+        when(cartItemRepository.findByCartIdAndItemOptionIdWithLock(1L, 100L)).thenReturn(Optional.of(existing));
         when(cartItemMapper.toResponseDto(existing)).thenReturn(responseDto);
 
         CartItemRequestDto requestDto = new CartItemRequestDto();
@@ -140,10 +140,10 @@ class CartItemServiceTest {
         ItemOption option = createOption(item, 200, 100);
         ReflectionTestUtils.setField(option, "id", 100L);
 
-        when(cartRepository.findByMemberId(1L)).thenReturn(Optional.of(cart));
+        when(cartRepository.findByMemberIdWithLock(1L)).thenReturn(Optional.of(cart));
         when(itemRepository.findById(10L)).thenReturn(Optional.of(item));
         when(itemOptionRepository.findById(100L)).thenReturn(Optional.of(option));
-        when(cartItemRepository.findByCartIdAndItemOptionId(1L, 100L)).thenReturn(Optional.empty());
+        when(cartItemRepository.findByCartIdAndItemOptionIdWithLock(1L, 100L)).thenReturn(Optional.empty());
         when(cartItemMapper.toResponseDto(org.mockito.ArgumentMatchers.any(CartItem.class)))
                 .thenReturn(new CartItemResponseDto());
 
@@ -166,10 +166,10 @@ class CartItemServiceTest {
         ItemOption option = createOption(item, 200, 100);
         ReflectionTestUtils.setField(option, "id", 100L);
 
-        when(cartRepository.findByMemberId(1L)).thenReturn(Optional.of(cart));
+        when(cartRepository.findByMemberIdWithLock(1L)).thenReturn(Optional.of(cart));
         when(itemRepository.findById(10L)).thenReturn(Optional.of(item));
         when(itemOptionRepository.findById(100L)).thenReturn(Optional.of(option));
-        when(cartItemRepository.findByCartIdAndItemOptionId(1L, 100L)).thenReturn(Optional.empty());
+        when(cartItemRepository.findByCartIdAndItemOptionIdWithLock(1L, 100L)).thenReturn(Optional.empty());
         when(cartItemMapper.toResponseDto(org.mockito.ArgumentMatchers.any(CartItem.class)))
                 .thenReturn(new CartItemResponseDto());
 
@@ -312,7 +312,7 @@ class CartItemServiceTest {
     }
 
     private Item createItem(int price) {
-        return Item.builder()
+        Item item = Item.builder()
                 .itemName("커피")
                 .price(price)
                 .deliveryFee(0)
@@ -326,6 +326,8 @@ class CartItemServiceTest {
                         .tel("01099998888")
                         .build())
                 .build();
+        ReflectionTestUtils.setField(item, "id", (long) price);
+        return item;
     }
 
     private ItemOption createOption(Item item, int additionalPrice, int stock) {

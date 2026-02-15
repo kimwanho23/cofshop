@@ -1,8 +1,9 @@
-package kwh.cofshop.payment.dto;
+package kwh.cofshop.payment.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -10,9 +11,11 @@ import lombok.Setter;
 @Setter
 public class PaymentVerifyRequestDto {
     @NotBlank
+    @Size(max = 100)
     private String impUid; // PortOne v2 transactionId (v1 imp_uid)
 
     @NotBlank
+    @Size(max = 100)
     private String merchantUid;
 
     @NotNull

@@ -1,6 +1,7 @@
 package kwh.cofshop.item.service;
 
 import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.ForbiddenRequestException;
 import kwh.cofshop.item.domain.Category;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemCategory;
@@ -42,6 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -93,17 +95,13 @@ class ItemServiceTest {
         Member member = createMember(1L);
         when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
 
-        Item item = createItem();
-        when(itemMapper.toEntity(any(ItemRequestDto.class))).thenReturn(item);
-        when(itemRepository.save(item)).thenReturn(item);
-        when(itemImgService.saveItemImages(any(Item.class), any())).thenReturn(List.of(ItemImg.builder().build()));
-        when(itemOptionService.saveItemOptions(any(Item.class), any())).thenReturn(List.of(ItemOption.builder().build()));
-
         ItemRequestDto requestDto = createRequestDto();
         when(categoryRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> itemService.saveItem(requestDto, 1L, List.of(new MockMultipartFile("image", "test.jpg", "image/jpeg", "data".getBytes()))))
                 .isInstanceOf(BusinessException.class);
+        verify(itemImgService, never()).saveItemImages(any(Item.class), any());
+        verify(itemRepository, never()).save(any(Item.class));
     }
 
     @Test
@@ -138,7 +136,7 @@ class ItemServiceTest {
     void updateItem_notFound() {
         when(itemRepository.findById(anyLong())).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> itemService.updateItem(1L, new ItemUpdateRequestDto(), List.of()))
+        assertThatThrownBy(() -> itemService.updateItem(1L, 1L, new ItemUpdateRequestDto(), List.of()))
                 .isInstanceOf(BusinessException.class);
     }
 
@@ -157,12 +155,43 @@ class ItemServiceTest {
         dto.setOrigin("브라질");
         dto.setItemLimit(10);
 
-        ItemResponseDto result = itemService.updateItem(1L, dto, List.of());
+        ItemResponseDto result = itemService.updateItem(2L, 1L, dto, List.of());
 
         assertThat(result).isNotNull();
         verify(itemCategoryService).updateItemCategories(item, dto);
         verify(itemImgService).updateItemImages(item, dto, List.of());
         verify(itemOptionService).updateItemOptions(item, dto);
+    }
+
+    @Test
+    @DisplayName("상품 수정: 부분 수정 시 null 필드는 유지")
+    void updateItem_partialUpdateKeepsExistingValues() throws IOException {
+        Item item = createItem();
+        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+        when(itemRepository.save(item)).thenReturn(item);
+        when(itemMapper.toResponseDto(item)).thenReturn(new ItemResponseDto());
+
+        ItemUpdateRequestDto dto = new ItemUpdateRequestDto();
+        dto.setItemName("부분수정");
+
+        itemService.updateItem(2L, 1L, dto, List.of());
+
+        assertThat(item.getItemName()).isEqualTo("부분수정");
+        assertThat(item.getPrice()).isEqualTo(1000);
+        assertThat(item.getOrigin()).isEqualTo("브라질");
+    }
+
+    @Test
+    @DisplayName("상품 수정: 판매자 불일치")
+    void updateItem_forbiddenWhenNotSeller() {
+        Item item = createItem();
+        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+
+        ItemUpdateRequestDto dto = new ItemUpdateRequestDto();
+        dto.setItemName("변경");
+
+        assertThatThrownBy(() -> itemService.updateItem(999L, 1L, dto, List.of()))
+                .isInstanceOf(ForbiddenRequestException.class);
     }
 
     @Test
@@ -217,7 +246,7 @@ class ItemServiceTest {
     void deleteItem_notFound() {
         when(itemRepository.findById(anyLong())).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> itemService.deleteItem(1L))
+        assertThatThrownBy(() -> itemService.deleteItem(1L, 1L))
                 .isInstanceOf(BusinessException.class);
     }
 
@@ -227,9 +256,19 @@ class ItemServiceTest {
         Item item = createItem();
         when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
 
-        itemService.deleteItem(1L);
+        itemService.deleteItem(2L, 1L);
 
         verify(itemRepository).delete(item);
+    }
+
+    @Test
+    @DisplayName("상품 삭제: 판매자 불일치")
+    void deleteItem_forbiddenWhenNotSeller() {
+        Item item = createItem();
+        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+
+        assertThatThrownBy(() -> itemService.deleteItem(999L, 1L))
+                .isInstanceOf(ForbiddenRequestException.class);
     }
 
     private ItemRequestDto createRequestDto() {

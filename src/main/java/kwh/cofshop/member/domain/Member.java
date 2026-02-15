@@ -2,6 +2,8 @@ package kwh.cofshop.member.domain;
 
 import jakarta.persistence.*;
 import kwh.cofshop.cart.domain.Cart;
+import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.Review;
 import lombok.AccessLevel;
@@ -99,16 +101,20 @@ public class Member {
 
     // 포인트 사용
     public void usePoint(int amount) {
-        if (amount < 0 && this.point + amount < 0) {
-            throw new IllegalStateException("보유한 포인트가 부족합니다.");
+        if (amount <= 0) {
+            throw new BusinessException(BusinessErrorCode.INVALID_POINT_OPERATION);
         }
-        this.point -= amount;
+        int currentPoint = this.point == null ? 0 : this.point;
+        if (currentPoint < amount) {
+            throw new BusinessException(BusinessErrorCode.INSUFFICIENT_POINT);
+        }
+        this.point = currentPoint - amount;
     }
 
     // 포인트 복구
     public void restorePoint(int amount) {
         if (amount <= 0) {
-            throw new IllegalArgumentException("복구할 포인트는 0보다 커야 합니다.");
+            throw new BusinessException(BusinessErrorCode.INVALID_POINT_OPERATION);
         }
         this.point += amount;
     }

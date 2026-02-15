@@ -168,7 +168,7 @@ class CartControllerTest {
     @Test
     @DisplayName("장바구니 삭제")
     void deleteCart() throws Exception {
-        mockMvc.perform(delete("/api/carts/1"))
+        mockMvc.perform(delete("/api/carts/me"))
                 .andExpect(status().isNoContent());
     }
 }

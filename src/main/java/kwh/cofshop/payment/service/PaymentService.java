@@ -14,11 +14,11 @@ import kwh.cofshop.payment.client.portone.PortOnePayment;
 import kwh.cofshop.payment.client.portone.PortOnePaymentClient;
 import kwh.cofshop.payment.domain.PaymentEntity;
 import kwh.cofshop.payment.domain.PaymentStatus;
-import kwh.cofshop.payment.dto.PaymentPrepareRequestDto;
-import kwh.cofshop.payment.dto.PaymentProviderResponseDto;
-import kwh.cofshop.payment.dto.PaymentRefundRequestDto;
-import kwh.cofshop.payment.dto.PaymentResponseDto;
-import kwh.cofshop.payment.dto.PaymentVerifyRequestDto;
+import kwh.cofshop.payment.dto.request.PaymentPrepareRequestDto;
+import kwh.cofshop.payment.dto.response.PaymentProviderResponseDto;
+import kwh.cofshop.payment.dto.request.PaymentRefundRequestDto;
+import kwh.cofshop.payment.dto.response.PaymentResponseDto;
+import kwh.cofshop.payment.dto.request.PaymentVerifyRequestDto;
 import kwh.cofshop.payment.repository.PaymentEntityRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,17 +26,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class PaymentService {
 
+    private static final String PORTONE_PAYMENT_STATUS_PAID = "PAID";
     private static final String PORTONE_PAYMENT_STATUS_CANCELLED = "CANCELLED";
     private static final String PORTONE_CANCELLATION_STATUS_FAILED = "FAILED";
     private static final String DEFAULT_REFUND_REASON = "User requested refund";
 
     private final OrderRepository orderRepository;
+    private final PaymentRefundTxService paymentRefundTxService;
     private final PaymentEntityRepository paymentEntityRepository;
     private final PortOnePaymentClient portOnePaymentClient;
 
@@ -85,8 +88,34 @@ public class PaymentService {
             throw new BusinessException(BusinessErrorCode.PAYMENT_AMOUNT_DISCREPANCY);
         }
 
+        if (paymentEntity.getStatus() == PaymentStatus.PAID) {
+            OrderState orderState = paymentEntity.getOrder().getOrderState();
+            if (orderState == OrderState.CANCELLED) {
+                throw new BusinessException(BusinessErrorCode.ORDER_ALREADY_CANCELLED);
+            }
+
+            if (!Objects.equals(paymentEntity.getImpUid(), payment.transactionId())) {
+                throw new BusinessException(BusinessErrorCode.PAYMENT_UID_DISCREPANCY);
+            }
+            if (!Objects.equals(paymentEntity.getPaidAmount(), paidAmount)) {
+                throw new BusinessException(BusinessErrorCode.PAYMENT_AMOUNT_DISCREPANCY);
+            }
+            if (orderState == OrderState.WAITING_FOR_PAY || orderState == OrderState.PAYMENT_PENDING) {
+                paymentEntity.getOrder().changeOrderState(OrderState.PAID);
+            }
+            return;
+        }
+
         if (!paymentEntity.getPrice().equals(paidAmount)) {
             throw new BusinessException(BusinessErrorCode.PAYMENT_AMOUNT_DISCREPANCY);
+        }
+
+        OrderState orderState = paymentEntity.getOrder().getOrderState();
+        if (orderState == OrderState.CANCELLED) {
+            throw new BusinessException(BusinessErrorCode.ORDER_ALREADY_CANCELLED);
+        }
+        if (orderState != OrderState.WAITING_FOR_PAY && orderState != OrderState.PAYMENT_PENDING) {
+            throw new BusinessException(BusinessErrorCode.PAYMENT_FAIL);
         }
 
         paymentEntity.paymentSuccess(
@@ -118,13 +147,16 @@ public class PaymentService {
             throw new BusinessException(BusinessErrorCode.PAYMENT_UID_DISCREPANCY);
         }
 
+        if (!PORTONE_PAYMENT_STATUS_PAID.equalsIgnoreCase(payment.status())) {
+            throw new BusinessException(BusinessErrorCode.PAYMENT_FAIL);
+        }
+
         if (!requestDto.getAmount().equals(payment.paidAmount())) {
             throw new BusinessException(BusinessErrorCode.PAYMENT_AMOUNT_DISCREPANCY);
         }
     }
 
     @DistributedLock(keyName = "'refund:' + #paymentId")
-    @Transactional
     public void refundPayment(Long paymentId, Long memberId, PaymentRefundRequestDto requestDto) {
         PaymentEntity paymentEntity = paymentEntityRepository
                 .findByIdAndMember_Id(paymentId, memberId)
@@ -134,34 +166,59 @@ public class PaymentService {
             throw new BusinessException(BusinessErrorCode.PAYMENT_ALREADY_CANCELLED);
         }
 
+        if (paymentEntity.getStatus() == PaymentStatus.REFUND_PENDING) {
+            completePendingRefund(paymentId, memberId, paymentEntity.getMerchantUid());
+            return;
+        }
+
         if (paymentEntity.getStatus() != PaymentStatus.PAID) {
             throw new BusinessException(BusinessErrorCode.PAYMENT_CANNOT_REFUND);
         }
 
-        if (requestDto.getAmount() != null) {
-            Long paidAmount = paymentEntity.getPaidAmount();
-            if (paidAmount == null || !paidAmount.equals(requestDto.getAmount())) {
-                throw new BusinessException(BusinessErrorCode.PAYMENT_AMOUNT_DISCREPANCY);
-            }
+        Long paidAmount = paymentEntity.getPaidAmount();
+        if (paidAmount == null || !paidAmount.equals(requestDto.getAmount())) {
+            throw new BusinessException(BusinessErrorCode.PAYMENT_AMOUNT_DISCREPANCY);
         }
 
-        PortOneCancellation cancellation = cancelPayment(paymentEntity.getMerchantUid());
+        if (!paymentEntityRepository.existsByIdAndMember_IdAndOrder_OrderState(paymentId, memberId, OrderState.PAID)) {
+            throw new BusinessException(BusinessErrorCode.PAYMENT_CANNOT_REFUND);
+        }
+
+        paymentRefundTxService.markRefundPending(paymentId, memberId);
+
+        PortOneCancellation cancellation;
+        try {
+            cancellation = cancelPayment(paymentEntity.getMerchantUid());
+        } catch (BusinessException e) {
+            if (isProviderAlreadyCancelled(paymentEntity.getMerchantUid())) {
+                paymentRefundTxService.confirmRefund(paymentId, memberId);
+                return;
+            }
+            paymentRefundTxService.rollbackRefundPending(paymentId, memberId);
+            throw e;
+        }
+
         if (PORTONE_CANCELLATION_STATUS_FAILED.equalsIgnoreCase(cancellation.status())) {
+            paymentRefundTxService.rollbackRefundPending(paymentId, memberId);
             throw new BusinessException(BusinessErrorCode.PAYMENT_REFUND_FAIL);
         }
 
         PortOnePayment payment = fetchPaymentByMerchantUid(paymentEntity.getMerchantUid());
         if (!PORTONE_PAYMENT_STATUS_CANCELLED.equalsIgnoreCase(payment.status())) {
+            paymentRefundTxService.rollbackRefundPending(paymentId, memberId);
             throw new BusinessException(BusinessErrorCode.PAYMENT_REFUND_FAIL);
         }
 
-        paymentEntity.paymentStatusChange(PaymentStatus.CANCELLED);
-        paymentEntity.getOrder().changeOrderState(OrderState.CANCELLED);
+        paymentRefundTxService.confirmRefund(paymentId, memberId);
     }
 
     private PortOnePayment fetchPaymentByMerchantUid(String merchantUid) {
         try {
-            return portOnePaymentClient.getPayment(merchantUid);
+            PortOnePayment payment = portOnePaymentClient.getPayment(merchantUid);
+            if (payment == null) {
+                throw new PortOneClientException("PortOne payment response is empty");
+            }
+            return payment;
         } catch (PortOneClientException e) {
             log.warn("PortOne payment 조회 실패: {}", e.getMessage());
             throw new BusinessException(BusinessErrorCode.PAYMENT_PROVIDER_ERROR);
@@ -170,10 +227,31 @@ public class PaymentService {
 
     private PortOneCancellation cancelPayment(String merchantUid) {
         try {
-            return portOnePaymentClient.cancelPayment(merchantUid, DEFAULT_REFUND_REASON);
+            PortOneCancellation cancellation = portOnePaymentClient.cancelPayment(merchantUid, DEFAULT_REFUND_REASON);
+            if (cancellation == null) {
+                throw new PortOneClientException("PortOne cancel response is empty");
+            }
+            return cancellation;
         } catch (PortOneClientException e) {
             log.warn("PortOne payment 환불 실패: {}", e.getMessage());
             throw new BusinessException(BusinessErrorCode.PAYMENT_PROVIDER_ERROR);
+        }
+    }
+
+    private void completePendingRefund(Long paymentId, Long memberId, String merchantUid) {
+        PortOnePayment payment = fetchPaymentByMerchantUid(merchantUid);
+        if (!PORTONE_PAYMENT_STATUS_CANCELLED.equalsIgnoreCase(payment.status())) {
+            throw new BusinessException(BusinessErrorCode.PAYMENT_REFUND_FAIL);
+        }
+        paymentRefundTxService.confirmRefund(paymentId, memberId);
+    }
+
+    private boolean isProviderAlreadyCancelled(String merchantUid) {
+        try {
+            PortOnePayment payment = fetchPaymentByMerchantUid(merchantUid);
+            return PORTONE_PAYMENT_STATUS_CANCELLED.equalsIgnoreCase(payment.status());
+        } catch (BusinessException ignored) {
+            return false;
         }
     }
 }

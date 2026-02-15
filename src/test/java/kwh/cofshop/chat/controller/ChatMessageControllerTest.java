@@ -66,7 +66,7 @@ class ChatMessageControllerTest {
         DeletedMessageResponseDto responseDto = new DeletedMessageResponseDto();
         responseDto.setRoomId(2L);
 
-        when(chatMessageService.deleteMessage(anyLong(), anyLong())).thenReturn(responseDto);
+        when(chatMessageService.deleteMessage(anyLong(), anyLong(), anyLong())).thenReturn(responseDto);
 
         Principal principal = buildPrincipal(1L);
 

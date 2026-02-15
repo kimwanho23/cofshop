@@ -2,7 +2,7 @@ package kwh.cofshop.item.service;
 
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.item.domain.Category;
-import kwh.cofshop.item.dto.CategoryPathDto;
+import kwh.cofshop.item.dto.CategoryPathResponseDto;
 import kwh.cofshop.item.dto.request.CategoryRequestDto;
 import kwh.cofshop.item.dto.response.CategoryResponseDto;
 import kwh.cofshop.item.mapper.CategoryMapper;
@@ -93,7 +93,7 @@ class CategoryServiceTest {
     @Test
     @DisplayName("카테고리 경로 조회")
     void getCategoryPath() {
-        CategoryPathDto path1 = new CategoryPathDto() {
+        CategoryPathResponseDto path1 = new CategoryPathResponseDto() {
             @Override
             public Long getId() {
                 return 1L;
@@ -109,7 +109,7 @@ class CategoryServiceTest {
                 return 2L;
             }
         };
-        CategoryPathDto path2 = new CategoryPathDto() {
+        CategoryPathResponseDto path2 = new CategoryPathResponseDto() {
             @Override
             public Long getId() {
                 return 2L;
@@ -126,13 +126,13 @@ class CategoryServiceTest {
             }
         };
 
-        List<CategoryPathDto> paths = new ArrayList<>();
+        List<CategoryPathResponseDto> paths = new ArrayList<>();
         paths.add(path1);
         paths.add(path2);
 
         when(categoryRepository.findCategoryPath(1L)).thenReturn(paths);
 
-        List<CategoryPathDto> result = categoryService.getCategoryPath(1L);
+        List<CategoryPathResponseDto> result = categoryService.getCategoryPath(1L);
 
         assertThat(result.get(0).getName()).isEqualTo("상위");
         assertThat(result.get(1).getName()).isEqualTo("하위");
@@ -145,7 +145,7 @@ class CategoryServiceTest {
 
         List<CategoryResponseDto> result = categoryService.getCategoryChild(1L);
 
-        assertThat(result).isNull();
+        assertThat(result).isEmpty();
     }
 
     @Test

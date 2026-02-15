@@ -1,5 +1,7 @@
 package kwh.cofshop.item.service;
 
+import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemCategory;
 import kwh.cofshop.item.dto.request.ItemUpdateRequestDto;
@@ -30,7 +32,7 @@ public class ItemCategoryService {
         if (addCategoryIds != null && !addCategoryIds.isEmpty()) {
             List<ItemCategory> newCategories = addCategoryIds.stream()
                     .map(id -> new ItemCategory(item, categoryRepository.findById(id)
-                            .orElseThrow(() -> new IllegalArgumentException("Category not found with id: " + id))))
+                            .orElseThrow(() -> new BusinessException(BusinessErrorCode.CATEGORY_NOT_FOUND))))
                     .toList();
             itemCategoryRepository.saveAll(newCategories);
         }

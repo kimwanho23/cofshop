@@ -165,6 +165,7 @@ jobs:
             sudo docker run --name cofshop --network my-network --restart unless-stopped -d -p 8080:8080 \
               -e TZ=Asia/Seoul \
               -e SPRING_PROFILES_ACTIVE=${{ secrets.SPRING_PROFILES_ACTIVE != '' && secrets.SPRING_PROFILES_ACTIVE || 'prod' }} \
+              -e JPA_DDL_AUTO=${{ secrets.JPA_DDL_AUTO != '' && secrets.JPA_DDL_AUTO || 'validate' }} \
               -e DB_URL=${{ secrets.DB_URL }} \
               -e DB_USERNAME=${{ secrets.DB_USERNAME }} \
               -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \

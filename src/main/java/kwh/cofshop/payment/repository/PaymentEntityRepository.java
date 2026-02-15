@@ -1,5 +1,6 @@
 package kwh.cofshop.payment.repository;
 
+import kwh.cofshop.order.domain.OrderState;
 import kwh.cofshop.payment.domain.PaymentEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -11,5 +12,7 @@ public interface PaymentEntityRepository extends JpaRepository<PaymentEntity, Lo
     Optional<PaymentEntity> findByIdAndMember_Id(Long id, Long memberId);
 
     Optional<PaymentEntity> findByImpUidAndMember_Id(String impUid, Long memberId);
+
+    boolean existsByIdAndMember_IdAndOrder_OrderState(Long id, Long memberId, OrderState orderState);
 
 }

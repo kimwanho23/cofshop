@@ -24,7 +24,7 @@ public class MemberLoginHistoryService {
     }
 
     public List<MemberLoginEvent> getUserLoginHistory(Long memberId) {
-        List<MemberLoginHistory> loginHistories = memberLoginHistoryRepository.findAll();
+        List<MemberLoginHistory> loginHistories = memberLoginHistoryRepository.findAllByMemberIdOrderByLoginDtDesc(memberId);
         return loginHistories.stream()
                 .map(memberLoginHistoryMapper::toResponseDto)
                 .toList();

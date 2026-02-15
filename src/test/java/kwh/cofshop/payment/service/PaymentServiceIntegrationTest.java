@@ -24,6 +24,9 @@ class PaymentServiceIntegrationTest {
     @Mock
     private PortOnePaymentClient portOnePaymentClient;
 
+    @Mock
+    private PaymentRefundTxService paymentRefundTxService;
+
     @InjectMocks
     private PaymentService paymentService;
 

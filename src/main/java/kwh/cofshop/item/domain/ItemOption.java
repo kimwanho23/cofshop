@@ -3,7 +3,6 @@ package kwh.cofshop.item.domain;
 import jakarta.persistence.*;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
-import kwh.cofshop.item.dto.request.ItemOptionRequestDto;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -69,10 +68,10 @@ public class ItemOption {
         return itemOption;
     }
 
-    public void updateOption(ItemOptionRequestDto dto) {
-        this.description = dto.getDescription();
-        this.additionalPrice = dto.getAdditionalPrice();
-        this.stock = dto.getStock();
+    public void updateOption(String description, Integer additionalPrice, Integer stock) {
+        this.description = description;
+        this.additionalPrice = additionalPrice;
+        this.stock = stock;
     }
 
     public void addStock(int stock) { // 재고 더하기 (주문 취소, 재고 추가)
@@ -87,7 +86,11 @@ public class ItemOption {
     }
 
     public int getBasePrice() {
-        return this.getItem().getPrice() + this.additionalPrice;
+        int itemPrice = this.getItem().getPrice();
+        int itemDiscountRate = this.getItem().getDiscount() == null ? 0 : this.getItem().getDiscount();
+        int discountedItemPrice = itemPrice * (100 - itemDiscountRate) / 100;
+        int optionAdditionalPrice = this.additionalPrice == null ? 0 : this.additionalPrice;
+        return discountedItemPrice + optionAdditionalPrice;
     }
 
     public int getTotalPrice() {

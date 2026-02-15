@@ -5,10 +5,10 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import kwh.cofshop.member.dto.request.LoginDto;
+import kwh.cofshop.member.dto.request.LoginRequestDto;
 import kwh.cofshop.member.dto.response.LoginResponseDto;
 import kwh.cofshop.member.event.MemberLoginEvent;
-import kwh.cofshop.security.dto.TokenDto;
+import kwh.cofshop.security.dto.TokenResponseDto;
 import kwh.cofshop.security.service.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,7 +40,7 @@ public class CustomLoginFilter extends UsernamePasswordAuthenticationFilter {
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
             throws AuthenticationException {
         try {
-            LoginDto loginDto = objectMapper.readValue(request.getInputStream(), LoginDto.class);
+            LoginRequestDto loginDto = objectMapper.readValue(request.getInputStream(), LoginRequestDto.class);
             UsernamePasswordAuthenticationToken authRequest =
                     new UsernamePasswordAuthenticationToken(loginDto.getEmail(), loginDto.getMemberPwd());
 
@@ -56,7 +56,7 @@ public class CustomLoginFilter extends UsernamePasswordAuthenticationFilter {
                                             FilterChain chain, Authentication authResult)
             throws IOException, ServletException {
         CustomUserDetails customUserDetails = (CustomUserDetails) authResult.getPrincipal();
-        TokenDto token = jwtTokenProvider.createAuthToken(authResult);
+        TokenResponseDto token = jwtTokenProvider.createAuthToken(authResult);
 
         addRefreshToken(customUserDetails.getId(), token.getRefreshToken());
 

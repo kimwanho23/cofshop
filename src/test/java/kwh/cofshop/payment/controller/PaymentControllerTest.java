@@ -1,8 +1,8 @@
 package kwh.cofshop.payment.controller;
 
-import kwh.cofshop.payment.dto.PaymentPrepareRequestDto;
-import kwh.cofshop.payment.dto.PaymentProviderResponseDto;
-import kwh.cofshop.payment.dto.PaymentResponseDto;
+import kwh.cofshop.payment.dto.request.PaymentPrepareRequestDto;
+import kwh.cofshop.payment.dto.response.PaymentProviderResponseDto;
+import kwh.cofshop.payment.dto.response.PaymentResponseDto;
 import kwh.cofshop.payment.service.PaymentService;
 import kwh.cofshop.support.StandaloneMockMvcFactory;
 import kwh.cofshop.support.TestLoginMemberArgumentResolver;

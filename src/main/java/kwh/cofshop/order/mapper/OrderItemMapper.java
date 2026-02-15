@@ -16,10 +16,10 @@ import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
 public interface OrderItemMapper {
 
     @Mapping(source = "item.itemName", target = "itemName")
-    @Mapping(source = "item.price", target = "price")
+    @Mapping(source = "orderPrice", target = "price")
     @Mapping(source = "itemOption.additionalPrice", target = "additionalPrice")
     @Mapping(source = "item.origin", target = "origin")
-    @Mapping(source = "itemOption.discountRate", target = "discountRate")
+    @Mapping(source = "discountRate", target = "discountRate")
     @Mapping(source = "quantity", target = "quantity")
     OrderItemResponseDto toResponseDto(OrderItem orderItem);
 

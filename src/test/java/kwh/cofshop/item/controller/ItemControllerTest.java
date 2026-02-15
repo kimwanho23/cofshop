@@ -1,6 +1,9 @@
 package kwh.cofshop.item.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import kwh.cofshop.item.domain.ImgType;
+import kwh.cofshop.item.dto.request.ItemImgRequestDto;
+import kwh.cofshop.item.dto.request.ItemOptionRequestDto;
 import kwh.cofshop.item.dto.request.ItemRequestDto;
 import kwh.cofshop.item.dto.request.ItemSearchRequestDto;
 import kwh.cofshop.item.dto.request.ItemUpdateRequestDto;
@@ -107,6 +110,13 @@ class ItemControllerTest {
         ItemRequestDto requestDto = new ItemRequestDto();
         requestDto.setItemName("커피 원두");
         requestDto.setPrice(1000);
+        requestDto.setOrigin("브라질");
+        requestDto.setItemImgRequestDto(List.of(new ItemImgRequestDto(null, null, ImgType.REPRESENTATIVE)));
+        requestDto.setItemOptionRequestDto(List.of(ItemOptionRequestDto.builder()
+                .description("기본")
+                .additionalPrice(0)
+                .stock(10)
+                .build()));
         requestDto.setCategoryIds(List.of(1L));
 
         String requestJson = objectMapper.writeValueAsString(requestDto);
@@ -137,7 +147,7 @@ class ItemControllerTest {
         ItemResponseDto responseDto = new ItemResponseDto();
         responseDto.setId(1L);
 
-        when(itemService.updateItem(anyLong(), any(), anyList())).thenReturn(responseDto);
+        when(itemService.updateItem(anyLong(), anyLong(), any(), anyList())).thenReturn(responseDto);
 
         ItemUpdateRequestDto requestDto = new ItemUpdateRequestDto();
         requestDto.setItemName("커피 변경");
@@ -173,5 +183,34 @@ class ItemControllerTest {
     void deleteItem() throws Exception {
         mockMvc.perform(delete("/api/item/1"))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("상품 수정: 이미지 파트 없이도 가능")
+    void updateItem_withoutImages() throws Exception {
+        ItemResponseDto responseDto = new ItemResponseDto();
+        responseDto.setId(1L);
+
+        when(itemService.updateItem(anyLong(), anyLong(), any(), anyList())).thenReturn(responseDto);
+
+        ItemUpdateRequestDto requestDto = new ItemUpdateRequestDto();
+        requestDto.setItemName("커피 변경");
+
+        String requestJson = objectMapper.writeValueAsString(requestDto);
+        MockMultipartFile itemRequestDtoPart = new MockMultipartFile(
+                "itemRequestDto",
+                "itemRequestDto.json",
+                "application/json",
+                requestJson.getBytes(StandardCharsets.UTF_8)
+        );
+
+        mockMvc.perform(multipart("/api/item/1")
+                        .file(itemRequestDtoPart)
+                        .with(request -> {
+                            request.setMethod("PUT");
+                            return request;
+                        })
+                        .contentType(MediaType.MULTIPART_FORM_DATA))
+                .andExpect(status().isOk());
     }
 }

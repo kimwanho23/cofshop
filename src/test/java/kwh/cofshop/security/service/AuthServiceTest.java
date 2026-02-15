@@ -7,7 +7,7 @@ import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.domain.Role;
 import kwh.cofshop.member.repository.MemberRepository;
 import kwh.cofshop.security.JwtTokenProvider;
-import kwh.cofshop.security.dto.TokenDto;
+import kwh.cofshop.security.dto.TokenResponseDto;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -123,7 +123,7 @@ class AuthServiceTest {
         when(jwtTokenProvider.createAccessToken(anyLong(), any(), any())).thenReturn("access");
         when(jwtTokenProvider.createRefreshToken(1L, "user@example.com")).thenReturn("refresh");
 
-        TokenDto responseDto = authService.reissue(request, response);
+        TokenResponseDto responseDto = authService.reissue(request, response);
 
         assertThat(responseDto.getAccessToken()).isEqualTo("access");
         assertThat(responseDto.getRefreshToken()).isNull();

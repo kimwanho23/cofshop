@@ -3,7 +3,7 @@ package kwh.cofshop.item.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
-import kwh.cofshop.item.dto.CategoryPathDto;
+import kwh.cofshop.item.dto.CategoryPathResponseDto;
 import kwh.cofshop.item.dto.request.CategoryRequestDto;
 import kwh.cofshop.item.dto.response.CategoryResponseDto;
 import kwh.cofshop.item.service.CategoryService;
@@ -37,8 +37,8 @@ public class CategoryController {
     // 카테고리 경로
     @Operation(summary = "카테고리 경로 목록", description = "상위 카테고리부터 하위 카테고리를 조회합니다.")
     @GetMapping("/{categoryId}/path")
-    public List<CategoryPathDto> getCategoryPath(@PathVariable Long categoryId) {
-        List<CategoryPathDto> categoryPath = categoryService.getCategoryPath(categoryId);
+    public List<CategoryPathResponseDto> getCategoryPath(@PathVariable Long categoryId) {
+        List<CategoryPathResponseDto> categoryPath = categoryService.getCategoryPath(categoryId);
         return categoryPath;
     }
 

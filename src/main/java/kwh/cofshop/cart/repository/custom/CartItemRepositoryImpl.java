@@ -31,12 +31,13 @@ public class CartItemRepositoryImpl implements CartItemRepositoryCustom {
         QItemOption itemOption = QItemOption.itemOption;
 
         List<CartItem> cartItems = queryFactory
-                .selectFrom(cartItem)
+                .selectDistinct(cartItem)
                 .join(cartItem.item, item).fetchJoin()
                 .join(cartItem.itemOption, itemOption).fetchJoin()
-                .leftJoin(item.itemImgs, itemImg).fetchJoin()
-                .where(cartItem.cart.member.id.eq(memberId)
-                        .and(itemImg.imgType.eq(ImgType.REPRESENTATIVE)))
+                .leftJoin(item.itemImgs, itemImg)
+                .on(itemImg.imgType.eq(ImgType.REPRESENTATIVE))
+                .fetchJoin()
+                .where(cartItem.cart.member.id.eq(memberId))
                 .fetch();
 
         return cartItems.stream()

@@ -11,16 +11,22 @@ public enum BusinessErrorCode implements ErrorCode {
     // 주문 관련
     ORDER_NOT_FOUND("ORDER-404", HttpStatus.NOT_FOUND, "주문을 찾을 수 없습니다."),
     ORDER_ALREADY_CANCELLED("ORDER-CANCELLED", HttpStatus.CONFLICT, "이미 취소된 주문입니다."),
+    ORDER_CANNOT_CANCEL("ORDER-CANNOT-CANCEL", HttpStatus.CONFLICT, "현재 상태에서는 주문을 취소할 수 없습니다."),
     ORDER_ALREADY_COMPLETED("ORDER-COMPLETED", HttpStatus.CONFLICT, "이미 완료된 주문입니다."),
+    ORDER_CANNOT_CONFIRM("ORDER-CANNOT-CONFIRM", HttpStatus.CONFLICT, "배송 완료 상태에서만 구매 확정할 수 있습니다."),
 
     // 회원 관련
     MEMBER_NOT_FOUND("MEMBER-404", HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."),
     MEMBER_ALREADY_EXISTS("MEMBER-409", HttpStatus.CONFLICT, "이미 존재하는 회원 이메일입니다."),
+    MEMBER_NOT_ADMIN("MEMBER-403", HttpStatus.FORBIDDEN, "관리자 권한이 필요합니다."),
+    INVALID_POINT_OPERATION("POINT-400", HttpStatus.BAD_REQUEST, "포인트 요청 값이 유효하지 않습니다."),
+    INSUFFICIENT_POINT("POINT-409", HttpStatus.CONFLICT, "보유 포인트가 부족합니다."),
 
     // 상품/옵션 관련
     ITEM_NOT_FOUND("ITEM-404", HttpStatus.NOT_FOUND, "상품을 찾을 수 없습니다."),
     ITEM_OPTION_NOT_FOUND("ITEM-OPTION-404", HttpStatus.NOT_FOUND, "상품 옵션을 찾을 수 없습니다."),
     ITEM_OUT_OF_STOCK("ITEM-OUT-OF-STOCK", HttpStatus.CONFLICT, "재고가 부족합니다."),
+    ITEM_LIMIT_EXCEEDED("ITEM-LIMIT-EXCEEDED", HttpStatus.CONFLICT, "상품 구매 가능 수량을 초과했습니다."),
 
     //쿠폰
     COUPON_NOT_FOUND("COUPON-404", HttpStatus.NOT_FOUND, "쿠폰을 찾을 수 없습니다."),
@@ -50,6 +56,7 @@ public enum BusinessErrorCode implements ErrorCode {
     PAYMENT_PROVIDER_ERROR("PAY-502", HttpStatus.BAD_GATEWAY, "결제사 연동 중 오류가 발생했습니다."),
     PAYMENT_UID_DISCREPANCY("PAY-UID-MISMATCH", HttpStatus.NOT_FOUND, "결제 UID가 일치하지 않습니다."),
     PAYMENT_AMOUNT_DISCREPANCY("PAY-AMOUNT-MISMATCH", HttpStatus.NOT_FOUND, "결제 금액이 일치하지 않습니다."),
+    PAYMENT_ALREADY_PAID("PAY-ALREADY-PAID", HttpStatus.CONFLICT, "이미 결제 완료된 건입니다."),
     PAYMENT_CANNOT_REFUND("CANNOT-REFUND", HttpStatus.CONFLICT, "환불이 불가능합니다"),
     PAYMENT_ALREADY_CANCELLED("ALREADY_CANCELLED", HttpStatus.CONFLICT, "이미 취소된 결제입니다."),
     PAYMENT_REFUND_FAIL("PAY-REFUND-FAILED", HttpStatus.CONFLICT, "환불에 실패했습니다."),

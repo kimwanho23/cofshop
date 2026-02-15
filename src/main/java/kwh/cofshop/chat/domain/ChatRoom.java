@@ -53,7 +53,12 @@ public class ChatRoom extends BaseTimeEntity {
 
     // 채팅방 참여 여부 검증
     public boolean isParticipant(Member member) {
-        return member != null && (member.equals(this.customer) || member.equals(this.agent));
+        if (member == null || member.getId() == null) {
+            return false;
+        }
+        Long memberId = member.getId();
+        return (this.customer != null && memberId.equals(this.customer.getId()))
+                || (this.agent != null && memberId.equals(this.agent.getId()));
     }
 
     // 채팅방이 이미 종료되었는 지

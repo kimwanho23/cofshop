@@ -3,6 +3,7 @@ package kwh.cofshop.cart.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
 import kwh.cofshop.argumentResolver.LoginMember;
 import kwh.cofshop.cart.dto.request.CartItemRequestDto;
 import kwh.cofshop.cart.dto.response.CartItemResponseDto;
@@ -37,7 +38,7 @@ public class CartItemController {
 
     // 장바구니 총 금액 계산
     @Operation(summary = "장바구니 총 금액 계산", description = "장바구니에 담긴 상품의 총 금액을 계산합니다.")
-    @GetMapping("/me체/total-price")
+    @GetMapping("/me/total-price")
     public Integer getTotalCartPrice(@LoginMember Long memberId) {
         int totalPrice = cartItemService.calculateTotalPrice(memberId);
         return totalPrice;
@@ -49,7 +50,7 @@ public class CartItemController {
     @PostMapping("/me/items")
     public ResponseEntity<CartItemResponseDto> addCartItem(
             @LoginMember Long memberId,
-            @RequestBody CartItemRequestDto requestDto) {
+            @Valid @RequestBody CartItemRequestDto requestDto) {
 
         CartItemResponseDto response = cartItemService.addCartItem(requestDto, memberId);
         return ResponseEntity.created(URI.create("/api/carts/me/items/" + response.getOptionId()))
@@ -61,7 +62,7 @@ public class CartItemController {
     @PostMapping("/me/items/list")
     public ResponseEntity<List<CartItemResponseDto>> addCartItemBulk(
             @LoginMember Long memberId,
-            @RequestBody List<CartItemRequestDto> requestDtoList) {
+            @Valid @RequestBody List<@Valid CartItemRequestDto> requestDtoList) {
 
         List<CartItemResponseDto> responseDtoList = cartItemService.addCartItemList(requestDtoList, memberId);
         return ResponseEntity.created(URI.create("/api/carts/me/items"))
@@ -73,7 +74,7 @@ public class CartItemController {
     //장바구니 수량 변경
     @Operation(summary = "장바구니 상품 수량 변경", description = "장바구니에 담긴 상품 수량을 변경합니다.")
     @PatchMapping("/me/quantity")
-    public ResponseEntity<Void> updateQuantity(@RequestBody CartItemRequestDto requestDto,
+    public ResponseEntity<Void> updateQuantity(@Valid @RequestBody CartItemRequestDto requestDto,
                                                @LoginMember Long memberId) {
         cartItemService.changeQuantity(memberId, requestDto);
         return ResponseEntity.noContent().build();

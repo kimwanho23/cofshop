@@ -1,5 +1,7 @@
 package kwh.cofshop.item.service;
 
+import kwh.cofshop.global.exception.BadRequestException;
+import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemOption;
 import kwh.cofshop.item.dto.request.ItemOptionRequestDto;
@@ -23,6 +25,9 @@ public class ItemOptionService {
 
     @Transactional
     public List<ItemOption> saveItemOptions(Item item, List<ItemOptionRequestDto> optionRequestDto) {
+        if (optionRequestDto == null || optionRequestDto.isEmpty()) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
         List<ItemOption> itemOptions = optionRequestDto.stream()
                 .map(dto -> ItemOption.createOption(
                         dto.getDescription(),
@@ -100,7 +105,11 @@ public class ItemOptionService {
             for (ItemOptionRequestDto optionDto : existingItemOptions) {
                 if (optionDto.getId() != null && existingOptionMap.containsKey(optionDto.getId())) {
                     ItemOption existingOption = existingOptionMap.get(optionDto.getId());
-                    existingOption.updateOption(optionDto);
+                    existingOption.updateOption(
+                            optionDto.getDescription(),
+                            optionDto.getAdditionalPrice(),
+                            optionDto.getStock()
+                    );
                 }
             }
         }

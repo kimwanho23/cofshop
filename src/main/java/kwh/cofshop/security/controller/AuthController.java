@@ -3,7 +3,7 @@ package kwh.cofshop.security.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import kwh.cofshop.security.dto.TokenDto;
+import kwh.cofshop.security.dto.TokenResponseDto;
 import kwh.cofshop.security.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.web.csrf.CsrfToken;
@@ -29,7 +29,7 @@ public class AuthController {
 
     @Operation(summary = "Reissue refresh token")
     @PostMapping("/reissue")
-    public TokenDto reissue(HttpServletRequest request, HttpServletResponse response) {
+    public TokenResponseDto reissue(HttpServletRequest request, HttpServletResponse response) {
         return authService.reissue(request, response);
     }
 }

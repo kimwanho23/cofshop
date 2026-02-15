@@ -43,8 +43,8 @@ public class CartController {
 
     // 장바구니 삭제
     @Operation(summary = "장바구니 삭제", description = "장바구니를 삭제합니다. 회원 탈퇴 시 적용합니다.")
-    @DeleteMapping("/{memberId}")
-    public ResponseEntity<Void> deleteCart(@PathVariable Long memberId) {
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> deleteCart(@LoginMember Long memberId) {
         cartService.deleteByMemberId(memberId);
         return ResponseEntity.noContent().build();
     }

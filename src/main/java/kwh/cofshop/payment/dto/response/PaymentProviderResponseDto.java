@@ -1,4 +1,4 @@
-package kwh.cofshop.payment.dto;
+package kwh.cofshop.payment.dto.response;
 
 import kwh.cofshop.payment.client.portone.PortOnePayment;
 import lombok.Builder;

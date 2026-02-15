@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -17,5 +18,6 @@ public class ReviewRequestDto {
     private Long rating; // 별점
 
     @NotBlank(message = "후기 내용은 필수입니다.")
+    @Size(max = 2000, message = "후기 내용은 2000자 이하여야 합니다.")
     private String content; // 후기글
 }

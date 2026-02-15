@@ -2,6 +2,7 @@ package kwh.cofshop.payment.service;
 
 import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.order.domain.Order;
 import kwh.cofshop.order.domain.OrderState;
@@ -12,11 +13,11 @@ import kwh.cofshop.payment.client.portone.PortOnePayment;
 import kwh.cofshop.payment.client.portone.PortOnePaymentClient;
 import kwh.cofshop.payment.domain.PaymentEntity;
 import kwh.cofshop.payment.domain.PaymentStatus;
-import kwh.cofshop.payment.dto.PaymentPrepareRequestDto;
-import kwh.cofshop.payment.dto.PaymentProviderResponseDto;
-import kwh.cofshop.payment.dto.PaymentRefundRequestDto;
-import kwh.cofshop.payment.dto.PaymentResponseDto;
-import kwh.cofshop.payment.dto.PaymentVerifyRequestDto;
+import kwh.cofshop.payment.dto.request.PaymentPrepareRequestDto;
+import kwh.cofshop.payment.dto.response.PaymentProviderResponseDto;
+import kwh.cofshop.payment.dto.request.PaymentRefundRequestDto;
+import kwh.cofshop.payment.dto.response.PaymentResponseDto;
+import kwh.cofshop.payment.dto.request.PaymentVerifyRequestDto;
 import kwh.cofshop.payment.repository.PaymentEntityRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -50,6 +52,9 @@ class PaymentServiceTest {
 
     @Mock
     private PortOnePaymentClient portOnePaymentClient;
+
+    @Mock
+    private PaymentRefundTxService paymentRefundTxService;
 
     @InjectMocks
     private PaymentService paymentService;
@@ -205,6 +210,31 @@ class PaymentServiceTest {
     }
 
     @Test
+    @DisplayName("결제 검증: 결제 완료 상태 아님")
+    void verifyPayment_notPaidStatus() {
+        PaymentEntity paymentEntity = mock(PaymentEntity.class);
+        when(paymentEntityRepository.findByIdAndMember_Id(1L, 1L)).thenReturn(Optional.of(paymentEntity));
+        when(paymentEntity.getMerchantUid()).thenReturn("order-1");
+
+        PortOnePayment payment = new PortOnePayment(
+                "order-1",
+                "imp_1",
+                "pg_tid",
+                "READY",
+                new PortOnePayment.Amount(1000L, 1000L)
+        );
+        when(portOnePaymentClient.getPayment("order-1")).thenReturn(payment);
+
+        PaymentVerifyRequestDto requestDto = new PaymentVerifyRequestDto();
+        requestDto.setImpUid("imp_1");
+        requestDto.setMerchantUid("order-1");
+        requestDto.setAmount(1000L);
+
+        assertThatThrownBy(() -> paymentService.verifyPayment(1L, 1L, requestDto))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
     @DisplayName("결제 검증: 금액 불일치")
     void verifyPayment_amountMismatch() {
         PaymentEntity paymentEntity = mock(PaymentEntity.class);
@@ -238,6 +268,7 @@ class PaymentServiceTest {
         when(paymentEntity.getPrice()).thenReturn(1000L);
         Order order = mock(Order.class);
         when(paymentEntity.getOrder()).thenReturn(order);
+        when(order.getOrderState()).thenReturn(OrderState.PAYMENT_PENDING);
 
         PortOnePayment payment = new PortOnePayment(
                 "order-1",
@@ -256,6 +287,106 @@ class PaymentServiceTest {
         paymentService.verifyPayment(1L, 1L, requestDto);
 
         verify(paymentEntity).paymentSuccess(eq("imp_1"), eq("pg_tid"), eq(1000L), any(LocalDateTime.class));
+        verify(order).changeOrderState(OrderState.PAID);
+    }
+
+    @Test
+    @DisplayName("결제 검증: 취소된 주문은 결제 완료로 전이되지 않음")
+    void verifyPayment_cancelledOrder_shouldFail() {
+        PaymentEntity paymentEntity = mock(PaymentEntity.class);
+        Order order = mock(Order.class);
+        when(paymentEntityRepository.findByIdAndMember_Id(1L, 1L)).thenReturn(Optional.of(paymentEntity));
+        when(paymentEntity.getMerchantUid()).thenReturn("order-1");
+        when(paymentEntity.getStatus()).thenReturn(PaymentStatus.READY);
+        when(paymentEntity.getPrice()).thenReturn(1000L);
+        when(paymentEntity.getOrder()).thenReturn(order);
+        when(order.getOrderState()).thenReturn(OrderState.CANCELLED);
+
+        PortOnePayment payment = new PortOnePayment(
+                "order-1",
+                "imp_1",
+                "pg_tid",
+                "PAID",
+                new PortOnePayment.Amount(1000L, 1000L)
+        );
+        when(portOnePaymentClient.getPayment("order-1")).thenReturn(payment);
+
+        PaymentVerifyRequestDto requestDto = new PaymentVerifyRequestDto();
+        requestDto.setImpUid("imp_1");
+        requestDto.setMerchantUid("order-1");
+        requestDto.setAmount(1000L);
+
+        assertThatThrownBy(() -> paymentService.verifyPayment(1L, 1L, requestDto))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.ORDER_ALREADY_CANCELLED);
+
+        verify(paymentEntity, never()).paymentSuccess(anyString(), anyString(), anyLong(), any(LocalDateTime.class));
+        verify(order, never()).changeOrderState(OrderState.PAID);
+    }
+
+    @Test
+    @DisplayName("결제 검증: 이미 결제된 건에서 주문 상태는 역행시키지 않음")
+    void verifyPayment_alreadyPaid_shouldNotDowngradeOrderState() {
+        PaymentEntity paymentEntity = mock(PaymentEntity.class);
+        Order order = mock(Order.class);
+        when(paymentEntityRepository.findByIdAndMember_Id(1L, 1L)).thenReturn(Optional.of(paymentEntity));
+        when(paymentEntity.getMerchantUid()).thenReturn("order-1");
+        when(paymentEntity.getStatus()).thenReturn(PaymentStatus.PAID);
+        when(paymentEntity.getImpUid()).thenReturn("imp_1");
+        when(paymentEntity.getPaidAmount()).thenReturn(1000L);
+        when(paymentEntity.getOrder()).thenReturn(order);
+        when(order.getOrderState()).thenReturn(OrderState.DELIVERED);
+
+        PortOnePayment payment = new PortOnePayment(
+                "order-1",
+                "imp_1",
+                "pg_tid",
+                "PAID",
+                new PortOnePayment.Amount(1000L, 1000L)
+        );
+        when(portOnePaymentClient.getPayment("order-1")).thenReturn(payment);
+
+        PaymentVerifyRequestDto requestDto = new PaymentVerifyRequestDto();
+        requestDto.setImpUid("imp_1");
+        requestDto.setMerchantUid("order-1");
+        requestDto.setAmount(1000L);
+
+        paymentService.verifyPayment(1L, 1L, requestDto);
+
+        verify(paymentEntity, never()).paymentSuccess(anyString(), anyString(), anyLong(), any(LocalDateTime.class));
+        verify(order, never()).changeOrderState(OrderState.PAID);
+    }
+
+    @Test
+    @DisplayName("결제 검증: 이미 결제된 건이 결제요청 상태면 PAID로 보정")
+    void verifyPayment_alreadyPaid_pendingOrder_thenSetPaid() {
+        PaymentEntity paymentEntity = mock(PaymentEntity.class);
+        Order order = mock(Order.class);
+        when(paymentEntityRepository.findByIdAndMember_Id(1L, 1L)).thenReturn(Optional.of(paymentEntity));
+        when(paymentEntity.getMerchantUid()).thenReturn("order-1");
+        when(paymentEntity.getStatus()).thenReturn(PaymentStatus.PAID);
+        when(paymentEntity.getImpUid()).thenReturn("imp_1");
+        when(paymentEntity.getPaidAmount()).thenReturn(1000L);
+        when(paymentEntity.getOrder()).thenReturn(order);
+        when(order.getOrderState()).thenReturn(OrderState.PAYMENT_PENDING);
+
+        PortOnePayment payment = new PortOnePayment(
+                "order-1",
+                "imp_1",
+                "pg_tid",
+                "PAID",
+                new PortOnePayment.Amount(1000L, 1000L)
+        );
+        when(portOnePaymentClient.getPayment("order-1")).thenReturn(payment);
+
+        PaymentVerifyRequestDto requestDto = new PaymentVerifyRequestDto();
+        requestDto.setImpUid("imp_1");
+        requestDto.setMerchantUid("order-1");
+        requestDto.setAmount(1000L);
+
+        paymentService.verifyPayment(1L, 1L, requestDto);
+
         verify(order).changeOrderState(OrderState.PAID);
     }
 
@@ -288,6 +419,31 @@ class PaymentServiceTest {
     }
 
     @Test
+    @DisplayName("결제 환불: REFUND_PENDING 상태 재시도 시 확정 처리")
+    void refundPayment_pending_thenConfirm() {
+        PaymentEntity paymentEntity = mock(PaymentEntity.class);
+        when(paymentEntity.getStatus()).thenReturn(PaymentStatus.REFUND_PENDING);
+        when(paymentEntity.getMerchantUid()).thenReturn("order-1");
+        when(paymentEntityRepository.findByIdAndMember_Id(1L, 1L)).thenReturn(Optional.of(paymentEntity));
+
+        PortOnePayment payment = new PortOnePayment(
+                "order-1",
+                "imp_1",
+                "pg_tid",
+                "CANCELLED",
+                new PortOnePayment.Amount(1000L, 1000L)
+        );
+        when(portOnePaymentClient.getPayment("order-1")).thenReturn(payment);
+
+        PaymentRefundRequestDto requestDto = new PaymentRefundRequestDto();
+        requestDto.setAmount(1000L);
+
+        paymentService.refundPayment(1L, 1L, requestDto);
+
+        verify(paymentRefundTxService).confirmRefund(1L, 1L);
+    }
+
+    @Test
     @DisplayName("결제 환불: PortOne 오류")
     void refundPayment_portOneError() {
         PaymentEntity paymentEntity = mock(PaymentEntity.class);
@@ -295,13 +451,18 @@ class PaymentServiceTest {
         when(paymentEntity.getPaidAmount()).thenReturn(1000L);
         when(paymentEntity.getMerchantUid()).thenReturn("order-1");
         when(paymentEntityRepository.findByIdAndMember_Id(1L, 1L)).thenReturn(Optional.of(paymentEntity));
+        when(paymentEntityRepository.existsByIdAndMember_IdAndOrder_OrderState(1L, 1L, OrderState.PAID)).thenReturn(true);
         when(portOnePaymentClient.cancelPayment(eq("order-1"), anyString())).thenThrow(new PortOneClientException("error"));
+        when(portOnePaymentClient.getPayment("order-1")).thenThrow(new PortOneClientException("error"));
 
         PaymentRefundRequestDto requestDto = new PaymentRefundRequestDto();
         requestDto.setAmount(1000L);
 
         assertThatThrownBy(() -> paymentService.refundPayment(1L, 1L, requestDto))
                 .isInstanceOf(BusinessException.class);
+
+        verify(paymentRefundTxService).markRefundPending(1L, 1L);
+        verify(paymentRefundTxService).rollbackRefundPending(1L, 1L);
     }
 
     @Test
@@ -312,6 +473,7 @@ class PaymentServiceTest {
         when(paymentEntity.getPaidAmount()).thenReturn(1000L);
         when(paymentEntity.getMerchantUid()).thenReturn("order-1");
         when(paymentEntityRepository.findByIdAndMember_Id(1L, 1L)).thenReturn(Optional.of(paymentEntity));
+        when(paymentEntityRepository.existsByIdAndMember_IdAndOrder_OrderState(1L, 1L, OrderState.PAID)).thenReturn(true);
 
         PortOneCancellation cancellation = new PortOneCancellation("cancel_1", "FAILED");
         when(portOnePaymentClient.cancelPayment(eq("order-1"), anyString())).thenReturn(cancellation);
@@ -321,6 +483,9 @@ class PaymentServiceTest {
 
         assertThatThrownBy(() -> paymentService.refundPayment(1L, 1L, requestDto))
                 .isInstanceOf(BusinessException.class);
+
+        verify(paymentRefundTxService).markRefundPending(1L, 1L);
+        verify(paymentRefundTxService).rollbackRefundPending(1L, 1L);
     }
 
     @Test
@@ -331,6 +496,7 @@ class PaymentServiceTest {
         when(paymentEntity.getPaidAmount()).thenReturn(1000L);
         when(paymentEntity.getMerchantUid()).thenReturn("order-1");
         when(paymentEntityRepository.findByIdAndMember_Id(1L, 1L)).thenReturn(Optional.of(paymentEntity));
+        when(paymentEntityRepository.existsByIdAndMember_IdAndOrder_OrderState(1L, 1L, OrderState.PAID)).thenReturn(true);
 
         PortOneCancellation cancellation = new PortOneCancellation("cancel_1", "SUCCEEDED");
         when(portOnePaymentClient.cancelPayment(eq("order-1"), anyString())).thenReturn(cancellation);
@@ -348,6 +514,9 @@ class PaymentServiceTest {
 
         assertThatThrownBy(() -> paymentService.refundPayment(1L, 1L, requestDto))
                 .isInstanceOf(BusinessException.class);
+
+        verify(paymentRefundTxService).markRefundPending(1L, 1L);
+        verify(paymentRefundTxService).rollbackRefundPending(1L, 1L);
     }
 
     @Test
@@ -357,9 +526,8 @@ class PaymentServiceTest {
         when(paymentEntity.getStatus()).thenReturn(PaymentStatus.PAID);
         when(paymentEntity.getPaidAmount()).thenReturn(1000L);
         when(paymentEntity.getMerchantUid()).thenReturn("order-1");
-        Order order = mock(Order.class);
-        when(paymentEntity.getOrder()).thenReturn(order);
         when(paymentEntityRepository.findByIdAndMember_Id(1L, 1L)).thenReturn(Optional.of(paymentEntity));
+        when(paymentEntityRepository.existsByIdAndMember_IdAndOrder_OrderState(1L, 1L, OrderState.PAID)).thenReturn(true);
 
         PortOneCancellation cancellation = new PortOneCancellation("cancel_1", "SUCCEEDED");
         when(portOnePaymentClient.cancelPayment(eq("order-1"), anyString())).thenReturn(cancellation);
@@ -377,8 +545,24 @@ class PaymentServiceTest {
 
         paymentService.refundPayment(1L, 1L, requestDto);
 
-        verify(paymentEntity).paymentStatusChange(PaymentStatus.CANCELLED);
-        verify(order).changeOrderState(OrderState.CANCELLED);
+        verify(paymentRefundTxService).markRefundPending(1L, 1L);
+        verify(paymentRefundTxService).confirmRefund(1L, 1L);
+    }
+
+    @Test
+    @DisplayName("결제 환불: 주문 상태가 결제완료가 아님")
+    void refundPayment_orderStateNotPaid() {
+        PaymentEntity paymentEntity = mock(PaymentEntity.class);
+        when(paymentEntity.getStatus()).thenReturn(PaymentStatus.PAID);
+        when(paymentEntity.getPaidAmount()).thenReturn(1000L);
+        when(paymentEntityRepository.findByIdAndMember_Id(1L, 1L)).thenReturn(Optional.of(paymentEntity));
+        when(paymentEntityRepository.existsByIdAndMember_IdAndOrder_OrderState(1L, 1L, OrderState.PAID)).thenReturn(false);
+
+        PaymentRefundRequestDto requestDto = new PaymentRefundRequestDto();
+        requestDto.setAmount(1000L);
+
+        assertThatThrownBy(() -> paymentService.refundPayment(1L, 1L, requestDto))
+                .isInstanceOf(BusinessException.class);
     }
 
     private Order createOrder() {
@@ -395,4 +579,5 @@ class PaymentServiceTest {
 
         return order;
     }
+
 }

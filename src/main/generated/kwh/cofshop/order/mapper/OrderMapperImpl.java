@@ -60,16 +60,16 @@ public class OrderMapperImpl implements OrderMapper {
         orderResponseDto.setAddress( order.getAddress() );
         orderResponseDto.setDeliveryFee( order.getDeliveryFee() );
         if ( order.getTotalPrice() != null ) {
-            orderResponseDto.setTotalPrice( order.getTotalPrice().intValue() );
+            orderResponseDto.setTotalPrice( order.getTotalPrice() );
         }
         if ( order.getDiscountFromCoupon() != null ) {
-            orderResponseDto.setDiscountFromCoupon( order.getDiscountFromCoupon().intValue() );
+            orderResponseDto.setDiscountFromCoupon( order.getDiscountFromCoupon() );
         }
         if ( order.getUsePoint() != null ) {
             orderResponseDto.setUsePoint( order.getUsePoint() );
         }
         if ( order.getFinalPrice() != null ) {
-            orderResponseDto.setFinalPrice( order.getFinalPrice().intValue() );
+            orderResponseDto.setFinalPrice( order.getFinalPrice() );
         }
 
         return orderResponseDto;

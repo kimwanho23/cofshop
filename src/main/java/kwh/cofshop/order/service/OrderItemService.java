@@ -36,12 +36,23 @@ public class OrderItemService {
     public List<OrderItem> createOrderItems(List<OrderItemRequestDto> dtoList, List<ItemOption> options) {
         Map<Long, ItemOption> optionMap = options.stream()
                 .collect(Collectors.toMap(ItemOption::getId, Function.identity()));
+        Map<Long, Integer> requestedQuantityByItemId = dtoList.stream()
+                .collect(Collectors.groupingBy(
+                        OrderItemRequestDto::getItemId,
+                        Collectors.summingInt(OrderItemRequestDto::getQuantity)
+                ));
 
         List<OrderItem> result = new ArrayList<>();
         for (OrderItemRequestDto dto : dtoList) {
             ItemOption option = optionMap.get(dto.getOptionId());
             if (option == null || !option.getItem().getId().equals(dto.getItemId())) {
                 throw new BusinessException(BusinessErrorCode.ITEM_OPTION_NOT_FOUND);
+            }
+            option.validatePurchasable();
+            Integer itemLimit = option.getItem().getItemLimit();
+            int requestedQuantity = requestedQuantityByItemId.getOrDefault(dto.getItemId(), dto.getQuantity());
+            if (itemLimit != null && requestedQuantity > itemLimit) {
+                throw new BusinessException(BusinessErrorCode.ITEM_LIMIT_EXCEEDED);
             }
             result.add(OrderItem.createOrderItem(option, dto.getQuantity()));
         }

@@ -1,7 +1,7 @@
 package kwh.cofshop.item.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import kwh.cofshop.item.dto.CategoryPathDto;
+import kwh.cofshop.item.dto.CategoryPathResponseDto;
 import kwh.cofshop.item.dto.request.CategoryRequestDto;
 import kwh.cofshop.item.dto.response.CategoryResponseDto;
 import kwh.cofshop.item.service.CategoryService;
@@ -67,7 +67,7 @@ class CategoryControllerTest {
     @Test
     @DisplayName("카테고리 경로 조회")
     void getCategoryPath() throws Exception {
-        CategoryPathDto pathDto = new CategoryPathDto() {
+        CategoryPathResponseDto pathDto = new CategoryPathResponseDto() {
             @Override
             public Long getId() {
                 return 1L;

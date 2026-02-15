@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URI;
+import java.util.Collections;
 import java.util.List;
 
 @RestController
@@ -84,9 +85,10 @@ public class ItemController {
             @PathVariable Long itemId,
             @Parameter(hidden = true) @LoginMember Long memberId,
             @RequestPart("itemRequestDto") @Valid ItemUpdateRequestDto itemRequestDto,
-            @RequestPart("images") List<MultipartFile> images) throws Exception {
+            @RequestPart(value = "images", required = false) List<MultipartFile> images) throws Exception {
 
-        ItemResponseDto updatedItem = itemService.updateItem(itemId, itemRequestDto, images);
+        List<MultipartFile> safeImages = images == null ? Collections.emptyList() : images;
+        ItemResponseDto updatedItem = itemService.updateItem(memberId, itemId, itemRequestDto, safeImages);
         return updatedItem;
     }
 
@@ -94,8 +96,10 @@ public class ItemController {
     // 상품 삭제
     @Operation(summary = "상품 삭제", description = "상품 정보를 삭제합니다.")
     @DeleteMapping("/{itemId}")
-    public ResponseEntity<Void> deleteItem(@PathVariable Long itemId) {
-        itemService.deleteItem(itemId);
+    public ResponseEntity<Void> deleteItem(
+            @PathVariable Long itemId,
+            @Parameter(hidden = true) @LoginMember Long memberId) {
+        itemService.deleteItem(memberId, itemId);
         return ResponseEntity.noContent().build(); // 204 No Content
     }
 }

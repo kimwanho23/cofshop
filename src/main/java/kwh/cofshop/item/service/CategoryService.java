@@ -3,7 +3,7 @@ package kwh.cofshop.item.service;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.item.domain.Category;
-import kwh.cofshop.item.dto.CategoryPathDto;
+import kwh.cofshop.item.dto.CategoryPathResponseDto;
 import kwh.cofshop.item.dto.request.CategoryRequestDto;
 import kwh.cofshop.item.dto.response.CategoryResponseDto;
 import kwh.cofshop.item.mapper.CategoryMapper;
@@ -51,8 +51,8 @@ public class CategoryService {
     }
 
     //자식 카테고리 백트래킹
-    public List<CategoryPathDto> getCategoryPath(Long categoryId) {
-        List<CategoryPathDto> categoryPath = categoryRepository.findCategoryPath(categoryId);
+    public List<CategoryPathResponseDto> getCategoryPath(Long categoryId) {
+        List<CategoryPathResponseDto> categoryPath = categoryRepository.findCategoryPath(categoryId);
         Collections.reverse(categoryPath);
         return categoryPath;
     }
@@ -62,7 +62,8 @@ public class CategoryService {
         if (hasChildCategory(categoryId)) {
             List<Category> categories = categoryRepository.findImmediateChildrenNative(categoryId);
             return categories.stream().map(categoryMapper::toResponseDto).toList();
-        } else return null;
+        }
+        return Collections.emptyList();
     }
 
 

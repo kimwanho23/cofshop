@@ -1,6 +1,7 @@
 package kwh.cofshop.member.service;
 
 import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.domain.MemberState;
 import kwh.cofshop.member.dto.request.MemberRequestDto;
@@ -171,7 +172,9 @@ class MemberServiceTest {
         when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
 
         assertThatThrownBy(() -> memberService.restorePoint(1L, 0))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.INVALID_POINT_OPERATION);
     }
 
     @Test

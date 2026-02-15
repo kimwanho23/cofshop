@@ -2,6 +2,7 @@ package kwh.cofshop.item.service;
 
 import kwh.cofshop.file.domain.FileStore;
 import kwh.cofshop.file.domain.UploadFile;
+import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.item.domain.ImgType;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemImg;
@@ -71,7 +72,7 @@ class ItemImgServiceTest {
         Item item = createItem();
         ReflectionTestUtils.setField(item, "id", 1L);
 
-        ItemImg img = ItemImg.builder().imgUrl("store.jpg").item(item).build();
+        ItemImg img = ItemImg.builder().imgName("store.jpg").imgUrl("/images/store.jpg").item(item).build();
         when(itemImgRepository.findByItemIdAndItemImgId(1L, List.of(1L))).thenReturn(List.of(img));
 
         itemImgService.deleteItemImages(item, List.of(1L));
@@ -88,7 +89,7 @@ class ItemImgServiceTest {
         MockMultipartFile file = new MockMultipartFile("image", "test.jpg", "image/jpeg", "data".getBytes());
 
         assertThatThrownBy(() -> itemImgService.addItemImages(item, List.of(dto), List.of(file, file)))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BadRequestException.class);
     }
 
     @Test
@@ -111,7 +112,7 @@ class ItemImgServiceTest {
         Item item = createItem();
         ReflectionTestUtils.setField(item, "id", 1L);
 
-        ItemImg img = ItemImg.builder().imgUrl("store.jpg").item(item).build();
+        ItemImg img = ItemImg.builder().imgName("store.jpg").imgUrl("/images/store.jpg").item(item).build();
         when(itemImgRepository.findByItemIdAndItemImgId(1L, List.of(1L))).thenReturn(List.of(img));
 
         ItemUpdateRequestDto dto = new ItemUpdateRequestDto();

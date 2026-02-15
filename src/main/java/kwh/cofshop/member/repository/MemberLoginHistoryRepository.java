@@ -4,8 +4,11 @@ import kwh.cofshop.member.domain.MemberLoginHistory;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 
 @Repository
 public interface MemberLoginHistoryRepository extends JpaRepository<MemberLoginHistory, Long> {
+
+    List<MemberLoginHistory> findAllByMemberIdOrderByLoginDtDesc(Long memberId);
 
 }

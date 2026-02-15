@@ -1,6 +1,8 @@
 package kwh.cofshop.payment.domain;
 
 import jakarta.persistence.*;
+import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.order.domain.Order;
 import lombok.AccessLevel;
@@ -106,7 +108,7 @@ public class PaymentEntity {
     // 결제 성공 시 상태 처리, 결제 금액 및 결제일 정보 수정
     public void paymentSuccess(String impUid, String pgTid, Long paidAmount, LocalDateTime paidAt) {
         if (this.status == PaymentStatus.PAID) {
-            throw new IllegalStateException("이미 결제 완료된 건입니다.");
+            throw new BusinessException(BusinessErrorCode.PAYMENT_ALREADY_PAID);
         }
         this.impUid = impUid;
         this.pgTid = pgTid;
