@@ -4,12 +4,12 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import kwh.cofshop.security.cookie.RefreshTokenCookiePolicy;
 import kwh.cofshop.security.service.RefreshTokenService;
 import kwh.cofshop.security.token.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -31,10 +31,14 @@ public class CustomLogoutFilter extends OncePerRequestFilter {
             return;
         }
 
-        String refreshToken = extractRefreshToken(request);
+        String refreshToken = RefreshTokenCookiePolicy.extract(request);
 
         if (refreshToken == null || !jwtTokenProvider.validateToken(refreshToken)
                 || !jwtTokenProvider.isRefreshToken(refreshToken)) {
+            response.addHeader(
+                    HttpHeaders.SET_COOKIE,
+                    RefreshTokenCookiePolicy.expire(isSecureRequest(request)).toString()
+            );
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             return;
         }
@@ -42,37 +46,30 @@ public class CustomLogoutFilter extends OncePerRequestFilter {
         Long memberId = jwtTokenProvider.getMemberId(refreshToken);
 
         if (!refreshTokenService.matches(memberId, refreshToken)) {
+            response.addHeader(
+                    HttpHeaders.SET_COOKIE,
+                    RefreshTokenCookiePolicy.expire(isSecureRequest(request)).toString()
+            );
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
 
         refreshTokenService.delete(memberId);
 
-        response.addHeader(HttpHeaders.SET_COOKIE, deleteRefreshTokenCookie().toString());
+        response.addHeader(
+                HttpHeaders.SET_COOKIE,
+                RefreshTokenCookiePolicy.expire(isSecureRequest(request)).toString()
+        );
         response.setStatus(HttpServletResponse.SC_OK);
     }
 
-    private String extractRefreshToken(HttpServletRequest request) {
-        if (request.getCookies() == null) {
-            return null;
+    private boolean isSecureRequest(HttpServletRequest request) {
+        if (request.isSecure()) {
+            return true;
         }
-
-        for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
-            if ("refreshToken".equals(cookie.getName())) {
-                return cookie.getValue();
-            }
-        }
-        return null;
+        String forwardedProto = request.getHeader("X-Forwarded-Proto");
+        return forwardedProto != null && "https".equalsIgnoreCase(forwardedProto);
     }
 
-    private ResponseCookie deleteRefreshTokenCookie() {
-        return ResponseCookie.from("refreshToken", "")
-                .httpOnly(true)
-                .secure(true)
-                .sameSite("Strict")
-                .path("/")
-                .maxAge(0)
-                .build();
-    }
 }
 

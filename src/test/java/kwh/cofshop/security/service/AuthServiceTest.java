@@ -6,6 +6,7 @@ import kwh.cofshop.global.exception.UnauthorizedRequestException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.member.api.MemberReadPort;
 import kwh.cofshop.member.domain.Member;
+import kwh.cofshop.member.domain.MemberState;
 import kwh.cofshop.member.domain.Role;
 import kwh.cofshop.security.token.JwtTokenProvider;
 import kwh.cofshop.security.dto.TokenResponseDto;
@@ -50,6 +51,7 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.reissue(request, response))
                 .isInstanceOf(UnauthorizedRequestException.class);
+        assertExpiredRefreshCookie(response);
     }
 
     @Test
@@ -63,6 +65,7 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.reissue(request, response))
                 .isInstanceOf(UnauthorizedRequestException.class);
+        assertExpiredRefreshCookie(response);
     }
 
     @Test
@@ -79,6 +82,7 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.reissue(request, response))
                 .isInstanceOf(UnauthorizedRequestException.class);
+        assertExpiredRefreshCookie(response);
     }
 
     @Test
@@ -96,6 +100,62 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.reissue(request, response))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    @DisplayName("Reissue fails when member is suspended")
+    void reissue_memberSuspended() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        request.setCookies(new Cookie("refreshToken", "token"));
+
+        Member member = Member.builder()
+                .id(1L)
+                .email("user@example.com")
+                .memberName("user")
+                .memberPwd("pw")
+                .tel("01012341234")
+                .build();
+        ReflectionTestUtils.setField(member, "memberState", MemberState.SUSPENDED);
+
+        when(jwtTokenProvider.validateToken("token")).thenReturn(true);
+        when(jwtTokenProvider.isRefreshToken("token")).thenReturn(true);
+        when(jwtTokenProvider.getMemberId("token")).thenReturn(1L);
+        when(refreshTokenService.matches(1L, "token")).thenReturn(true);
+        when(memberReadPort.getById(1L)).thenReturn(member);
+
+        assertThatThrownBy(() -> authService.reissue(request, response))
+                .isInstanceOf(UnauthorizedRequestException.class);
+        verify(refreshTokenService).delete(1L);
+        assertExpiredRefreshCookie(response);
+    }
+
+    @Test
+    @DisplayName("Reissue fails when member is quit")
+    void reissue_memberQuit() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        request.setCookies(new Cookie("refreshToken", "token"));
+
+        Member member = Member.builder()
+                .id(1L)
+                .email("user@example.com")
+                .memberName("user")
+                .memberPwd("pw")
+                .tel("01012341234")
+                .build();
+        ReflectionTestUtils.setField(member, "memberState", MemberState.QUIT);
+
+        when(jwtTokenProvider.validateToken("token")).thenReturn(true);
+        when(jwtTokenProvider.isRefreshToken("token")).thenReturn(true);
+        when(jwtTokenProvider.getMemberId("token")).thenReturn(1L);
+        when(refreshTokenService.matches(1L, "token")).thenReturn(true);
+        when(memberReadPort.getById(1L)).thenReturn(member);
+
+        assertThatThrownBy(() -> authService.reissue(request, response))
+                .isInstanceOf(UnauthorizedRequestException.class);
+        verify(refreshTokenService).delete(1L);
+        assertExpiredRefreshCookie(response);
     }
 
     @Test
@@ -129,8 +189,48 @@ class AuthServiceTest {
         assertThat(response.getHeader(HttpHeaders.AUTHORIZATION)).isEqualTo("Bearer access");
         assertThat(response.getHeader(HttpHeaders.SET_COOKIE))
                 .contains("refreshToken=refresh")
+                .contains("Path=/api/auth")
                 .contains("SameSite=Strict");
         verify(refreshTokenService).save(1L, "refresh");
+    }
+
+    @Test
+    @DisplayName("Reissue sets secure refresh cookie when forwarded proto is https")
+    void reissue_setsSecureCookieWhenForwardedProtoHttps() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        request.setCookies(new Cookie("refreshToken", "token"));
+        request.addHeader("X-Forwarded-Proto", "https");
+
+        Member member = Member.builder()
+                .id(1L)
+                .email("user@example.com")
+                .memberName("user")
+                .memberPwd("pw")
+                .tel("01012341234")
+                .build();
+        ReflectionTestUtils.setField(member, "role", Role.MEMBER);
+
+        when(jwtTokenProvider.validateToken("token")).thenReturn(true);
+        when(jwtTokenProvider.isRefreshToken("token")).thenReturn(true);
+        when(jwtTokenProvider.getMemberId("token")).thenReturn(1L);
+        when(refreshTokenService.matches(1L, "token")).thenReturn(true);
+        when(memberReadPort.getById(1L)).thenReturn(member);
+        when(jwtTokenProvider.createAccessToken(anyLong(), any(), any())).thenReturn("access");
+        when(jwtTokenProvider.createRefreshToken(1L, "user@example.com")).thenReturn("refresh");
+
+        authService.reissue(request, response);
+
+        assertThat(response.getHeader(HttpHeaders.SET_COOKIE))
+                .contains("Path=/api/auth")
+                .contains("Secure");
+    }
+
+    private static void assertExpiredRefreshCookie(MockHttpServletResponse response) {
+        assertThat(response.getHeader(HttpHeaders.SET_COOKIE))
+                .contains("refreshToken=")
+                .contains("Path=/api/auth")
+                .contains("Max-Age=0");
     }
 }
 
