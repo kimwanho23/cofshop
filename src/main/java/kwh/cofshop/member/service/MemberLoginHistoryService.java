@@ -1,7 +1,5 @@
 package kwh.cofshop.member.service;
 
-
-import kwh.cofshop.member.domain.MemberLoginHistory;
 import kwh.cofshop.member.event.MemberLoginEvent;
 import kwh.cofshop.member.mapper.MemberLoginHistoryMapper;
 import kwh.cofshop.member.repository.MemberLoginHistoryRepository;
@@ -24,10 +22,7 @@ public class MemberLoginHistoryService {
     }
 
     public List<MemberLoginEvent> getUserLoginHistory(Long memberId) {
-        List<MemberLoginHistory> loginHistories = memberLoginHistoryRepository.findAllByMemberIdOrderByLoginDtDesc(memberId);
-        return loginHistories.stream()
-                .map(memberLoginHistoryMapper::toResponseDto)
-                .toList();
+        return memberLoginHistoryRepository.findLoginEventsByMemberId(memberId);
     }
 
 

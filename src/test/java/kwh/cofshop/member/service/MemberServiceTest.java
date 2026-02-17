@@ -6,6 +6,7 @@ import kwh.cofshop.member.domain.MemberState;
 import kwh.cofshop.member.dto.request.MemberRequestDto;
 import kwh.cofshop.member.dto.response.MemberResponseDto;
 import kwh.cofshop.member.event.MemberCreatedEvent;
+import kwh.cofshop.member.event.MemberSessionInvalidatedEvent;
 import kwh.cofshop.member.mapper.MemberMapper;
 import kwh.cofshop.member.repository.MemberRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -25,6 +26,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -78,13 +80,13 @@ class MemberServiceTest {
 
         when(memberRepository.findByEmail("user@example.com")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("pw")).thenReturn("encoded");
-        when(memberMapper.toEntity(any(MemberRequestDto.class))).thenReturn(member);
-        when(memberRepository.save(member)).thenReturn(member);
+        when(memberRepository.save(any(Member.class))).thenReturn(member);
         when(memberMapper.toResponseDto(member)).thenReturn(responseDto);
 
         MemberResponseDto result = memberService.signUp(requestDto);
 
         assertThat(result).isSameAs(responseDto);
+        verify(passwordEncoder).encode(eq("pw"));
         ArgumentCaptor<MemberCreatedEvent> captor = ArgumentCaptor.forClass(MemberCreatedEvent.class);
         verify(eventPublisher).publishEvent(captor.capture());
         assertThat(captor.getValue().memberId()).isEqualTo(1L);
@@ -93,10 +95,8 @@ class MemberServiceTest {
     @Test
     @DisplayName("Find member by id")
     void findMember() {
-        Member member = Member.builder().build();
         MemberResponseDto responseDto = new MemberResponseDto();
-        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
-        when(memberMapper.toResponseDto(member)).thenReturn(responseDto);
+        when(memberRepository.findMemberResponseById(1L)).thenReturn(Optional.of(responseDto));
 
         MemberResponseDto result = memberService.findMember(1L);
 
@@ -106,9 +106,7 @@ class MemberServiceTest {
     @Test
     @DisplayName("Find member list")
     void memberLists() {
-        Member member = Member.builder().build();
-        when(memberRepository.findAll()).thenReturn(List.of(member));
-        when(memberMapper.toResponseDto(member)).thenReturn(new MemberResponseDto());
+        when(memberRepository.findAllMemberResponses()).thenReturn(List.of(new MemberResponseDto()));
 
         List<MemberResponseDto> results = memberService.memberLists();
 
@@ -120,23 +118,33 @@ class MemberServiceTest {
     void changeMemberState() {
         Member member = Member.builder().build();
         ReflectionTestUtils.setField(member, "memberState", MemberState.ACTIVE);
+        ReflectionTestUtils.setField(member, "id", 1L);
         when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
 
         memberService.changeMemberState(1L, MemberState.SUSPENDED);
 
         assertThat(member.getMemberState()).isEqualTo(MemberState.SUSPENDED);
+        ArgumentCaptor<MemberSessionInvalidatedEvent> captor =
+                ArgumentCaptor.forClass(MemberSessionInvalidatedEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().memberId()).isEqualTo(1L);
     }
 
     @Test
     @DisplayName("Update password")
     void updateMemberPassword() {
         Member member = Member.builder().build();
+        ReflectionTestUtils.setField(member, "id", 1L);
         when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
         when(passwordEncoder.encode("new")).thenReturn("encoded");
 
         memberService.updateMemberPassword(1L, "new");
 
         assertThat(member.getMemberPwd()).isEqualTo("encoded");
+        ArgumentCaptor<MemberSessionInvalidatedEvent> captor =
+                ArgumentCaptor.forClass(MemberSessionInvalidatedEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().memberId()).isEqualTo(1L);
     }
 
     @Test
@@ -157,6 +165,15 @@ class MemberServiceTest {
         when(memberRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> memberService.getMember(1L))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    @DisplayName("Find member fails when not found")
+    void findMember_notFound() {
+        when(memberRepository.findMemberResponseById(1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> memberService.findMember(1L))
                 .isInstanceOf(BusinessException.class);
     }
 }

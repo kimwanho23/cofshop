@@ -1,6 +1,7 @@
 package kwh.cofshop.security.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.Validator;
 import kwh.cofshop.security.filter.CustomLoginFilter;
 import kwh.cofshop.security.filter.CustomLogoutFilter;
 import kwh.cofshop.security.filter.JwtFilter;
@@ -17,6 +18,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -42,10 +44,12 @@ public class SecurityConfig {
     private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
     private final CustomAccessDeniedHandler customAccessDeniedHandler;
     private final CustomUserDetailsService customUserDetailsService;
+    private final Validator validator;
 
     @Bean
     protected SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf
+        http.cors(Customizer.withDefaults())
+                .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .requireCsrfProtectionMatcher(request -> {
                             String path = request.getRequestURI();
@@ -55,7 +59,7 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/css/**", "/js/**", "/favicon.ico").permitAll()
+                        .requestMatchers("/images/**", "/css/**", "/js/**", "/favicon.ico").permitAll()
                         .requestMatchers("/ws-chat/**").permitAll()
                         .requestMatchers("/api/members/signup", "/", "/api/item/search", "/payments/sample",
                                 "/api/reviews/**", "/api/auth/login", "/api/auth/reissue", "/api/auth/logout", "/api/auth/csrf",
@@ -84,7 +88,8 @@ public class SecurityConfig {
                 jwtTokenProvider,
                 objectMapper,
                 refreshTokenService,
-                applicationEventPublisher
+                applicationEventPublisher,
+                validator
         );
 
         // Required by AbstractAuthenticationProcessingFilter lifecycle.

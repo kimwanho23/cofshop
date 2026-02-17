@@ -27,7 +27,7 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
                 && bCryptPasswordEncoder.matches(password, customUserDetails.getPassword()))) {
             throw new BadCredentialsException("Invalid credentials");
         }
-        return new UsernamePasswordAuthenticationToken(customUserDetails, password, customUserDetails.getAuthorities());
+        return new UsernamePasswordAuthenticationToken(customUserDetails, null, customUserDetails.getAuthorities());
     }
 
     @Override

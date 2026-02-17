@@ -1,4 +1,4 @@
-package kwh.cofshop.member.policy.policyImpl;
+package kwh.cofshop.member.policy.impl;
 
 import kwh.cofshop.member.policy.MembershipPolicy;
 import org.springframework.beans.factory.annotation.Qualifier;

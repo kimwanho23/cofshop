@@ -6,6 +6,7 @@ import org.springframework.modulith.core.ApplicationModule;
 import org.springframework.modulith.core.ApplicationModules;
 import org.springframework.modulith.core.DependencyType;
 
+import java.lang.reflect.Method;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -43,7 +44,7 @@ class ModularitySmokeTest {
     void verifiesCriticalModulesAreClosed() {
         ApplicationModules modules = modules();
 
-        EXPECTED_MODULES.forEach(name -> assertThat(requiredModule(modules, name).isOpen())
+        EXPECTED_MODULES.forEach(name -> assertThat(isOpen(requiredModule(modules, name)))
                 .as("%s module should be closed", name)
                 .isFalse());
     }
@@ -105,5 +106,15 @@ class ModularitySmokeTest {
     private static String normalizeModuleName(String moduleName) {
         int separator = moduleName.lastIndexOf('.');
         return separator >= 0 ? moduleName.substring(separator + 1) : moduleName;
+    }
+
+    private static boolean isOpen(ApplicationModule module) {
+        try {
+            Method method = ApplicationModule.class.getDeclaredMethod("isOpen");
+            method.setAccessible(true);
+            return (boolean) method.invoke(module);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Failed to access ApplicationModule#isOpen()", e);
+        }
     }
 }

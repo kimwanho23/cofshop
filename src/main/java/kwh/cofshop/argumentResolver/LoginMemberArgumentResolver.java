@@ -1,4 +1,4 @@
-package kwh.cofshop.argumentResolver;
+package kwh.cofshop.argumentresolver;
 
 import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.global.annotation.LoginMember;

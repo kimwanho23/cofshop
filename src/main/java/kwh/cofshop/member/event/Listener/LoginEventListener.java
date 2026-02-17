@@ -1,4 +1,4 @@
-package kwh.cofshop.member.event.Listener;
+package kwh.cofshop.member.event.listener;
 
 import kwh.cofshop.member.event.MemberLoginEvent;
 import kwh.cofshop.member.service.MemberLoginHistoryService;
