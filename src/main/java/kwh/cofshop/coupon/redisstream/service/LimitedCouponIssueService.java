@@ -16,7 +16,7 @@ public class LimitedCouponIssueService {
 
     public CouponIssueState issueCoupon(Long couponId, Long memberId) {
         if (memberCouponIssueService.isAlreadyIssued(memberId, couponId)) {
-            // DBê°€ ?•ë³¸?´ë?ë¡?Redis ?œì‹??ë³µêµ¬??ì¤‘ë³µ ?”ì²­??ë¹ ë¥´ê²?ì°¨ë‹¨?œë‹¤.
+            // Keep Redis duplicate set aligned with DB state.
             couponRedisService.saveIssued(couponId, memberId);
             return CouponIssueState.ALREADY_ISSUED;
         }
@@ -36,7 +36,7 @@ public class LimitedCouponIssueService {
             }
             throw e;
         } catch (Exception e) {
-            // Redis ? ì  ?±ê³µ ??DB ?€?¥ì´ ?¤íŒ¨?˜ë©´ ?˜ëŸ‰/ë°œê¸‰?œì‹???˜ëŒë¦°ë‹¤.
+            // Roll back Redis state when DB issue persistence fails.
             couponRedisService.rollbackIssuedCoupon(couponId, memberId);
             throw e;
         }

@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
 @Table(
         name = "coupon_issue_outbox",
         indexes = {
-                @Index(name = "idx_coupon_outbox_status_id", columnList = "status,id")
+                @Index(name = "idx_coupon_outbox_status_id", columnList = "status,coupon_issue_outbox_id")
         }
 )
 @Getter

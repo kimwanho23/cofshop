@@ -1,9 +1,7 @@
 package kwh.cofshop.coupon.controller;
 
 import kwh.cofshop.coupon.service.MemberCouponService;
-import kwh.cofshop.coupon.domain.MemberCoupon;
 import kwh.cofshop.coupon.dto.response.MemberCouponResponseDto;
-import kwh.cofshop.coupon.mapper.MemberCouponMapper;
 import kwh.cofshop.support.StandaloneMockMvcFactory;
 import kwh.cofshop.support.TestLoginMemberArgumentResolver;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,9 +33,6 @@ class MemberCouponControllerTest {
     @Mock
     private MemberCouponService memberCouponService;
 
-    @Mock
-    private MemberCouponMapper memberCouponMapper;
-
     @InjectMocks
     private MemberCouponController memberCouponController;
 
@@ -50,7 +45,7 @@ class MemberCouponControllerTest {
     }
 
     @Test
-    @DisplayName("쿠폰 발급 ?�청")
+    @DisplayName("issueCoupon_created")
     void issueCoupon_created() throws Exception {
         mockMvc.perform(post("/api/memberCoupon/me/1"))
                 .andExpect(status().isCreated())
@@ -60,19 +55,17 @@ class MemberCouponControllerTest {
     }
 
     @Test
-    @DisplayName("??쿠폰 목록 조회")
+    @DisplayName("getMemberCouponList")
     void getMemberCouponList() throws Exception {
-        MemberCoupon memberCoupon = MemberCoupon.builder().build();
         when(memberCouponService.memberCouponList(anyLong()))
-                .thenReturn(List.of(memberCoupon));
-        when(memberCouponMapper.toResponseDto(memberCoupon)).thenReturn(new MemberCouponResponseDto());
+                .thenReturn(List.of(new MemberCouponResponseDto()));
 
         mockMvc.perform(get("/api/memberCoupon/me"))
                 .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("쿠폰 만료 처리")
+    @DisplayName("expireMemberCoupons")
     void expireMemberCoupons() throws Exception {
         mockMvc.perform(patch("/api/memberCoupon/expire")
                         .param("date", LocalDate.now().toString()))

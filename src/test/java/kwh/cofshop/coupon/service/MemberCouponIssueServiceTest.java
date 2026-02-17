@@ -47,7 +47,7 @@ class MemberCouponIssueServiceTest {
     private MemberCouponIssueService memberCouponIssueService;
 
     @Test
-    @DisplayName("쿠폰 발급: ?�원 ?�음")
+    @DisplayName("issueCoupon_memberNotFound")
     void issueCoupon_memberNotFound() {
         when(memberReadPort.getById(anyLong())).thenThrow(new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
 
@@ -56,7 +56,7 @@ class MemberCouponIssueServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 발급: 쿠폰 ?�음")
+    @DisplayName("issueCoupon_couponNotFound")
     void issueCoupon_couponNotFound() {
         Member member = createMember(1L);
         when(memberReadPort.getById(1L)).thenReturn(member);
@@ -67,7 +67,7 @@ class MemberCouponIssueServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 발급: ?�공")
+    @DisplayName("issueCoupon_success")
     void issueCoupon_success() {
         Member member = createMember(1L);
         Coupon coupon = createCoupon(CouponState.AVAILABLE, LocalDate.now().minusDays(1), LocalDate.now().plusDays(1));
@@ -86,7 +86,7 @@ class MemberCouponIssueServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 발급: ?�제 발급 ?�점??쿠폰 ?�태가 ?�용 불�?")
+    @DisplayName("issueCoupon_couponNotAvailableState")
     void issueCoupon_couponNotAvailableState() {
         Member member = createMember(1L);
         Coupon coupon = createCoupon(CouponState.CANCELLED, LocalDate.now().minusDays(1), LocalDate.now().plusDays(1));
@@ -99,7 +99,7 @@ class MemberCouponIssueServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 발급: ?�제 발급 ?�점??쿠폰 만료")
+    @DisplayName("issueCoupon_couponExpiredAtIssuance")
     void issueCoupon_couponExpiredAtIssuance() {
         Member member = createMember(1L);
         Coupon coupon = createCoupon(CouponState.AVAILABLE, LocalDate.now().minusDays(10), LocalDate.now().minusDays(1));
@@ -112,7 +112,7 @@ class MemberCouponIssueServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 발급: ?�제 발급 ?�점??중복 발급")
+    @DisplayName("issueCoupon_alreadyIssuedAtIssuance")
     void issueCoupon_alreadyIssuedAtIssuance() {
         Member member = createMember(1L);
         Coupon coupon = createCoupon(CouponState.AVAILABLE, LocalDate.now().minusDays(1), LocalDate.now().plusDays(1));
@@ -126,7 +126,7 @@ class MemberCouponIssueServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 발급: ?�?????�니??충돌?�면 COUPON_ALREADY_EXIST")
+    @DisplayName("issueCoupon_duplicateSaveConflict")
     void issueCoupon_duplicateSaveConflict() {
         Member member = createMember(1L);
         Coupon coupon = createCoupon(CouponState.AVAILABLE, LocalDate.now().minusDays(1), LocalDate.now().plusDays(1));
@@ -165,7 +165,7 @@ class MemberCouponIssueServiceTest {
     }
 
     @Test
-    @DisplayName("?�정 쿠폰 발급: ?�고 ?�진?�면 COUPON_RUN_OUT")
+    @DisplayName("issueCoupon_limitedCoupon_outOfStock")
     void issueCoupon_limitedCoupon_outOfStock() {
         Member member = createMember(1L);
         Coupon coupon = createLimitedCoupon(1L, CouponState.AVAILABLE, LocalDate.now().minusDays(1), LocalDate.now().plusDays(1), 1);
@@ -182,7 +182,7 @@ class MemberCouponIssueServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 발급 ?��? ?�인")
+    @DisplayName("isAlreadyIssued")
     void isAlreadyIssued() {
         when(memberCouponRepository.existsByMember_IdAndCoupon_Id(1L, 2L)).thenReturn(true);
 

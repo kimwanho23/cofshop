@@ -18,11 +18,11 @@ class CouponMapperTest {
     private final CouponMapper couponMapper = Mappers.getMapper(CouponMapper.class);
 
     @Test
-    @DisplayName("Coupon??renamed ?�드가 CouponResponseDto??매핑?�다")
+    @DisplayName("toResponseDto_mapsRenamedFields")
     void toResponseDto_mapsRenamedFields() {
         Coupon coupon = Coupon.builder()
                 .id(1L)
-                .name("?�컴 쿠폰")
+                .name("sample-coupon")
                 .type(CouponType.FIXED)
                 .state(CouponState.AVAILABLE)
                 .discountValue(1000)

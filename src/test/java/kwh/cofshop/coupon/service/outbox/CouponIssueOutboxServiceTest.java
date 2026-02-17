@@ -42,7 +42,7 @@ class CouponIssueOutboxServiceTest {
     private CouponIssueOutboxService outboxService;
 
     @Test
-    @DisplayName("Î∞úÍ∏â ?ÑÎ£å outbox ?ÅÏû¨")
+    @DisplayName("enqueueCouponIssued")
     void enqueueCouponIssued() {
         outboxService.enqueueCouponIssued(11L, 1L, 5L);
 
@@ -57,7 +57,7 @@ class CouponIssueOutboxServiceTest {
     }
 
     @Test
-    @DisplayName("?ÄÍ∏?outbox Î∞úÌñâ ?±Í≥µ ??SENT")
+    @DisplayName("publishPendingEvents_success")
     void publishPendingEvents_success() {
         CouponIssueOutboxEvent pending = CouponIssueOutboxEvent.pending(11L, 1L, 5L,
                 "{\"memberCouponId\":11,\"memberId\":1,\"couponId\":5}");
@@ -74,7 +74,7 @@ class CouponIssueOutboxServiceTest {
     }
 
     @Test
-    @DisplayName("?ÄÍ∏?outbox Î∞úÌñâ ?§Ìå® ??retry Ï¶ùÍ? ???úÎèÑ Ï¥àÍ≥ºÎ©?FAILED")
+    @DisplayName("publishPendingEvents_failed")
     void publishPendingEvents_failed() {
         CouponIssueOutboxEvent pending = CouponIssueOutboxEvent.pending(11L, 1L, 5L,
                 "{\"memberCouponId\":11,\"memberId\":1,\"couponId\":5}");

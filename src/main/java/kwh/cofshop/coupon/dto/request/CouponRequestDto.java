@@ -17,21 +17,21 @@ import java.time.LocalDate;
 public class CouponRequestDto {
 
     @NotBlank
-    @Size(max = 100, message = "ì¿ í°ëª…ì? 100???´í•˜?¬ì•¼ ?©ë‹ˆ??")
+    @Size(max = 100, message = "Coupon name must be at most 100 characters.")
     private String name;
 
     @NotNull
-    private CouponType type; // FIXED or PERCENTAGE
+    private CouponType type;
 
     @NotNull
     @Positive
-    private Integer discountValue; // ? ì¸ ê¸ˆì•¡
+    private Integer discountValue;
 
     @PositiveOrZero
-    private Integer maxDiscountAmount; // ìµœë? ? ì¸ ê¸ˆì•¡
+    private Integer maxDiscountAmount;
 
     @PositiveOrZero
-    private Integer minOrderPrice; // ìµœì†Œ ê¸ˆì•¡ (null?´ë©´ ?ìœ ë¡?²Œ ?¬ìš©)
+    private Integer minOrderPrice;
 
     @Positive
     private Integer couponCount;
@@ -42,7 +42,7 @@ public class CouponRequestDto {
     @NotNull
     private LocalDate validTo;
 
-    @AssertTrue(message = "ì¿ í° ?œì‘?¼ì? ì¢…ë£Œ?¼ë³´????„ ???†ìŠµ?ˆë‹¤.")
+    @AssertTrue(message = "Coupon validFrom must be on or before validTo.")
     private boolean isValidPeriod() {
         if (validFrom == null || validTo == null) {
             return true;

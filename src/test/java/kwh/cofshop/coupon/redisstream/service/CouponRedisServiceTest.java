@@ -42,7 +42,7 @@ class CouponRedisServiceTest {
     private CouponRedisService couponRedisService;
 
     @Test
-    @DisplayName("초기 ?�고 ?�정")
+    @DisplayName("setInitCouponCount")
     void setInitCouponCount() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
@@ -52,7 +52,7 @@ class CouponRedisServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 발급: ?�공")
+    @DisplayName("issueCoupon_success")
     void issueCoupon_success() {
         doReturn(List.of("success", "1"))
                 .when(redisTemplate)
@@ -64,7 +64,7 @@ class CouponRedisServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 발급: ?��? 발급")
+    @DisplayName("issueCoupon_alreadyIssued")
     void issueCoupon_alreadyIssued() {
         doReturn(List.of("already_issued", "0"))
                 .when(redisTemplate)
@@ -76,7 +76,7 @@ class CouponRedisServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 발급: ?�고 ?�음")
+    @DisplayName("issueCoupon_outOfStock")
     void issueCoupon_outOfStock() {
         doReturn(List.of("out_of_stock", "0"))
                 .when(redisTemplate)
@@ -88,7 +88,7 @@ class CouponRedisServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 발급: Redis ?�고 미초기화")
+    @DisplayName("issueCoupon_stockNotInitialized")
     void issueCoupon_stockNotInitialized() {
         doReturn(List.of("stock_not_initialized", "0"))
                 .when(redisTemplate)
@@ -100,7 +100,7 @@ class CouponRedisServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 발급: ?????�는 ?�태")
+    @DisplayName("issueCoupon_unknown")
     void issueCoupon_unknown() {
         doReturn(List.of("unknown", "0"))
                 .when(redisTemplate)
@@ -111,7 +111,7 @@ class CouponRedisServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 발급: Redis 결과 ?�음")
+    @DisplayName("issueCoupon_emptyResult")
     void issueCoupon_emptyResult() {
         doReturn(null)
                 .when(redisTemplate)
@@ -123,7 +123,7 @@ class CouponRedisServiceTest {
     }
 
     @Test
-    @DisplayName("?�고 존재 ?��?")
+    @DisplayName("hasStock")
     void hasStock() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("coupon:stock:1")).thenReturn("5");
@@ -134,7 +134,7 @@ class CouponRedisServiceTest {
     }
 
     @Test
-    @DisplayName("?�고 ?�음")
+    @DisplayName("hasStock_empty")
     void hasStock_empty() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("coupon:stock:1")).thenReturn(null);
@@ -145,7 +145,7 @@ class CouponRedisServiceTest {
     }
 
     @Test
-    @DisplayName("?�고 복원")
+    @DisplayName("restoreStock")
     void restoreStock() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
@@ -155,7 +155,7 @@ class CouponRedisServiceTest {
     }
 
     @Test
-    @DisplayName("?�고 감소: ?�공")
+    @DisplayName("decreaseStock_success")
     void decreaseStock_success() {
         doReturn(1L).when(redisTemplate).execute(any(DefaultRedisScript.class), anyList());
 
@@ -165,7 +165,7 @@ class CouponRedisServiceTest {
     }
 
     @Test
-    @DisplayName("?�고 감소: ?�패")
+    @DisplayName("decreaseStock_failed")
     void decreaseStock_failed() {
         doReturn(0L).when(redisTemplate).execute(any(DefaultRedisScript.class), anyList());
 
@@ -175,7 +175,7 @@ class CouponRedisServiceTest {
     }
 
     @Test
-    @DisplayName("?��? 발급 ?��? ?�인")
+    @DisplayName("isAlreadyIssued")
     void isAlreadyIssued() {
         when(redisTemplate.opsForSet()).thenReturn(setOperations);
         when(setOperations.isMember("coupon:issued:1", "2")).thenReturn(true);
@@ -196,7 +196,7 @@ class CouponRedisServiceTest {
     }
 
     @Test
-    @DisplayName("발급 롤백")
+    @DisplayName("rollbackIssuedCoupon")
     void rollbackIssuedCoupon() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(redisTemplate.opsForSet()).thenReturn(setOperations);

@@ -6,6 +6,7 @@ import kwh.cofshop.coupon.repository.MemberCouponRepository;
 import kwh.cofshop.coupon.domain.Coupon;
 import kwh.cofshop.coupon.domain.CouponState;
 import kwh.cofshop.coupon.domain.MemberCoupon;
+import kwh.cofshop.coupon.dto.response.MemberCouponResponseDto;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.member.api.MemberReadPort;
@@ -48,8 +49,8 @@ public class MemberCouponService {
         couponIssuePolicyFactory.getPolicy(coupon).issue(member, coupon);
     }
 
-    public List<MemberCoupon> memberCouponList(Long memberId) {
-        return memberCouponRepository.findByMemberId(memberId);
+    public List<MemberCouponResponseDto> memberCouponList(Long memberId) {
+        return memberCouponRepository.findResponseByMemberId(memberId);
     }
 
     public MemberCoupon findValidCoupon(Long memberCouponId, Long memberId) {

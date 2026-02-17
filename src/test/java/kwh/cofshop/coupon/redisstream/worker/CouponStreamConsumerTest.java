@@ -35,8 +35,8 @@ class CouponStreamConsumerTest {
     private StreamOperations<String, Object, Object> streamOperations;
 
     @Test
-    @DisplayName("?°ë????íƒœë©?ë©”ì‹œì§€ë¥?ACK ???? œ?œë‹¤")
-    @SuppressWarnings("unchecked")
+    @DisplayName("onMessage_terminalResult_ack")
+    @SuppressWarnings("onMessage_terminalResult_ack")
     void onMessage_terminalResult_ack() {
         CouponStreamConsumer couponStreamConsumer = new CouponStreamConsumer(limitedCouponIssueService, redisTemplate);
         MapRecord<String, String, String> message = createMessage("1", "10", "1-0");
@@ -69,7 +69,7 @@ class CouponStreamConsumerTest {
     }
 
     @Test
-    @DisplayName("payload ?„ë“œ ?„ë½?´ë©´ ë°œê¸‰ ?¸ì¶œ/ACK ?†ì´ ì¢…ë£Œ?œë‹¤")
+    @DisplayName("onMessage_missingField_noIssueNoAck")
     void onMessage_missingField_noIssueNoAck() {
         CouponStreamConsumer couponStreamConsumer = new CouponStreamConsumer(limitedCouponIssueService, redisTemplate);
         MapRecord<String, String, String> message = createMessage(null, "10", "3-0");

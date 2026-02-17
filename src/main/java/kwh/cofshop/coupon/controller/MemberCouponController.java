@@ -1,9 +1,8 @@
 package kwh.cofshop.coupon.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
-import kwh.cofshop.coupon.service.MemberCouponService;
 import kwh.cofshop.coupon.dto.response.MemberCouponResponseDto;
-import kwh.cofshop.coupon.mapper.MemberCouponMapper;
+import kwh.cofshop.coupon.service.MemberCouponService;
 import kwh.cofshop.global.annotation.LoginMember;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -26,18 +25,15 @@ import java.util.List;
 public class MemberCouponController {
 
     private final MemberCouponService memberCouponService;
-    private final MemberCouponMapper memberCouponMapper;
 
-    @Operation(summary = "쿠폰 목록 조회", description = "?�용?�의 쿠폰 목록??조회?�니??")
+    @Operation(summary = "Get coupon list", description = "Returns coupons issued to the current member.")
     @PreAuthorize("hasRole('MEMBER')")
     @GetMapping("/me")
     public List<MemberCouponResponseDto> getMemberCouponList(@LoginMember Long memberId) {
-        return memberCouponService.memberCouponList(memberId).stream()
-                .map(memberCouponMapper::toResponseDto)
-                .toList();
+        return memberCouponService.memberCouponList(memberId);
     }
 
-    @Operation(summary = "쿠폰 발급", description = "?�용?�에�?쿠폰??발급?�니??")
+    @Operation(summary = "Issue coupon", description = "Issues a coupon to the current member.")
     @PreAuthorize("hasRole('MEMBER')")
     @PostMapping("/me/{couponId}")
     public ResponseEntity<Void> createMemberCoupon(
@@ -47,7 +43,7 @@ public class MemberCouponController {
         return ResponseEntity.created(URI.create("/api/memberCoupon/me")).build();
     }
 
-    @Operation(summary = "쿠폰 만료", description = "?�원??쿠폰 ?�태�?만료 ?�태�?변경합?�다.")
+    @Operation(summary = "Expire coupons", description = "Expires member coupons based on the given date.")
     @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/expire")
     public ResponseEntity<Void> expireMemberCoupons(@RequestParam LocalDate date) {

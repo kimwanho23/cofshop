@@ -1,11 +1,13 @@
 package kwh.cofshop.coupon.service;
 
-import kwh.cofshop.coupon.dto.request.CreateCouponCommand;
-import kwh.cofshop.coupon.repository.CouponRepository;
+import kwh.cofshop.coupon.application.command.CreateCouponCommand;
 import kwh.cofshop.coupon.domain.Coupon;
 import kwh.cofshop.coupon.domain.CouponState;
 import kwh.cofshop.coupon.domain.CouponType;
 import kwh.cofshop.coupon.domain.event.CouponCreatedEvent;
+import kwh.cofshop.coupon.dto.response.CouponResponseDto;
+import kwh.cofshop.coupon.repository.CouponRepository;
+import kwh.cofshop.coupon.repository.projection.CouponReadProjection;
 import kwh.cofshop.global.exception.BusinessException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,10 +41,10 @@ class CouponServiceTest {
     private CouponService couponService;
 
     @Test
-    @DisplayName("쿠폰 ?�성")
+    @DisplayName("createCoupon")
     void createCoupon() {
-        CreateCouponCommand command = new CreateCouponCommand(
-                "?�규 쿠폰",
+        CreateCouponCommand command = CreateCouponCommand.of(
+                "new-coupon",
                 null,
                 1000,
                 null,
@@ -69,7 +71,7 @@ class CouponServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 ?�태 변�? ?�???�음")
+    @DisplayName("updateCouponState_notFound")
     void updateCouponState_notFound() {
         when(couponStore.findById(1L)).thenReturn(Optional.empty());
 
@@ -80,7 +82,7 @@ class CouponServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 ?�태 변�? ?�공")
+    @DisplayName("updateCouponState_success")
     void updateCouponState_success() {
         Coupon coupon = Coupon.builder()
                 .state(CouponState.AVAILABLE)
@@ -94,39 +96,130 @@ class CouponServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 ?�건 조회: ?�???�음")
+    @DisplayName("getCouponById_notFound")
     void getCouponById_notFound() {
-        when(couponStore.findById(1L)).thenReturn(Optional.empty());
+        when(couponStore.findCouponReadProjectionById(1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> couponService.getCouponById(1L))
                 .isInstanceOf(BusinessException.class);
     }
 
     @Test
-    @DisplayName("쿠폰 ?�건 조회")
+    @DisplayName("getCouponById_success")
     void getCouponById_success() {
-        Coupon coupon = Coupon.builder().build();
-        when(couponStore.findById(1L)).thenReturn(Optional.of(coupon));
+        CouponReadProjection projection = new CouponReadProjection() {
+            @Override
+            public Long getId() {
+                return 1L;
+            }
 
-        Coupon result = couponService.getCouponById(1L);
+            @Override
+            public String getName() {
+                return "coupon";
+            }
 
-        assertThat(result).isSameAs(coupon);
+            @Override
+            public CouponType getType() {
+                return CouponType.FIXED;
+            }
+
+            @Override
+            public int getDiscountValue() {
+                return 1000;
+            }
+
+            @Override
+            public Integer getMaxDiscount() {
+                return null;
+            }
+
+            @Override
+            public Integer getMinOrderPrice() {
+                return 3000;
+            }
+
+            @Override
+            public LocalDate getValidFrom() {
+                return LocalDate.now();
+            }
+
+            @Override
+            public LocalDate getValidTo() {
+                return LocalDate.now().plusDays(7);
+            }
+
+            @Override
+            public LocalDate getCouponCreatedAt() {
+                return LocalDate.now();
+            }
+        };
+        when(couponStore.findCouponReadProjectionById(1L)).thenReturn(Optional.of(projection));
+
+        CouponResponseDto result = couponService.getCouponById(1L);
+
+        assertThat(result.getId()).isEqualTo(1L);
+        assertThat(result.getName()).isEqualTo("coupon");
     }
 
     @Test
-    @DisplayName("쿠폰 ?�체 조회")
+    @DisplayName("getAllCoupons")
     void getAllCoupons() {
-        Coupon coupon = Coupon.builder().build();
-        when(couponStore.findAll()).thenReturn(List.of(coupon));
+        CouponReadProjection projection = new CouponReadProjection() {
+            @Override
+            public Long getId() {
+                return 1L;
+            }
 
-        List<Coupon> results = couponService.getAllCoupons();
+            @Override
+            public String getName() {
+                return "coupon";
+            }
+
+            @Override
+            public CouponType getType() {
+                return CouponType.FIXED;
+            }
+
+            @Override
+            public int getDiscountValue() {
+                return 1000;
+            }
+
+            @Override
+            public Integer getMaxDiscount() {
+                return null;
+            }
+
+            @Override
+            public Integer getMinOrderPrice() {
+                return null;
+            }
+
+            @Override
+            public LocalDate getValidFrom() {
+                return LocalDate.now();
+            }
+
+            @Override
+            public LocalDate getValidTo() {
+                return LocalDate.now().plusDays(7);
+            }
+
+            @Override
+            public LocalDate getCouponCreatedAt() {
+                return LocalDate.now();
+            }
+        };
+        when(couponStore.findAllProjectedBy()).thenReturn(List.of(projection));
+
+        List<CouponResponseDto> results = couponService.getAllCoupons();
 
         assertThat(results).hasSize(1);
-        assertThat(results.get(0)).isSameAs(coupon);
+        assertThat(results.get(0).getId()).isEqualTo(1L);
     }
 
     @Test
-    @DisplayName("쿠폰 취소: ?�???�음")
+    @DisplayName("cancelCoupon_notFound")
     void cancelCoupon_notFound() {
         when(couponStore.findById(1L)).thenReturn(Optional.empty());
 
@@ -135,7 +228,7 @@ class CouponServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 취소: ?�공")
+    @DisplayName("cancelCoupon_success")
     void cancelCoupon_success() {
         Coupon coupon = Coupon.builder()
                 .state(CouponState.AVAILABLE)
@@ -149,7 +242,7 @@ class CouponServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 만료 처리")
+    @DisplayName("expireCoupons")
     void expireCoupons() {
         when(couponStore.bulkExpireCoupons(any(), any(), any())).thenReturn(3);
 

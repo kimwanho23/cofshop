@@ -2,6 +2,7 @@ package kwh.cofshop.coupon.repository;
 
 import kwh.cofshop.coupon.domain.Coupon;
 import kwh.cofshop.coupon.domain.CouponState;
+import kwh.cofshop.coupon.repository.projection.CouponReadProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -10,9 +11,14 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface CouponRepository extends JpaRepository<Coupon, Long> {
+
+    Optional<CouponReadProjection> findCouponReadProjectionById(Long id);
+
+    List<CouponReadProjection> findAllProjectedBy();
 
     List<Coupon> findByValidToBeforeAndState(LocalDate date, CouponState state);
 

@@ -37,7 +37,7 @@ class RabbitMqCouponIssueEventPublisherTest {
     }
 
     @Test
-    @DisplayName("ì¿ í° ë°œê¸‰ ?´ë²¤?¸ë? RabbitMQ exchange/routingKeyë¡?ë°œí–‰")
+    @DisplayName("publish")
     void publish() {
         CouponIssueEventMessage message = new CouponIssueEventMessage(10L, 11L, 1L, 5L);
 

@@ -32,7 +32,7 @@ class MemberCouponServiceIntegrationTest {
     private MemberCouponService memberCouponService;
 
     @Test
-    @DisplayName("?úÎπÑ???ùÏÑ±")
+    @DisplayName("createService")
     void createService() {
         assertThat(memberCouponService).isNotNull();
     }

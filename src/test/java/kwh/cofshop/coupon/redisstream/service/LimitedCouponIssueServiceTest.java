@@ -30,7 +30,7 @@ class LimitedCouponIssueServiceTest {
     private LimitedCouponIssueService limitedCouponIssueService;
 
     @Test
-    @DisplayName("DB???¥Î? Î∞úÍ∏â??Í≤ΩÏö∞ Redis ?úÏãùÎß?Î≥¥Ï†ï?òÍ≥† ALREADY_ISSUED Î∞òÌôò")
+    @DisplayName("issueCoupon_alreadyIssuedInDb")
     void issueCoupon_alreadyIssuedInDb() {
         when(memberCouponIssueService.isAlreadyIssued(1L, 10L)).thenReturn(true);
 
@@ -42,7 +42,7 @@ class LimitedCouponIssueServiceTest {
     }
 
     @Test
-    @DisplayName("Redis ?†Ï†ê Í≤∞Í≥ºÍ∞Ä SUCCESSÍ∞Ä ?ÑÎãàÎ©?Í∑∏Î?Î°?Î∞òÌôò")
+    @DisplayName("issueCoupon_notSuccessFromRedis")
     void issueCoupon_notSuccessFromRedis() {
         when(memberCouponIssueService.isAlreadyIssued(1L, 10L)).thenReturn(false);
         when(couponRedisService.issueCoupon(10L, 1L)).thenReturn(CouponIssueState.OUT_OF_STOCK);
@@ -53,7 +53,7 @@ class LimitedCouponIssueServiceTest {
     }
 
     @Test
-    @DisplayName("Redis ?†Ï†ê ?±Í≥µ ??DB ?Ä???±Í≥µ ??SUCCESS Î∞òÌôò")
+    @DisplayName("issueCoupon_success")
     void issueCoupon_success() {
         when(memberCouponIssueService.isAlreadyIssued(1L, 10L)).thenReturn(false);
         when(couponRedisService.issueCoupon(10L, 1L)).thenReturn(CouponIssueState.SUCCESS);
@@ -66,7 +66,7 @@ class LimitedCouponIssueServiceTest {
     }
 
     @Test
-    @DisplayName("Redis ?†Ï†ê ?±Í≥µ ??DB ?Ä???§Ìå® ??Redis Î°§Î∞±")
+    @DisplayName("issueCoupon_dbSaveFailRollback")
     void issueCoupon_dbSaveFailRollback() {
         when(memberCouponIssueService.isAlreadyIssued(1L, 10L)).thenReturn(false);
         when(couponRedisService.issueCoupon(10L, 1L)).thenReturn(CouponIssueState.SUCCESS);
@@ -79,7 +79,7 @@ class LimitedCouponIssueServiceTest {
     }
 
     @Test
-    @DisplayName("Redis ?†Ï†ê ?±Í≥µ ??DB ?†Îãà??Ï∂©Îèå?¥Î©¥ ALREADY_ISSUEDÎ°?Ï¢ÖÎ£å")
+    @DisplayName("issueCoupon_duplicateConflictReturnsAlreadyIssued")
     void issueCoupon_duplicateConflictReturnsAlreadyIssued() {
         when(memberCouponIssueService.isAlreadyIssued(1L, 10L)).thenReturn(false);
         when(couponRedisService.issueCoupon(10L, 1L)).thenReturn(CouponIssueState.SUCCESS);

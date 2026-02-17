@@ -2,12 +2,10 @@ package kwh.cofshop.coupon.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
-import kwh.cofshop.coupon.domain.Coupon;
+import kwh.cofshop.coupon.application.command.CreateCouponCommand;
 import kwh.cofshop.coupon.domain.CouponState;
 import kwh.cofshop.coupon.dto.request.CouponRequestDto;
-import kwh.cofshop.coupon.dto.request.CreateCouponCommand;
 import kwh.cofshop.coupon.dto.response.CouponResponseDto;
-import kwh.cofshop.coupon.mapper.CouponMapper;
 import kwh.cofshop.coupon.service.CouponService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -31,28 +29,24 @@ import java.util.List;
 public class CouponController {
 
     private final CouponService couponService;
-    private final CouponMapper couponMapper;
 
     @Operation(summary = "Get coupon", description = "Get coupon by id")
     @GetMapping("/{couponId}")
     public CouponResponseDto getCouponById(@PathVariable Long couponId) {
-        Coupon coupon = couponService.getCouponById(couponId);
-        return couponMapper.toResponseDto(coupon);
+        return couponService.getCouponById(couponId);
     }
 
     @Operation(summary = "Get all coupons", description = "Get all coupons")
     @GetMapping
     public List<CouponResponseDto> getAllCoupons() {
-        return couponService.getAllCoupons().stream()
-                .map(couponMapper::toResponseDto)
-                .toList();
+        return couponService.getAllCoupons();
     }
 
     @Operation(summary = "Create coupon", description = "Create a coupon")
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<Long> createCoupon(@RequestBody @Valid CouponRequestDto couponRequestDto) {
-        Long couponId = couponService.createCoupon(new CreateCouponCommand(
+        Long couponId = couponService.createCoupon(CreateCouponCommand.of(
                 couponRequestDto.getName(),
                 couponRequestDto.getMinOrderPrice(),
                 couponRequestDto.getDiscountValue(),

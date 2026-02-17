@@ -1,13 +1,11 @@
 package kwh.cofshop.coupon.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import kwh.cofshop.coupon.domain.Coupon;
 import kwh.cofshop.coupon.domain.CouponState;
 import kwh.cofshop.coupon.domain.CouponType;
 import kwh.cofshop.coupon.dto.request.CouponRequestDto;
 import kwh.cofshop.coupon.dto.response.CouponResponseDto;
 import kwh.cofshop.coupon.service.CouponService;
-import kwh.cofshop.coupon.mapper.CouponMapper;
 import kwh.cofshop.support.StandaloneMockMvcFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,9 +38,6 @@ class CouponControllerTest {
     @Mock
     private CouponService couponService;
 
-    @Mock
-    private CouponMapper couponMapper;
-
     @InjectMocks
     private CouponController couponController;
 
@@ -53,34 +48,30 @@ class CouponControllerTest {
     }
 
     @Test
-    @DisplayName("쿠폰 ?�건 조회")
+    @DisplayName("getCouponById")
     void getCouponById() throws Exception {
-        Coupon coupon = Coupon.builder().build();
-        when(couponService.getCouponById(anyLong())).thenReturn(coupon);
-        when(couponMapper.toResponseDto(coupon)).thenReturn(new CouponResponseDto());
+        when(couponService.getCouponById(anyLong())).thenReturn(new CouponResponseDto());
 
         mockMvc.perform(get("/api/coupon/1"))
                 .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("쿠폰 ?�체 조회")
+    @DisplayName("getAllCoupons")
     void getAllCoupons() throws Exception {
-        Coupon coupon = Coupon.builder().build();
-        when(couponService.getAllCoupons()).thenReturn(List.of(coupon));
-        when(couponMapper.toResponseDto(coupon)).thenReturn(new CouponResponseDto());
+        when(couponService.getAllCoupons()).thenReturn(List.of(new CouponResponseDto()));
 
         mockMvc.perform(get("/api/coupon"))
                 .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("쿠폰 ?�성")
+    @DisplayName("createCoupon")
     void createCoupon() throws Exception {
         when(couponService.createCoupon(any())).thenReturn(1L);
 
         CouponRequestDto requestDto = new CouponRequestDto();
-        requestDto.setName("?�스??쿠폰");
+        requestDto.setName("test-coupon");
         requestDto.setType(CouponType.FIXED);
         requestDto.setDiscountValue(1000);
         requestDto.setValidFrom(LocalDate.now());
@@ -101,14 +92,14 @@ class CouponControllerTest {
     }
 
     @Test
-    @DisplayName("쿠폰 취소")
+    @DisplayName("cancelCoupon")
     void cancelCoupon() throws Exception {
         mockMvc.perform(patch("/api/coupon/1/cancel"))
                 .andExpect(status().isNoContent());
     }
 
     @Test
-    @DisplayName("쿠폰 만료 처리")
+    @DisplayName("expireCoupons")
     void expireCoupons() throws Exception {
         mockMvc.perform(post("/api/coupon/expire")
                         .param("date", LocalDate.now().toString()))

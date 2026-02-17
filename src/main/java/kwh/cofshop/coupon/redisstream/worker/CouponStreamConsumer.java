@@ -16,7 +16,8 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 @Slf4j
 @ConditionalOnProperty(name = "coupon.stream.enabled", havingValue = "true")
-public class CouponStreamConsumer implements StreamListener<String, MapRecord<String, String, String>>, InitializingBean, DisposableBean {
+public class CouponStreamConsumer
+        implements StreamListener<String, MapRecord<String, String, String>>, InitializingBean, DisposableBean {
 
     private final LimitedCouponIssueService limitedCouponIssueService;
     private final RedisTemplate<String, String> redisTemplate;
@@ -33,19 +34,19 @@ public class CouponStreamConsumer implements StreamListener<String, MapRecord<St
             Long memberId = Long.valueOf(memberIdValue);
             Long couponId = Long.valueOf(couponIdValue);
 
-            log.info("[LimitedCoupon] ë°œê¸‰ ?œìž‘, thread={}, id={}",
+            log.info("[LimitedCoupon] issue started, thread={}, id={}",
                     Thread.currentThread().getName(), Thread.currentThread().getId());
 
             CouponIssueState result = limitedCouponIssueService.issueCoupon(couponId, memberId);
             boolean terminalResult = true;
 
             switch (result) {
-                case ALREADY_ISSUED -> log.warn("ì¤‘ë³µ ë°œê¸‰ ?”ì²­: memberId={}, couponId={}", memberId, couponId);
-                case OUT_OF_STOCK -> log.warn("?¬ê³  ë¶€ì¡? memberId={}, couponId={}", memberId, couponId);
-                case SUCCESS -> log.info("ë°œê¸‰ ?±ê³µ: memberId={}, couponId={}", memberId, couponId);
+                case ALREADY_ISSUED -> log.warn("Duplicate issue request. memberId={}, couponId={}", memberId, couponId);
+                case OUT_OF_STOCK -> log.warn("Out of stock. memberId={}, couponId={}", memberId, couponId);
+                case SUCCESS -> log.info("Issue succeeded. memberId={}, couponId={}", memberId, couponId);
                 case STOCK_NOT_INITIALIZED -> {
                     terminalResult = false;
-                    log.warn("Redis ?¬ê³  ë¯¸ì´ˆê¸°í™”ë¡??¬ì‹œ???€ê¸? memberId={}, couponId={}", memberId, couponId);
+                    log.warn("Stock is not initialized yet. memberId={}, couponId={}", memberId, couponId);
                 }
             }
 
@@ -54,17 +55,17 @@ public class CouponStreamConsumer implements StreamListener<String, MapRecord<St
                 ops.acknowledge(CouponStreamConstants.STREAM_KEY, CouponStreamConstants.COUPON_GROUP, message.getId());
                 ops.delete(CouponStreamConstants.STREAM_KEY, message.getId());
             }
-
         } catch (Exception e) {
-            // ?ˆì™¸ ë°œìƒ ??pending ?íƒœë¡??¨ê²¨?ê³  cleanerê°€ ?¬ì‹œ??            log.error("ë°œê¸‰ ?¤íŒ¨: payload={}, id={}", message.getValue(), message.getId(), e);
+            // Leave message in pending to let cleaner handle retries/DLQ.
+            log.error("Issue failed. payload={}, id={}", message.getValue(), message.getId(), e);
         }
     }
 
     @Override
-    public void destroy() throws Exception {
+    public void destroy() {
     }
 
     @Override
-    public void afterPropertiesSet() throws Exception {
+    public void afterPropertiesSet() {
     }
 }

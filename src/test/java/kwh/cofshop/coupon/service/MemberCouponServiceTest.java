@@ -8,6 +8,7 @@ import kwh.cofshop.coupon.domain.CouponState;
 import kwh.cofshop.coupon.domain.CouponType;
 import kwh.cofshop.coupon.domain.MemberCoupon;
 import kwh.cofshop.coupon.domain.policy.issue.CouponIssuePolicy;
+import kwh.cofshop.coupon.dto.response.MemberCouponResponseDto;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.member.api.MemberReadPort;
@@ -49,7 +50,7 @@ class MemberCouponServiceTest {
     private MemberCouponService memberCouponService;
 
     @Test
-    @DisplayName("쿠폰 발급: ?�원 ?�음")
+    @DisplayName("issueCoupon_memberNotFound")
     void issueCoupon_memberNotFound() {
         when(memberReadPort.getById(anyLong())).thenThrow(new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
 
@@ -58,7 +59,7 @@ class MemberCouponServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 발급: 쿠폰 ?�음")
+    @DisplayName("issueCoupon_couponNotFound")
     void issueCoupon_couponNotFound() {
         Member member = createMember(1L);
         when(memberReadPort.getById(1L)).thenReturn(member);
@@ -69,7 +70,7 @@ class MemberCouponServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 발급: ?�효기간 ?�님")
+    @DisplayName("issueCoupon_invalidDate")
     void issueCoupon_invalidDate() {
         Member member = createMember(1L);
         Coupon coupon = createCoupon(LocalDate.now().plusDays(1), LocalDate.now().plusDays(2));
@@ -82,7 +83,7 @@ class MemberCouponServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 발급: ?�용 불�? ?�태")
+    @DisplayName("issueCoupon_couponStateNotAvailable")
     void issueCoupon_couponStateNotAvailable() {
         Member member = createMember(1L);
         Coupon coupon = createCoupon(LocalDate.now().minusDays(1), LocalDate.now().plusDays(2));
@@ -96,7 +97,7 @@ class MemberCouponServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 발급: ?�공")
+    @DisplayName("issueCoupon_success")
     void issueCoupon_success() {
         Member member = createMember(1L);
         Coupon coupon = createCoupon(LocalDate.now().minusDays(1), LocalDate.now().plusDays(5));
@@ -112,19 +113,19 @@ class MemberCouponServiceTest {
     }
 
     @Test
-    @DisplayName("멤버 쿠폰 목록")
+    @DisplayName("memberCouponList")
     void memberCouponList() {
-        MemberCoupon memberCoupon = MemberCoupon.builder().build();
-        when(memberCouponRepository.findByMemberId(1L)).thenReturn(List.of(memberCoupon));
+        MemberCouponResponseDto responseDto = new MemberCouponResponseDto();
+        when(memberCouponRepository.findResponseByMemberId(1L)).thenReturn(List.of(responseDto));
 
-        List<MemberCoupon> results = memberCouponService.memberCouponList(1L);
+        List<MemberCouponResponseDto> results = memberCouponService.memberCouponList(1L);
 
         assertThat(results).hasSize(1);
-        assertThat(results.get(0)).isSameAs(memberCoupon);
+        assertThat(results.get(0)).isSameAs(responseDto);
     }
 
     @Test
-    @DisplayName("?�효 쿠폰 조회: ?�음")
+    @DisplayName("findValidCoupon_notFound")
     void findValidCoupon_notFound() {
         when(memberCouponRepository.findValidCouponByMemberCouponId(anyLong(), anyLong(), any()))
                 .thenReturn(Optional.empty());
@@ -134,7 +135,7 @@ class MemberCouponServiceTest {
     }
 
     @Test
-    @DisplayName("?�효 쿠폰 조회")
+    @DisplayName("findValidCoupon_success")
     void findValidCoupon_success() {
         MemberCoupon memberCoupon = MemberCoupon.builder().state(CouponState.AVAILABLE).build();
         when(memberCouponRepository.findValidCouponByMemberCouponId(anyLong(), anyLong(), any()))
@@ -146,7 +147,7 @@ class MemberCouponServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 복구: ?�공")
+    @DisplayName("restoreCoupon_success")
     void restoreCoupon_success() {
         MemberCoupon memberCoupon = MemberCoupon.builder().state(CouponState.USED).build();
         when(memberCouponRepository.findById(1L)).thenReturn(Optional.of(memberCoupon));
@@ -157,7 +158,7 @@ class MemberCouponServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 복구: ?�태 ?�류")
+    @DisplayName("restoreCoupon_invalidState")
     void restoreCoupon_invalidState() {
         MemberCoupon memberCoupon = MemberCoupon.builder().state(CouponState.AVAILABLE).build();
         when(memberCouponRepository.findById(1L)).thenReturn(Optional.of(memberCoupon));
@@ -167,7 +168,7 @@ class MemberCouponServiceTest {
     }
 
     @Test
-    @DisplayName("쿠폰 만료 처리")
+    @DisplayName("expireMemberCoupons")
     void expireMemberCoupons() {
         MemberCoupon coupon1 = MemberCoupon.builder().state(CouponState.AVAILABLE).build();
         MemberCoupon coupon2 = MemberCoupon.builder().state(CouponState.AVAILABLE).build();
@@ -194,7 +195,7 @@ class MemberCouponServiceTest {
 
     private Coupon createCoupon(LocalDate validFrom, LocalDate validTo) {
         return Coupon.builder()
-                .name("?�스??쿠폰")
+                .name("test-coupon")
                 .type(CouponType.FIXED)
                 .discountValue(1000)
                 .state(CouponState.AVAILABLE)

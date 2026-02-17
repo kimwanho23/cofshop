@@ -1,6 +1,5 @@
 package kwh.cofshop.coupon.redisstream.event;
 
-
 import kwh.cofshop.coupon.domain.event.CouponCreatedEvent;
 import kwh.cofshop.coupon.redisstream.service.CouponRedisService;
 import lombok.RequiredArgsConstructor;
@@ -20,9 +19,9 @@ public class CouponCreatedEventListener {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handle(CouponCreatedEvent event) {
-        if (event.isLimited()) { // ?˜ëŸ‰ ?œí•œ???ˆëŠ”ê°€?
+        if (event.isLimited()) {
             couponRedisService.setInitCouponCount(event.couponId(), event.couponCount());
-            log.info("[EventHandler] Redis ?˜ëŸ‰ ì´ˆê¸°???„ë£Œ: {}", event.couponId());
+            log.info("Initialized Redis coupon stock. couponId={}", event.couponId());
         }
     }
 }
