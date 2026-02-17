@@ -63,8 +63,7 @@ class ChatMessageControllerTest {
         requestDto.setRoomId(2L);
         requestDto.setMessageId(200L);
 
-        DeletedMessageResponseDto responseDto = new DeletedMessageResponseDto();
-        responseDto.setRoomId(2L);
+        DeletedMessageResponseDto responseDto = DeletedMessageResponseDto.of(2L, "g-1", List.of(200L));
 
         when(chatMessageService.deleteMessage(anyLong(), anyLong(), anyLong())).thenReturn(responseDto);
 

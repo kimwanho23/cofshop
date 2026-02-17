@@ -104,8 +104,9 @@ public class CartItemService {
     // 회원 장바구니 조회 ( 장바구니에 있는 물건 )
     @Transactional(readOnly = true)
     public List<CartItemResponseDto> getCartItemsByMemberId(Long memberId) {
-        cartRepository.findByMemberId(memberId)
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.CART_NOT_FOUND));
+        if (!cartRepository.existsByMemberId(memberId)) {
+            throw new BusinessException(BusinessErrorCode.CART_NOT_FOUND);
+        }
         return cartItemRepository.findCartItemsByMemberId(memberId);
     }
 
@@ -122,11 +123,11 @@ public class CartItemService {
     // 장바구니 금액 계산
     @Transactional(readOnly = true)
     public int calculateTotalPrice(Long memberId) {
-        Cart cart = cartRepository.findByMemberId(memberId)
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.CART_NOT_FOUND));
+        if (!cartRepository.existsByMemberId(memberId)) {
+            throw new BusinessException(BusinessErrorCode.CART_NOT_FOUND);
+        }
 
-        return cart.getCartItems().stream()
-                .mapToInt(CartItem::getTotalPrice)
-                .sum();
+        Integer totalPrice = cartItemRepository.sumTotalPriceByMemberId(memberId);
+        return totalPrice == null ? 0 : totalPrice;
     }
 }

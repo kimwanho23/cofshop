@@ -243,8 +243,7 @@ class CartItemServiceTest {
     @Test
     @DisplayName("장바구니 목록 조회")
     void getCartItemsByMemberId() {
-        Cart cart = createCartWithId(1L);
-        when(cartRepository.findByMemberId(1L)).thenReturn(Optional.of(cart));
+        when(cartRepository.existsByMemberId(1L)).thenReturn(true);
         when(cartItemRepository.findCartItemsByMemberId(1L)).thenReturn(List.of(new CartItemResponseDto()));
 
         List<CartItemResponseDto> results = cartItemService.getCartItemsByMemberId(1L);
@@ -266,28 +265,8 @@ class CartItemServiceTest {
     @Test
     @DisplayName("장바구니 합계 계산")
     void calculateTotalPrice() {
-        Cart cart = createCartWithId(1L);
-        Item item1 = createItem(1000);
-        ItemOption option1 = createOption(item1, 200, 100);
-        CartItem cartItem1 = CartItem.builder()
-                .item(item1)
-                .itemOption(option1)
-                .quantity(2)
-                .cart(cart)
-                .build();
-        cart.addCartItem(cartItem1);
-
-        Item item2 = createItem(500);
-        ItemOption option2 = createOption(item2, 0, 50);
-        CartItem cartItem2 = CartItem.builder()
-                .item(item2)
-                .itemOption(option2)
-                .quantity(1)
-                .cart(cart)
-                .build();
-        cart.addCartItem(cartItem2);
-
-        when(cartRepository.findByMemberId(1L)).thenReturn(Optional.of(cart));
+        when(cartRepository.existsByMemberId(1L)).thenReturn(true);
+        when(cartItemRepository.sumTotalPriceByMemberId(1L)).thenReturn(2900);
 
         int totalPrice = cartItemService.calculateTotalPrice(1L);
 

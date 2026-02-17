@@ -1,48 +1,69 @@
 package kwh.cofshop.cart.repository.custom;
 
+import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import kwh.cofshop.cart.domain.CartItem;
 import kwh.cofshop.cart.domain.QCartItem;
 import kwh.cofshop.cart.dto.response.CartItemResponseDto;
-import kwh.cofshop.cart.mapper.CartItemMapper;
-import kwh.cofshop.item.domain.ImgType;
 import kwh.cofshop.item.domain.QItem;
-import kwh.cofshop.item.domain.QItemImg;
 import kwh.cofshop.item.domain.QItemOption;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
 public class CartItemRepositoryImpl implements CartItemRepositoryCustom {
 
     private final JPAQueryFactory queryFactory;
-    private final CartItemMapper cartItemMapper;
 
     @Override
-    public List<CartItemResponseDto> findCartItemsByMemberId(Long memberId) { // Member Cart 조회, Item, ItemOption 등 조인
+    public List<CartItemResponseDto> findCartItemsByMemberId(Long memberId) {
         QCartItem cartItem = QCartItem.cartItem;
-        QItem item = QItem.item;
-        QItemImg itemImg = QItemImg.itemImg;
-        QItemOption itemOption = QItemOption.itemOption;
 
-        List<CartItem> cartItems = queryFactory
-                .selectDistinct(cartItem)
-                .join(cartItem.item, item).fetchJoin()
-                .join(cartItem.itemOption, itemOption).fetchJoin()
-                .leftJoin(item.itemImgs, itemImg)
-                .on(itemImg.imgType.eq(ImgType.REPRESENTATIVE))
-                .fetchJoin()
+        return queryFactory
+                .select(Projections.fields(
+                        CartItemResponseDto.class,
+                        cartItem.cart.id.as("cartId"),
+                        cartItem.quantity,
+                        cartItem.item.id.as("itemId"),
+                        cartItem.itemOption.id.as("optionId")
+                ))
+                .from(cartItem)
                 .where(cartItem.cart.member.id.eq(memberId))
                 .fetch();
+    }
 
-        return cartItems.stream()
-                .map(cartItemMapper::toResponseDto)
-                .collect(Collectors.toList());
+    @Override
+    public Integer sumTotalPriceByMemberId(Long memberId) {
+        QCartItem cartItem = QCartItem.cartItem;
+        QItem item = QItem.item;
+        QItemOption itemOption = QItemOption.itemOption;
+
+        NumberExpression<Integer> itemDiscountRate = item.discount.coalesce(0);
+        NumberExpression<Integer> optionAdditionalPrice = itemOption.additionalPrice.coalesce(0);
+        NumberExpression<Integer> optionDiscountRate = itemOption.discountRate.coalesce(0);
+
+        NumberExpression<Integer> discountedItemPrice = item.price
+                .multiply(Expressions.numberTemplate(Integer.class, "(100 - {0})", itemDiscountRate))
+                .divide(100);
+        NumberExpression<Integer> basePrice = discountedItemPrice.add(optionAdditionalPrice);
+        NumberExpression<Integer> discountedOptionPrice = basePrice
+                .multiply(Expressions.numberTemplate(Integer.class, "(100 - {0})", optionDiscountRate))
+                .divide(100);
+        NumberExpression<Integer> lineTotal = discountedOptionPrice.multiply(cartItem.quantity);
+
+        return queryFactory
+                .select(lineTotal.sum())
+                .from(cartItem)
+                .join(cartItem.item, item)
+                .join(cartItem.itemOption, itemOption)
+                .where(cartItem.cart.member.id.eq(memberId))
+                .fetchOne();
     }
 
     @Override // 해당 Cart 아이템 전체 삭제

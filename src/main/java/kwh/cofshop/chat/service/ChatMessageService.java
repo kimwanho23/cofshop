@@ -16,7 +16,6 @@ import kwh.cofshop.member.api.MemberReadPort;
 import kwh.cofshop.member.domain.Member;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Slice;
-import org.springframework.data.domain.SliceImpl;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -75,15 +74,7 @@ public class ChatMessageService {
             throw new ForbiddenRequestException(ForbiddenErrorCode.CHAT_ROOM_ACCESS_DENIED);
         }
 
-        // 1. Slice로 메시지 조각을 가져온다.
-        Slice<ChatMessage> slice = chatMessageRepository.findMessagesByRoom(roomId, lastMessageId, pageSize);
-
-        // 2. DTO로 매핑
-        List<ChatMessageResponseDto> dtoList = slice.getContent().stream()
-                .map(chatMessageMapper::toResponseDto)
-                .toList();
-
-        return new SliceImpl<>(dtoList, slice.getPageable(), slice.hasNext());
+        return chatMessageRepository.findMessagesByRoom(roomId, lastMessageId, pageSize);
     }
 
     // 메시지 삭제
@@ -111,11 +102,7 @@ public class ChatMessageService {
                 .map(ChatMessage::getId)
                 .toList();
 
-        DeletedMessageResponseDto responseDto = new DeletedMessageResponseDto();
-        responseDto.setGroupId(groupId);
-        responseDto.setMessageIds(deletedMessageIds);
-
-        return responseDto;
+        return DeletedMessageResponseDto.of(roomId, groupId, deletedMessageIds);
     }
 
 }

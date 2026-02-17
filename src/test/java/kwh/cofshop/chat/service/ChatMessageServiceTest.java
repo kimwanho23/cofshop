@@ -163,17 +163,15 @@ class ChatMessageServiceTest {
         Member member = createMember(1L);
         ChatRoom chatRoom = ChatRoom.createChatRoom(member);
 
-        ChatMessage message = ChatMessage.builder()
-                .message("안녕하세요")
-                .messageGroupId("group")
-                .build();
-        ReflectionTestUtils.setField(message, "id", 10L);
+        ChatMessageResponseDto responseDto = new ChatMessageResponseDto();
+        responseDto.setMessageId(10L);
+        responseDto.setMessage("안녕하세요");
+        responseDto.setMessageGroupId("group");
 
         when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
         when(memberReadPort.getById(1L)).thenReturn(member);
-        Slice<ChatMessage> slice = new SliceImpl<>(List.of(message), PageRequest.of(0, 20), false);
+        Slice<ChatMessageResponseDto> slice = new SliceImpl<>(List.of(responseDto), PageRequest.of(0, 20), false);
         when(chatMessageRepository.findMessagesByRoom(anyLong(), any(), anyInt())).thenReturn(slice);
-        when(chatMessageMapper.toResponseDto(message)).thenReturn(new ChatMessageResponseDto());
 
         Slice<ChatMessageResponseDto> result = chatMessageService.getChatMessages(1L, null, 20, 1L);
 

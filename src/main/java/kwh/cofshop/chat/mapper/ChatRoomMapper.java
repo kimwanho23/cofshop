@@ -17,5 +17,6 @@ public interface ChatRoomMapper {
     @Mapping(source = "id", target = "roomId")
     @Mapping(source = "customer.id", target = "customerId")
     @Mapping(source = "agent.id", target = "agentId")
+    @Mapping(target = "active", expression = "java(chatRoom.getChatRoomStatus() != kwh.cofshop.chat.domain.ChatRoomStatus.CLOSED)")
     ChatRoomResponseDto toResponseDto(ChatRoom chatRoom);
 }

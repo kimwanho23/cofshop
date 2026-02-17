@@ -1,8 +1,9 @@
 package kwh.cofshop.chat.repository.custom;
 
+import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import kwh.cofshop.chat.domain.ChatMessage;
 import kwh.cofshop.chat.domain.QChatMessage;
+import kwh.cofshop.chat.dto.response.ChatMessageResponseDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
@@ -18,11 +19,22 @@ public class ChatMessageRepositoryCustomImpl implements ChatMessageRepositoryCus
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public Slice<ChatMessage> findMessagesByRoom(Long roomId, Long lastMessageId, int pageSize) {
+    public Slice<ChatMessageResponseDto> findMessagesByRoom(Long roomId, Long lastMessageId, int pageSize) {
         QChatMessage chatMessage = QChatMessage.chatMessage;
 
-        List<ChatMessage> content = queryFactory
-                .selectFrom(chatMessage)
+        List<ChatMessageResponseDto> content = queryFactory
+                .select(Projections.fields(
+                        ChatMessageResponseDto.class,
+                        chatMessage.id.as("messageId"),
+                        chatMessage.chatRoom.id.as("roomId"),
+                        chatMessage.sender.id.as("senderId"),
+                        chatMessage.message,
+                        chatMessage.messageGroupId,
+                        chatMessage.messageType,
+                        chatMessage.isDeleted.as("deleted"),
+                        chatMessage.createDate.as("createdAt")
+                ))
+                .from(chatMessage)
                 .where(
                         chatMessage.chatRoom.id.eq(roomId),
                         lastMessageId != null ?

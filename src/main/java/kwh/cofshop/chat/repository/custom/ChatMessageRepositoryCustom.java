@@ -1,9 +1,9 @@
 package kwh.cofshop.chat.repository.custom;
 
-import kwh.cofshop.chat.domain.ChatMessage;
+import kwh.cofshop.chat.dto.response.ChatMessageResponseDto;
 import org.springframework.data.domain.Slice;
 
 public interface ChatMessageRepositoryCustom {
 
-    Slice<ChatMessage> findMessagesByRoom(Long roomId, Long lastMessageId, int pageSize);
+    Slice<ChatMessageResponseDto> findMessagesByRoom(Long roomId, Long lastMessageId, int pageSize);
 }
