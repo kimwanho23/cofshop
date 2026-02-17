@@ -1,4 +1,4 @@
-package kwh.cofshop.file.domain;
+package kwh.cofshop.file.storage;
 
 import lombok.Data;
 
