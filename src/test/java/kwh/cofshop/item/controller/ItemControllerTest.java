@@ -111,18 +111,14 @@ class ItemControllerTest {
         requestDto.setItemName("커피 원두");
         requestDto.setPrice(1000);
         requestDto.setOrigin("브라질");
-        requestDto.setItemImgRequestDto(List.of(new ItemImgRequestDto(null, null, ImgType.REPRESENTATIVE)));
-        requestDto.setItemOptionRequestDto(List.of(ItemOptionRequestDto.builder()
-                .description("기본")
-                .additionalPrice(0)
-                .stock(10)
-                .build()));
+        requestDto.setItemImages(List.of(new ItemImgRequestDto(null, ImgType.REPRESENTATIVE)));
+        requestDto.setItemOptions(List.of(new ItemOptionRequestDto(null, "기본", 0, 10)));
         requestDto.setCategoryIds(List.of(1L));
 
         String requestJson = objectMapper.writeValueAsString(requestDto);
         MockMultipartFile itemRequestDtoPart = new MockMultipartFile(
-                "itemRequestDto",
-                "itemRequestDto.json",
+                "itemRequest",
+                "itemRequest.json",
                 "application/json",
                 requestJson.getBytes(StandardCharsets.UTF_8)
         );
@@ -142,6 +138,36 @@ class ItemControllerTest {
     }
 
     @Test
+    @DisplayName("상품 등록: 이미지 파트 없이 임시 이미지 ID로 요청 가능")
+    void addItem_withoutImages() throws Exception {
+        ItemResponseDto responseDto = new ItemResponseDto();
+        responseDto.setId(1L);
+
+        when(itemService.saveItem(any(), anyLong(), any())).thenReturn(responseDto);
+
+        ItemRequestDto requestDto = new ItemRequestDto();
+        requestDto.setItemName("커피 원두");
+        requestDto.setPrice(1000);
+        requestDto.setOrigin("브라질");
+        requestDto.setItemImages(List.of(new ItemImgRequestDto(null, 10L, ImgType.REPRESENTATIVE)));
+        requestDto.setItemOptions(List.of(new ItemOptionRequestDto(null, "기본", 0, 10)));
+        requestDto.setCategoryIds(List.of(1L));
+
+        String requestJson = objectMapper.writeValueAsString(requestDto);
+        MockMultipartFile itemRequestDtoPart = new MockMultipartFile(
+                "itemRequest",
+                "itemRequest.json",
+                "application/json",
+                requestJson.getBytes(StandardCharsets.UTF_8)
+        );
+
+        mockMvc.perform(multipart("/api/item")
+                        .file(itemRequestDtoPart)
+                        .contentType(MediaType.MULTIPART_FORM_DATA))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
     @DisplayName("상품 수정")
     void updateItem() throws Exception {
         ItemResponseDto responseDto = new ItemResponseDto();
@@ -154,8 +180,8 @@ class ItemControllerTest {
 
         String requestJson = objectMapper.writeValueAsString(requestDto);
         MockMultipartFile itemRequestDtoPart = new MockMultipartFile(
-                "itemRequestDto",
-                "itemRequestDto.json",
+                "itemRequest",
+                "itemRequest.json",
                 "application/json",
                 requestJson.getBytes(StandardCharsets.UTF_8)
         );
@@ -198,8 +224,8 @@ class ItemControllerTest {
 
         String requestJson = objectMapper.writeValueAsString(requestDto);
         MockMultipartFile itemRequestDtoPart = new MockMultipartFile(
-                "itemRequestDto",
-                "itemRequestDto.json",
+                "itemRequest",
+                "itemRequest.json",
                 "application/json",
                 requestJson.getBytes(StandardCharsets.UTF_8)
         );

@@ -1,7 +1,8 @@
 package kwh.cofshop.item.service;
 
-import kwh.cofshop.file.domain.FileStore;
-import kwh.cofshop.file.domain.UploadFile;
+import kwh.cofshop.file.storage.FileStore;
+import kwh.cofshop.file.storage.TempUploadFileService;
+import kwh.cofshop.file.storage.UploadFile;
 import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.item.domain.ImgType;
 import kwh.cofshop.item.domain.Item;
@@ -38,6 +39,9 @@ class ItemImgServiceTest {
     @Mock
     private ItemImgRepository itemImgRepository;
 
+    @Mock
+    private TempUploadFileService tempUploadFileService;
+
     @InjectMocks
     private ItemImgService itemImgService;
 
@@ -45,7 +49,7 @@ class ItemImgServiceTest {
     @DisplayName("이미지 저장")
     void saveItemImages() throws IOException {
         Item item = createItem();
-        ItemImgRequestDto dto = new ItemImgRequestDto(null, 1L, ImgType.REPRESENTATIVE);
+        ItemImgRequestDto dto = new ItemImgRequestDto(null, ImgType.REPRESENTATIVE);
         MockMultipartFile file = new MockMultipartFile("image", "test.jpg", "image/jpeg", "data".getBytes());
 
         when(fileStore.storeFiles(List.of(file))).thenReturn(List.of(new UploadFile("test.jpg", "store.jpg")));
@@ -85,10 +89,10 @@ class ItemImgServiceTest {
     @DisplayName("이미지 추가: 파일 수 불일치")
     void addItemImages_mismatch() {
         Item item = createItem();
-        ItemImgRequestDto dto = new ItemImgRequestDto(null, 1L, ImgType.REPRESENTATIVE);
+        ItemImgRequestDto dto = new ItemImgRequestDto(null, ImgType.REPRESENTATIVE);
         MockMultipartFile file = new MockMultipartFile("image", "test.jpg", "image/jpeg", "data".getBytes());
 
-        assertThatThrownBy(() -> itemImgService.addItemImages(item, List.of(dto), List.of(file, file)))
+        assertThatThrownBy(() -> itemImgService.addItemImages(item, List.of(dto), List.of(file, file), 1L))
                 .isInstanceOf(BadRequestException.class);
     }
 
@@ -96,12 +100,12 @@ class ItemImgServiceTest {
     @DisplayName("이미지 추가: 성공")
     void addItemImages_success() throws IOException {
         Item item = createItem();
-        ItemImgRequestDto dto = new ItemImgRequestDto(null, 1L, ImgType.REPRESENTATIVE);
+        ItemImgRequestDto dto = new ItemImgRequestDto(null, ImgType.REPRESENTATIVE);
         MockMultipartFile file = new MockMultipartFile("image", "test.jpg", "image/jpeg", "data".getBytes());
 
         when(fileStore.storeFiles(List.of(file))).thenReturn(List.of(new UploadFile("test.jpg", "store.jpg")));
 
-        itemImgService.addItemImages(item, List.of(dto), List.of(file));
+        itemImgService.addItemImages(item, List.of(dto), List.of(file), 1L);
 
         verify(itemImgRepository).saveAll(org.mockito.ArgumentMatchers.anyList());
     }
@@ -117,12 +121,12 @@ class ItemImgServiceTest {
 
         ItemUpdateRequestDto dto = new ItemUpdateRequestDto();
         dto.setDeleteImgIds(List.of(1L));
-        dto.setAddItemImgs(List.of(new ItemImgRequestDto(null, 1L, ImgType.REPRESENTATIVE)));
+        dto.setAddItemImgs(List.of(new ItemImgRequestDto(null, ImgType.REPRESENTATIVE)));
 
         MockMultipartFile file = new MockMultipartFile("image", "test.jpg", "image/jpeg", "data".getBytes());
         when(fileStore.storeFiles(List.of(file))).thenReturn(List.of(new UploadFile("test.jpg", "store.jpg")));
 
-        itemImgService.updateItemImages(item, dto, List.of(file));
+        itemImgService.updateItemImages(item, dto, List.of(file), 1L);
 
         verify(itemImgRepository).deleteAll(List.of(img));
         verify(itemImgRepository).saveAll(org.mockito.ArgumentMatchers.anyList());

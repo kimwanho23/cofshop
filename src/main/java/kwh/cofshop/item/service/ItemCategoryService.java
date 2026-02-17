@@ -1,6 +1,8 @@
 package kwh.cofshop.item.service;
 
+import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemCategory;
@@ -12,7 +14,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
@@ -30,7 +35,21 @@ public class ItemCategoryService {
 
     public void addItemCategories(Item item, List<Long> addCategoryIds) {
         if (addCategoryIds != null && !addCategoryIds.isEmpty()) {
-            List<ItemCategory> newCategories = addCategoryIds.stream()
+            if (item.getId() == null) {
+                throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+            }
+            LinkedHashSet<Long> uniqueCategoryIds = new LinkedHashSet<>(addCategoryIds);
+            if (uniqueCategoryIds.size() != addCategoryIds.size()) {
+                throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+            }
+            Set<Long> existingCategoryIds = itemCategoryRepository.findByItemId(item.getId()).stream()
+                    .map(itemCategory -> itemCategory.getCategory().getId())
+                    .collect(Collectors.toSet());
+            if (uniqueCategoryIds.stream().anyMatch(existingCategoryIds::contains)) {
+                throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+            }
+
+            List<ItemCategory> newCategories = uniqueCategoryIds.stream()
                     .map(id -> new ItemCategory(item, categoryRepository.findById(id)
                             .orElseThrow(() -> new BusinessException(BusinessErrorCode.CATEGORY_NOT_FOUND))))
                     .toList();

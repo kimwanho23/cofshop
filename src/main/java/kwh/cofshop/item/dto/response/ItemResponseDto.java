@@ -21,6 +21,6 @@ public class ItemResponseDto {
     private String email; // 판매자 이메일
 
     private List<String> categoryNames; // 카테고리
-    private List<ItemImgResponseDto> imgResponseDto; // 이미지 정보
-    private List<ItemOptionResponseDto> optionResponseDto; // 옵션 목록
+    private List<ItemImgResponseDto> itemImages; // 이미지 정보
+    private List<ItemOptionResponseDto> itemOptions; // 옵션 목록
 }

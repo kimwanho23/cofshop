@@ -5,7 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -30,7 +29,6 @@ public class ItemOptionRequestDto {
     public ItemOptionRequestDto() {
     }
 
-    @Builder
     public ItemOptionRequestDto(Long id, String description, Integer additionalPrice, Integer stock) {
         this.id = id;
         this.description = description;

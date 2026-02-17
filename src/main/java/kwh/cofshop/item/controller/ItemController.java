@@ -55,8 +55,8 @@ public class ItemController {
     @PostMapping("")
     public ResponseEntity<ItemResponseDto> uploadItem(
             @Parameter(hidden = true) @LoginMember Long memberId,
-            @RequestPart("itemRequestDto") @Valid ItemRequestDto itemRequestDto,
-            @RequestPart("images") List<MultipartFile> images) throws Exception {
+            @RequestPart("itemRequest") @Valid ItemRequestDto itemRequestDto,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images) throws Exception {
 
         // 서비스 호출 (DTO + 파일 리스트 전달)
         ItemResponseDto responseDto = itemService.saveItem(itemRequestDto, memberId, images);
@@ -84,7 +84,7 @@ public class ItemController {
     public ItemResponseDto updateItem(
             @PathVariable Long itemId,
             @Parameter(hidden = true) @LoginMember Long memberId,
-            @RequestPart("itemRequestDto") @Valid ItemUpdateRequestDto itemRequestDto,
+            @RequestPart("itemRequest") @Valid ItemUpdateRequestDto itemRequestDto,
             @RequestPart(value = "images", required = false) List<MultipartFile> images) throws Exception {
 
         List<MultipartFile> safeImages = images == null ? Collections.emptyList() : images;

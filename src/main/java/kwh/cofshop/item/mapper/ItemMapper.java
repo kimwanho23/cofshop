@@ -6,7 +6,6 @@ import kwh.cofshop.item.dto.response.ItemResponseDto;
 import org.mapstruct.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
 
@@ -20,18 +19,30 @@ public interface ItemMapper {
 
     Item toEntity(ItemRequestDto dto);
 
-    @Mapping(target = "imgResponseDto", source = "itemImgs")
-    @Mapping(target = "optionResponseDto", source = "itemOptions")
+    @Mapping(target = "itemImages", source = "itemImgs")
+    @Mapping(target = "itemOptions", source = "itemOptions")
+    @Mapping(target = "email", source = "seller.email")
+    @Mapping(target = "categoryNames", expression = "java(toCategoryNames(item))")
+    @Mapping(target = "categoryId", expression = "java(toPrimaryCategoryId(item))")
     ItemResponseDto toResponseDto(Item item);
 
-    @AfterMapping
-    default void mapCategoryNames(Item item, @MappingTarget ItemResponseDto dto) {
-        if (item.getItemCategories() != null) {
-            List<String> categoryNames = item.getItemCategories().stream()
-                    .map(itemCategory -> itemCategory.getCategory().getName())
-                    .collect(Collectors.toList());
-            dto.setCategoryNames(categoryNames);
+    default List<String> toCategoryNames(Item item) {
+        if (item.getItemCategories() == null || item.getItemCategories().isEmpty()) {
+            return List.of();
         }
+        return item.getItemCategories().stream()
+                .map(itemCategory -> itemCategory.getCategory().getName())
+                .toList();
+    }
+
+    default Long toPrimaryCategoryId(Item item) {
+        if (item.getItemCategories() == null || item.getItemCategories().isEmpty()) {
+            return null;
+        }
+        if (item.getItemCategories().get(0).getCategory() == null) {
+            return null;
+        }
+        return item.getItemCategories().get(0).getCategory().getId();
     }
 }
 

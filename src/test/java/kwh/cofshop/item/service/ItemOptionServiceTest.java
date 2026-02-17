@@ -34,11 +34,7 @@ class ItemOptionServiceTest {
     @DisplayName("옵션 저장")
     void saveItemOptions() {
         Item item = createItem();
-        ItemOptionRequestDto dto = ItemOptionRequestDto.builder()
-                .description("기본")
-                .additionalPrice(100)
-                .stock(10)
-                .build();
+        ItemOptionRequestDto dto = new ItemOptionRequestDto(null, "기본", 100, 10);
 
         when(itemOptionRepository.saveAll(org.mockito.ArgumentMatchers.anyList()))
                 .thenReturn(List.of(ItemOption.builder().build()));
@@ -78,12 +74,7 @@ class ItemOptionServiceTest {
                 .build();
         ReflectionTestUtils.setField(option, "id", 10L);
 
-        ItemOptionRequestDto dto = ItemOptionRequestDto.builder()
-                .id(10L)
-                .description("변경")
-                .additionalPrice(200)
-                .stock(5)
-                .build();
+        ItemOptionRequestDto dto = new ItemOptionRequestDto(10L, "변경", 200, 5);
 
         when(itemOptionRepository.findByItemId(1L)).thenReturn(List.of(option));
 
@@ -99,11 +90,7 @@ class ItemOptionServiceTest {
     void addNewItemOptions() {
         Item item = createItem();
 
-        ItemOptionRequestDto dto = ItemOptionRequestDto.builder()
-                .description("신규")
-                .additionalPrice(100)
-                .stock(10)
-                .build();
+        ItemOptionRequestDto dto = new ItemOptionRequestDto(null, "신규", 100, 10);
 
         itemOptionService.addNewItemOptions(item, List.of(dto));
 
@@ -127,17 +114,8 @@ class ItemOptionServiceTest {
 
         ItemUpdateRequestDto dto = new ItemUpdateRequestDto();
         dto.setDeleteOptionIds(List.of(11L));
-        dto.setExistingItemOptions(List.of(ItemOptionRequestDto.builder()
-                .id(10L)
-                .description("변경")
-                .additionalPrice(200)
-                .stock(5)
-                .build()));
-        dto.setAddItemOptions(List.of(ItemOptionRequestDto.builder()
-                .description("신규")
-                .additionalPrice(300)
-                .stock(3)
-                .build()));
+        dto.setExistingItemOptions(List.of(new ItemOptionRequestDto(10L, "변경", 200, 5)));
+        dto.setAddItemOptions(List.of(new ItemOptionRequestDto(null, "신규", 300, 3)));
 
         itemOptionService.updateItemOptions(item, dto);
 

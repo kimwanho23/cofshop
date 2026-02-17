@@ -91,14 +91,11 @@ public class ReviewService {
 
     @Transactional(readOnly = true)
     public Page<ReviewResponseDto> getReviewsByItem(Long itemId, Pageable pageable) {
-        return reviewRepository.findByItemId(itemId, pageable)
-                .map(reviewMapper::toResponseDto);
+        return reviewRepository.findReviewResponsesByItemId(itemId, pageable);
     }
 
     @Transactional(readOnly = true)
     public List<ReviewResponseDto> getReviewsByItemId(Long itemId) {
-        return reviewRepository.getReviewsByItemId(itemId).stream()
-                .map(reviewMapper::toResponseDto)
-                .toList();
+        return reviewRepository.findReviewResponsesByItemId(itemId);
     }
 }

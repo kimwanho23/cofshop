@@ -44,9 +44,9 @@ public class ItemRequestDto {
 
     @NotEmpty(message = "이미지 정보는 필수입니다.")
     @Valid
-    private List<ItemImgRequestDto> itemImgRequestDto; // 이미지
+    private List<ItemImgRequestDto> itemImages; // 이미지
 
     @NotEmpty(message = "옵션 정보는 필수입니다.")
     @Valid
-    private List<ItemOptionRequestDto> itemOptionRequestDto; // 옵션
+    private List<ItemOptionRequestDto> itemOptions; // 옵션
 }

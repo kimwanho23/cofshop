@@ -1,5 +1,7 @@
 package kwh.cofshop.item.service;
 
+import kwh.cofshop.file.storage.TempUploadFileService;
+import kwh.cofshop.file.storage.UploadFile;
 import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.ForbiddenRequestException;
@@ -15,7 +17,6 @@ import kwh.cofshop.item.dto.request.ItemUpdateRequestDto;
 import kwh.cofshop.item.dto.response.ItemResponseDto;
 import kwh.cofshop.item.dto.response.ItemSearchResponseDto;
 import kwh.cofshop.item.mapper.ItemMapper;
-import kwh.cofshop.item.mapper.ItemSearchMapper;
 import kwh.cofshop.item.repository.*;
 import kwh.cofshop.item.vo.ItemImgUploadVO;
 import kwh.cofshop.member.api.MemberReadPort;
@@ -31,7 +32,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -41,7 +45,6 @@ public class ItemService { // 통합 Item 서비스
 
     // 매퍼 클래스
     private final ItemMapper itemMapper;
-    private final ItemSearchMapper itemSearchMapper;
 
     // 연관관계 서비스
     private final ItemImgService itemImgService; // 이미지 서비스
@@ -49,6 +52,7 @@ public class ItemService { // 통합 Item 서비스
     private final ItemCategoryService itemCategoryService;
 
     private final MemberReadPort memberReadPort;
+    private final TempUploadFileService tempUploadFileService;
     private final CategoryRepository categoryRepository;
     private final ItemCategoryRepository itemCategoryRepository;
     private final ItemOptionRepository itemOptionRepository;
@@ -60,14 +64,25 @@ public class ItemService { // 통합 Item 서비스
         // 상품 등록자
         Member member = memberReadPort.getById(id);
 
-        List<ItemImgRequestDto> imgRequestDtoList = itemRequestDto.getItemImgRequestDto();
-        if (images == null || images.isEmpty()
-                || imgRequestDtoList == null || imgRequestDtoList.isEmpty()
-                || imgRequestDtoList.size() != images.size()) {
+        List<ItemImgRequestDto> imgRequestDtoList = itemRequestDto.getItemImages();
+        if (imgRequestDtoList == null || imgRequestDtoList.isEmpty()) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+        List<MultipartFile> safeImages = images == null ? Collections.emptyList() : images;
+        boolean hasDirectImages = !safeImages.isEmpty();
+        boolean containsTempImageIds = imgRequestDtoList.stream().anyMatch(imgRequestDto -> imgRequestDto.getTempFileId() != null);
+        boolean hasTempImageIds = hasTempImageIds(imgRequestDtoList);
+        if (hasDirectImages && containsTempImageIds) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+        if (hasDirectImages == hasTempImageIds) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+        if (hasDirectImages && imgRequestDtoList.size() != safeImages.size()) {
             throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
         }
 
-        if (itemRequestDto.getItemOptionRequestDto() == null || itemRequestDto.getItemOptionRequestDto().isEmpty()) {
+        if (itemRequestDto.getItemOptions() == null || itemRequestDto.getItemOptions().isEmpty()) {
             throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
         }
 
@@ -76,28 +91,45 @@ public class ItemService { // 통합 Item 서비스
         // 1. 상품 저장
         Item savedItem = getSavedItem(itemRequestDto, member);
 
-        // 2. DTO + 파일 VO 리스트 생성
-        List<ItemImgUploadVO> imgUploadVOList = new ArrayList<>();
-        for (int i = 0; i < images.size(); i++) {
-            imgUploadVOList.add(new ItemImgUploadVO(imgRequestDtoList.get(i), images.get(i)));
+        List<ItemImg> savedImages = Collections.emptyList();
+        List<Long> consumedTempFileIds = Collections.emptyList();
+
+        try {
+            // 2. 이미지 저장
+            if (hasDirectImages) {
+                List<ItemImgUploadVO> imgUploadVOList = new ArrayList<>();
+                for (int i = 0; i < safeImages.size(); i++) {
+                    imgUploadVOList.add(new ItemImgUploadVO(imgRequestDtoList.get(i), safeImages.get(i)));
+                }
+                savedImages = itemImgService.saveItemImages(savedItem, imgUploadVOList);
+            } else {
+                List<Long> tempFileIds = extractTempFileIds(imgRequestDtoList);
+                List<UploadFile> tempUploadFiles = tempUploadFileService.resolveOwnedTempFiles(id, tempFileIds);
+                savedImages = itemImgService.saveItemImagesFromStoredFiles(savedItem, imgRequestDtoList, tempUploadFiles);
+                consumedTempFileIds = tempFileIds;
+            }
+
+            // 3. 옵션 저장
+            itemOptionService.saveItemOptions(savedItem, itemRequestDto.getItemOptions());
+
+            // 4. 카테고리 저장
+            List<ItemCategory> itemCategories = categories.stream()
+                    .map(category -> new ItemCategory(savedItem, category))
+                    .toList();
+            itemCategoryRepository.saveAll(itemCategories);
+
+            if (!consumedTempFileIds.isEmpty()) {
+                tempUploadFileService.consumeOwnedTempFiles(id, consumedTempFileIds);
+            }
+
+            // 5. Response 생성 및 반환
+            return itemMapper.toResponseDto(savedItem);
+        } catch (Exception e) {
+            if (hasDirectImages) {
+                itemImgService.deleteStoredFiles(savedImages);
+            }
+            throw e;
         }
-
-        // 3. 이미지 저장
-        List<ItemImg> itemImgs = itemImgService.saveItemImages(savedItem, imgUploadVOList);
-
-        // 4. 옵션 저장
-        List<ItemOption> itemOptions = itemOptionService.saveItemOptions(savedItem, itemRequestDto.getItemOptionRequestDto());
-
-        // 5. 카테고리 저장
-        List<ItemCategory> itemCategories = categories.stream()
-                .map(category -> new ItemCategory(savedItem, category))
-                .toList();
-        itemCategoryRepository.saveAll(itemCategories);
-
-        // 6. Response 생성 및 반환
-        ItemResponseDto responseDto = itemMapper.toResponseDto(savedItem);
-        responseDto.setEmail(member.getEmail());
-        return responseDto;
     }
 
 
@@ -107,6 +139,8 @@ public class ItemService { // 통합 Item 서비스
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
         validateSellerAuthority(memberId, item);
+        List<MultipartFile> safeNewImages = newImages == null ? Collections.emptyList() : newImages;
+        boolean hasDirectImages = !safeNewImages.isEmpty();
 
         // 2. 상품 기본 정보 업데이트
         item.updateItem(
@@ -118,18 +152,26 @@ public class ItemService { // 통합 Item 서비스
                 dto.getItemLimit()
         );
 
-        itemCategoryService.updateItemCategories(item, dto);
+        List<ItemImg> addedImages = Collections.emptyList();
+        try {
+            itemCategoryService.updateItemCategories(item, dto);
 
-        // 3. 이미지 업데이트 (삭제 후 추가)
-        itemImgService.updateItemImages(item, dto, newImages);
+            // 3. 이미지 업데이트 (삭제 후 추가)
+            addedImages = itemImgService.updateItemImages(item, dto, safeNewImages, memberId);
 
-        // 4. 옵션 업데이트 (삭제 후 추가)
-        itemOptionService.updateItemOptions(item, dto);
+            // 4. 옵션 업데이트 (삭제 후 추가)
+            itemOptionService.updateItemOptions(item, dto);
 
-        Item updatedItem = itemRepository.save(item);
+            Item updatedItem = itemRepository.save(item);
 
-        // 6. Response 반환
-        return itemMapper.toResponseDto(updatedItem);
+            // 6. Response 반환
+            return itemMapper.toResponseDto(updatedItem);
+        } catch (Exception e) {
+            if (hasDirectImages) {
+                itemImgService.deleteStoredFiles(addedImages);
+            }
+            throw e;
+        }
     }
 
     public List<ItemImg> getItemImgs(Long id) {
@@ -157,7 +199,12 @@ public class ItemService { // 통합 Item 서비스
             throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
         }
 
-        return categoryIds.stream()
+        LinkedHashSet<Long> uniqueCategoryIds = new LinkedHashSet<>(categoryIds);
+        if (uniqueCategoryIds.size() != categoryIds.size()) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+
+        return uniqueCategoryIds.stream()
                 .map(categoryId -> categoryRepository.findById(categoryId)
                         .orElseThrow(() -> new BusinessException(BusinessErrorCode.CATEGORY_NOT_FOUND)))
                 .toList();
@@ -166,24 +213,29 @@ public class ItemService { // 통합 Item 서비스
     // 아이템 검색
     @Transactional(readOnly = true)
     public Page<ItemSearchResponseDto> searchItem(ItemSearchRequestDto itemSearchRequestDto, Pageable pageable) {
-        Page<Item> itemPage = itemRepository.searchItems(itemSearchRequestDto, pageable);
-        return itemPage.map(itemSearchMapper::toResponseDto);
+        return itemRepository.searchItems(itemSearchRequestDto, pageable);
     }
 
     // 많이 팔린 상품 조회
+    @Transactional(readOnly = true)
     public List<ItemResponseDto> getPopularItem(int limit) {
-        List<Item> popularItems = popularItemPort.getPopularItems(limit);
-        return popularItems.stream()
-                .map(itemMapper::toResponseDto)
-                .toList();
+        if (limit <= 0 || limit > 100) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+
+        List<Long> popularItemIds = popularItemPort.getPopularItemIds(limit);
+        if (popularItemIds.isEmpty()) {
+            return List.of();
+        }
+
+        return itemRepository.findItemResponsesByIds(popularItemIds);
     }
 
     // 특정 아이템 조회
     @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     public ItemResponseDto getItem(Long id) {
-        Item item = itemRepository.findById(id).orElseThrow(
-                () -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
-        return itemMapper.toResponseDto(item);
+        return itemRepository.findItemResponseById(id)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
     }
 
     // 아이템 삭제
@@ -192,6 +244,8 @@ public class ItemService { // 통합 Item 서비스
         Item item = itemRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
         validateSellerAuthority(memberId, item);
+        List<ItemImg> itemImages = itemImgRepository.findByItemId(id);
+        itemImgService.deleteStoredFiles(itemImages);
         itemRepository.delete(item);
     }
 
@@ -201,6 +255,15 @@ public class ItemService { // 통합 Item 서비스
         }
     }
 
+    private boolean hasTempImageIds(List<ItemImgRequestDto> imgRequestDtoList) {
+        return imgRequestDtoList.stream()
+                .allMatch(imgRequestDto -> imgRequestDto.getTempFileId() != null);
+    }
 
+    private List<Long> extractTempFileIds(List<ItemImgRequestDto> imgRequestDtoList) {
+        return imgRequestDtoList.stream()
+                .map(ItemImgRequestDto::getTempFileId)
+                .collect(Collectors.toList());
+    }
 }
 

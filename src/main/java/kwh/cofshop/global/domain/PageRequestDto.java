@@ -1,4 +1,4 @@
-package kwh.cofshop.global;
+package kwh.cofshop.global.domain;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;

@@ -1,5 +1,8 @@
 package kwh.cofshop.item.service;
 
+import kwh.cofshop.file.storage.TempUploadFileService;
+import kwh.cofshop.file.storage.UploadFile;
+import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.ForbiddenRequestException;
 import kwh.cofshop.item.domain.Category;
@@ -16,7 +19,6 @@ import kwh.cofshop.item.dto.response.ItemResponseDto;
 import kwh.cofshop.item.dto.response.ItemSearchResponseDto;
 import kwh.cofshop.item.api.PopularItemPort;
 import kwh.cofshop.item.mapper.ItemMapper;
-import kwh.cofshop.item.mapper.ItemSearchMapper;
 import kwh.cofshop.item.repository.CategoryRepository;
 import kwh.cofshop.item.repository.ItemCategoryRepository;
 import kwh.cofshop.item.repository.ItemImgRepository;
@@ -45,6 +47,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -55,9 +58,6 @@ class ItemServiceTest {
 
     @Mock
     private ItemMapper itemMapper;
-
-    @Mock
-    private ItemSearchMapper itemSearchMapper;
 
     @Mock
     private ItemImgService itemImgService;
@@ -73,6 +73,9 @@ class ItemServiceTest {
 
     @Mock
     private CategoryRepository categoryRepository;
+
+    @Mock
+    private TempUploadFileService tempUploadFileService;
 
     @Mock
     private ItemCategoryRepository itemCategoryRepository;
@@ -105,6 +108,20 @@ class ItemServiceTest {
     }
 
     @Test
+    @DisplayName("상품 등록: 중복 카테고리 ID는 허용하지 않음")
+    void saveItem_duplicateCategoryIds_badRequest() {
+        Member member = createMember(1L);
+        when(memberReadPort.getById(1L)).thenReturn(member);
+
+        ItemRequestDto requestDto = createRequestDto();
+        requestDto.setCategoryIds(List.of(1L, 1L));
+        MockMultipartFile file = new MockMultipartFile("image", "test.jpg", "image/jpeg", "data".getBytes());
+
+        assertThatThrownBy(() -> itemService.saveItem(requestDto, 1L, List.of(file)))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
     @DisplayName("상품 등록: 성공")
     void saveItem_success() throws IOException {
         Member member = createMember(1L);
@@ -122,6 +139,7 @@ class ItemServiceTest {
         when(itemCategoryRepository.saveAll(any())).thenReturn(List.of(ItemCategory.builder().build()));
 
         ItemResponseDto responseDto = new ItemResponseDto();
+        responseDto.setEmail(member.getEmail());
         when(itemMapper.toResponseDto(item)).thenReturn(responseDto);
 
         MockMultipartFile file = new MockMultipartFile("image", "test.jpg", "image/jpeg", "data".getBytes());
@@ -129,6 +147,35 @@ class ItemServiceTest {
         ItemResponseDto result = itemService.saveItem(requestDto, 1L, List.of(file));
 
         assertThat(result.getEmail()).isEqualTo(member.getEmail());
+    }
+
+    @Test
+    @DisplayName("상품 등록: 임시 업로드 이미지로 저장 성공")
+    void saveItem_withTempFiles_success() throws IOException {
+        Member member = createMember(1L);
+        when(memberReadPort.getById(1L)).thenReturn(member);
+
+        Item item = createItem();
+        ReflectionTestUtils.setField(item, "id", 1L);
+
+        ItemRequestDto requestDto = createRequestDto();
+        requestDto.setItemImages(List.of(new ItemImgRequestDto(null, 10L, kwh.cofshop.item.domain.ImgType.REPRESENTATIVE)));
+
+        when(itemMapper.toEntity(requestDto)).thenReturn(item);
+        when(itemRepository.save(item)).thenReturn(item);
+        when(tempUploadFileService.resolveOwnedTempFiles(1L, List.of(10L)))
+                .thenReturn(List.of(new UploadFile("temp.jpg", "temp-store.jpg")));
+        when(itemImgService.saveItemImagesFromStoredFiles(any(Item.class), any(), any()))
+                .thenReturn(List.of(ItemImg.builder().build()));
+        when(itemOptionService.saveItemOptions(any(Item.class), any())).thenReturn(List.of(ItemOption.builder().build()));
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(Category.builder().name("원두").build()));
+        when(itemCategoryRepository.saveAll(any())).thenReturn(List.of(ItemCategory.builder().build()));
+        when(itemMapper.toResponseDto(item)).thenReturn(new ItemResponseDto());
+
+        ItemResponseDto result = itemService.saveItem(requestDto, 1L, List.of());
+
+        assertThat(result).isNotNull();
+        verify(tempUploadFileService).consumeOwnedTempFiles(1L, List.of(10L));
     }
 
     @Test
@@ -159,7 +206,7 @@ class ItemServiceTest {
 
         assertThat(result).isNotNull();
         verify(itemCategoryService).updateItemCategories(item, dto);
-        verify(itemImgService).updateItemImages(item, dto, List.of());
+        verify(itemImgService).updateItemImages(item, dto, List.of(), 2L);
         verify(itemOptionService).updateItemOptions(item, dto);
     }
 
@@ -197,11 +244,10 @@ class ItemServiceTest {
     @Test
     @DisplayName("상품 검색")
     void searchItem() {
-        Item item = createItem();
         ItemSearchResponseDto responseDto = new ItemSearchResponseDto();
 
-        when(itemRepository.searchItems(any(), any())).thenReturn(new PageImpl<>(List.of(item), PageRequest.of(0, 20), 1));
-        when(itemSearchMapper.toResponseDto(item)).thenReturn(responseDto);
+        when(itemRepository.searchItems(any(), any()))
+                .thenReturn(new PageImpl<>(List.of(responseDto), PageRequest.of(0, 20), 1));
 
         ItemSearchRequestDto requestDto = new ItemSearchRequestDto();
 
@@ -211,9 +257,8 @@ class ItemServiceTest {
     @Test
     @DisplayName("인기 상품 조회")
     void getPopularItem() {
-        Item item = createItem();
-        when(popularItemPort.getPopularItems(3)).thenReturn(List.of(item));
-        when(itemMapper.toResponseDto(item)).thenReturn(new ItemResponseDto());
+        when(popularItemPort.getPopularItemIds(3)).thenReturn(List.of(1L));
+        when(itemRepository.findItemResponsesByIds(List.of(1L))).thenReturn(List.of(new ItemResponseDto()));
 
         List<ItemResponseDto> result = itemService.getPopularItem(3);
 
@@ -221,9 +266,19 @@ class ItemServiceTest {
     }
 
     @Test
+    @DisplayName("인기 상품 조회: limit 범위 검증")
+    void getPopularItem_invalidLimit() {
+        assertThatThrownBy(() -> itemService.getPopularItem(0))
+                .isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> itemService.getPopularItem(101))
+                .isInstanceOf(BadRequestException.class);
+        verifyNoInteractions(popularItemPort);
+    }
+
+    @Test
     @DisplayName("상품 단건 조회: 대상 없음")
     void getItem_notFound() {
-        when(itemRepository.findById(anyLong())).thenReturn(Optional.empty());
+        when(itemRepository.findItemResponseById(anyLong())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> itemService.getItem(1L))
                 .isInstanceOf(BusinessException.class);
@@ -232,9 +287,7 @@ class ItemServiceTest {
     @Test
     @DisplayName("상품 단건 조회: 성공")
     void getItem_success() {
-        Item item = createItem();
-        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
-        when(itemMapper.toResponseDto(item)).thenReturn(new ItemResponseDto());
+        when(itemRepository.findItemResponseById(1L)).thenReturn(Optional.of(new ItemResponseDto()));
 
         ItemResponseDto result = itemService.getItem(1L);
 
@@ -255,9 +308,11 @@ class ItemServiceTest {
     void deleteItem_success() {
         Item item = createItem();
         when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+        when(itemImgRepository.findByItemId(1L)).thenReturn(List.of());
 
         itemService.deleteItem(2L, 1L);
 
+        verify(itemImgService).deleteStoredFiles(List.of());
         verify(itemRepository).delete(item);
     }
 
@@ -278,12 +333,9 @@ class ItemServiceTest {
         requestDto.setOrigin("브라질");
         requestDto.setItemLimit(10);
         requestDto.setCategoryIds(List.of(1L));
-        requestDto.setItemImgRequestDto(List.of(new ItemImgRequestDto(null, 1L, kwh.cofshop.item.domain.ImgType.REPRESENTATIVE)));
-        requestDto.setItemOptionRequestDto(List.of(ItemOptionRequestDto.builder()
-                .description("기본")
-                .additionalPrice(100)
-                .stock(10)
-                .build()));
+        requestDto.setItemImages(
+                List.of(new ItemImgRequestDto(null, kwh.cofshop.item.domain.ImgType.REPRESENTATIVE)));
+        requestDto.setItemOptions(List.of(new ItemOptionRequestDto(null, "기본", 100, 10)));
         return requestDto;
     }
 

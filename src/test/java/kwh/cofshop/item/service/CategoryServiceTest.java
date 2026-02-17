@@ -2,8 +2,9 @@ package kwh.cofshop.item.service;
 
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.item.domain.Category;
-import kwh.cofshop.item.dto.CategoryPathResponseDto;
+import kwh.cofshop.item.repository.projection.CategoryPathProjection;
 import kwh.cofshop.item.dto.request.CategoryRequestDto;
+import kwh.cofshop.item.dto.response.CategoryPathResponseDto;
 import kwh.cofshop.item.dto.response.CategoryResponseDto;
 import kwh.cofshop.item.mapper.CategoryMapper;
 import kwh.cofshop.item.repository.CategoryRepository;
@@ -13,7 +14,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -70,7 +70,7 @@ class CategoryServiceTest {
     @Test
     @DisplayName("카테고리 조회: 대상 없음")
     void getCategoryById_notFound() {
-        when(categoryRepository.findById(anyLong())).thenReturn(Optional.empty());
+        when(categoryRepository.findCategoryResponseById(anyLong())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> categoryService.getCategoryById(1L))
                 .isInstanceOf(BusinessException.class);
@@ -79,11 +79,9 @@ class CategoryServiceTest {
     @Test
     @DisplayName("카테고리 조회: 성공")
     void getCategoryById_success() {
-        Category category = Category.builder().name("원두").build();
         CategoryResponseDto responseDto = new CategoryResponseDto();
 
-        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
-        when(categoryMapper.toResponseDto(category)).thenReturn(responseDto);
+        when(categoryRepository.findCategoryResponseById(1L)).thenReturn(Optional.of(responseDto));
 
         CategoryResponseDto result = categoryService.getCategoryById(1L);
 
@@ -93,7 +91,7 @@ class CategoryServiceTest {
     @Test
     @DisplayName("카테고리 경로 조회")
     void getCategoryPath() {
-        CategoryPathResponseDto path1 = new CategoryPathResponseDto() {
+        CategoryPathProjection path1 = new CategoryPathProjection() {
             @Override
             public Long getId() {
                 return 1L;
@@ -109,7 +107,7 @@ class CategoryServiceTest {
                 return 2L;
             }
         };
-        CategoryPathResponseDto path2 = new CategoryPathResponseDto() {
+        CategoryPathProjection path2 = new CategoryPathProjection() {
             @Override
             public Long getId() {
                 return 2L;
@@ -126,7 +124,7 @@ class CategoryServiceTest {
             }
         };
 
-        List<CategoryPathResponseDto> paths = new ArrayList<>();
+        List<CategoryPathProjection> paths = new ArrayList<>();
         paths.add(path1);
         paths.add(path2);
 
@@ -134,14 +132,14 @@ class CategoryServiceTest {
 
         List<CategoryPathResponseDto> result = categoryService.getCategoryPath(1L);
 
-        assertThat(result.get(0).getName()).isEqualTo("상위");
-        assertThat(result.get(1).getName()).isEqualTo("하위");
+        assertThat(result.get(0).name()).isEqualTo("상위");
+        assertThat(result.get(1).name()).isEqualTo("하위");
     }
 
     @Test
     @DisplayName("카테고리 하위 조회: 없음")
     void getCategoryChild_none() {
-        when(categoryRepository.existsByParentCategoryId(1L)).thenReturn(false);
+        when(categoryRepository.findChildCategoryResponses(1L)).thenReturn(List.of());
 
         List<CategoryResponseDto> result = categoryService.getCategoryChild(1L);
 
@@ -151,11 +149,7 @@ class CategoryServiceTest {
     @Test
     @DisplayName("카테고리 하위 조회: 있음")
     void getCategoryChild_hasChild() {
-        when(categoryRepository.existsByParentCategoryId(1L)).thenReturn(true);
-
-        Category child = Category.builder().name("하위").build();
-        when(categoryRepository.findImmediateChildrenNative(1L)).thenReturn(List.of(child));
-        when(categoryMapper.toResponseDto(child)).thenReturn(new CategoryResponseDto());
+        when(categoryRepository.findChildCategoryResponses(1L)).thenReturn(List.of(new CategoryResponseDto()));
 
         List<CategoryResponseDto> result = categoryService.getCategoryChild(1L);
 
@@ -165,9 +159,7 @@ class CategoryServiceTest {
     @Test
     @DisplayName("전체 카테고리 조회(테스트)")
     void getAllCategoryTest() {
-        Category category = Category.builder().name("원두").build();
-        when(categoryRepository.findAllCategoryWithChild()).thenReturn(List.of(category));
-        when(categoryMapper.toResponseDto(category)).thenReturn(new CategoryResponseDto());
+        when(categoryRepository.findAllCategoryResponses()).thenReturn(List.of(new CategoryResponseDto()));
 
         List<CategoryResponseDto> result = categoryService.getAllCategoryTest();
 
@@ -177,12 +169,19 @@ class CategoryServiceTest {
     @Test
     @DisplayName("전체 카테고리 조회")
     void getAllCategory() {
-        Category parent = Category.builder().name("상위").build();
-        Category child = Category.builder().name("하위").parent(parent).build();
-        ReflectionTestUtils.setField(parent, "id", 1L);
-        ReflectionTestUtils.setField(child, "id", 2L);
+        CategoryResponseDto parent = new CategoryResponseDto();
+        parent.setId(1L);
+        parent.setParentCategoryId(null);
+        parent.setName("상위");
+        parent.setDepth(1);
 
-        when(categoryRepository.findAll()).thenReturn(List.of(parent, child));
+        CategoryResponseDto child = new CategoryResponseDto();
+        child.setId(2L);
+        child.setParentCategoryId(1L);
+        child.setName("하위");
+        child.setDepth(2);
+
+        when(categoryRepository.findAllCategoryResponses()).thenReturn(List.of(parent, child));
 
         List<CategoryResponseDto> result = categoryService.getAllCategory();
 

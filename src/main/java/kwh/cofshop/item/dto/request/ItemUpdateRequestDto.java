@@ -36,12 +36,7 @@ public class ItemUpdateRequestDto {
     // 연관관계
     // 기존 데이터
     @Valid
-    private List<ItemImgRequestDto> existingItemImgs; // 기존 이미지 목록
-
-    @Valid
     private List<ItemOptionRequestDto> existingItemOptions; // 기존 옵션 목록
-
-    private List<@NotNull(message = "카테고리 ID는 필수입니다.") @Positive(message = "카테고리 ID는 1 이상이어야 합니다.") Long> existingCategoryIds; // 기존 카테고리 목록
 
     // 추가할 데이터
     @Valid

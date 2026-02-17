@@ -12,8 +12,8 @@ public class ItemImgRequestDto {
     @Positive(message = "이미지 ID는 1 이상이어야 합니다.")
     private Long id;
 
-    @Positive(message = "상품 ID는 1 이상이어야 합니다.")
-    private Long itemId;
+    @Positive(message = "임시 파일 ID는 1 이상이어야 합니다.")
+    private Long tempFileId;
 
     @NotNull(message = "이미지 타입은 필수입니다.")
     private ImgType imgType;
@@ -21,9 +21,14 @@ public class ItemImgRequestDto {
     public ItemImgRequestDto() {
     }
 
-    public ItemImgRequestDto(Long id, Long itemId, ImgType imgType) {
+    public ItemImgRequestDto(Long id, ImgType imgType) {
         this.id = id;
-        this.itemId = itemId;
+        this.imgType = imgType;
+    }
+
+    public ItemImgRequestDto(Long id, Long tempFileId, ImgType imgType) {
+        this.id = id;
+        this.tempFileId = tempFileId;
         this.imgType = imgType;
     }
 }

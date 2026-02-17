@@ -205,10 +205,9 @@ class ReviewServiceTest {
     @Test
     @DisplayName("리뷰 목록 조회")
     void getReviewsByItem() {
-        Review review = Review.builder().build();
-        when(reviewRepository.findByItemId(anyLong(), any()))
-                .thenReturn(new PageImpl<>(List.of(review), PageRequest.of(0, 20), 1));
-        when(reviewMapper.toResponseDto(review)).thenReturn(new ReviewResponseDto());
+        ReviewResponseDto responseDto = new ReviewResponseDto();
+        when(reviewRepository.findReviewResponsesByItemId(anyLong(), any()))
+                .thenReturn(new PageImpl<>(List.of(responseDto), PageRequest.of(0, 20), 1));
 
         assertThat(reviewService.getReviewsByItem(1L, PageRequest.of(0, 20)).getContent()).hasSize(1);
     }
@@ -216,9 +215,7 @@ class ReviewServiceTest {
     @Test
     @DisplayName("리뷰 목록 조회(리스트)")
     void getReviewsByItemId() {
-        Review review = Review.builder().build();
-        when(reviewRepository.getReviewsByItemId(1L)).thenReturn(List.of(review));
-        when(reviewMapper.toResponseDto(review)).thenReturn(new ReviewResponseDto());
+        when(reviewRepository.findReviewResponsesByItemId(1L)).thenReturn(List.of(new ReviewResponseDto()));
 
         assertThat(reviewService.getReviewsByItemId(1L)).hasSize(1);
     }
