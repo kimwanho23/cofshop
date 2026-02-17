@@ -101,8 +101,7 @@ class MemberServiceUnitTest {
     void findMember() {
         // given
         // 멤버 조회를 위한 Mock 설정
-        when(memberRepository.findById(any())).thenReturn(Optional.of(mockMember));
-        when(memberMapper.toResponseDto(any())).thenReturn(mockResponseDto);
+        when(memberRepository.findMemberResponseById(any())).thenReturn(Optional.of(mockResponseDto));
 
         // when
         // 멤버 조회 서비스 실행
