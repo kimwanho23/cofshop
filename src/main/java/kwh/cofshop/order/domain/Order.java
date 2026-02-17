@@ -82,13 +82,29 @@ public class Order extends BaseTimeEntity {
     @Column(name = "member_coupon_id")
     private Long memberCouponId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "refund_request_status")
+    private OrderRefundRequestStatus refundRequestStatus;
+
+    @Column(name = "refund_request_reason", length = 500)
+    private String refundRequestReason;
+
+    @Column(name = "refund_requested_at")
+    private LocalDateTime refundRequestedAt;
+
+    @Column(name = "refund_processed_at")
+    private LocalDateTime refundProcessedAt;
+
+    @Column(name = "refund_processed_reason", length = 500)
+    private String refundProcessedReason;
+
     // 연관 관계
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> orderItems = new ArrayList<>();
 
     @Builder
     public Order(Long id, Member member, String merchantUid, LocalDateTime orderDate, Integer orderYear, Integer orderMonth, Integer orderDay, OrderState orderState, Address address, String deliveryRequest, int deliveryFee, Long totalPrice,
-                 Long discountFromCoupon, Integer usePoint, Long finalPrice, Long memberCouponId, List<OrderItem> orderItems) {
+                 Long discountFromCoupon, Integer usePoint, Long finalPrice, Long memberCouponId, OrderRefundRequestStatus refundRequestStatus, String refundRequestReason, LocalDateTime refundRequestedAt, LocalDateTime refundProcessedAt, String refundProcessedReason, List<OrderItem> orderItems) {
         this.id = id;
         this.member = member;
         this.merchantUid = merchantUid;
@@ -105,6 +121,11 @@ public class Order extends BaseTimeEntity {
         this.usePoint = usePoint;
         this.finalPrice = finalPrice;
         this.memberCouponId = memberCouponId;
+        this.refundRequestStatus = refundRequestStatus;
+        this.refundRequestReason = refundRequestReason;
+        this.refundRequestedAt = refundRequestedAt;
+        this.refundProcessedAt = refundProcessedAt;
+        this.refundProcessedReason = refundProcessedReason;
         this.orderItems = orderItems;
     }
 
@@ -187,6 +208,56 @@ public class Order extends BaseTimeEntity {
             throw new BusinessException(BusinessErrorCode.ORDER_CANNOT_CANCEL);
         }
         this.orderState = OrderState.CANCELLED;
+    }
+
+    public void requestRefundRequest(String reason, LocalDateTime requestedAt) {
+        if (!isRefundRequestableOrderState()) {
+            throw new BusinessException(BusinessErrorCode.ORDER_REFUND_REQUEST_NOT_ALLOWED);
+        }
+
+        if (this.refundRequestStatus == OrderRefundRequestStatus.REQUESTED || this.refundRequestStatus == OrderRefundRequestStatus.APPROVED) {
+            throw new BusinessException(BusinessErrorCode.ORDER_REFUND_REQUEST_ALREADY_REQUESTED);
+        }
+
+        if (this.refundRequestStatus == OrderRefundRequestStatus.REFUNDED) {
+            throw new BusinessException(BusinessErrorCode.ORDER_REFUND_REQUEST_INVALID_STATE_TRANSITION);
+        }
+
+        this.refundRequestStatus = OrderRefundRequestStatus.REQUESTED;
+        this.refundRequestReason = reason;
+        this.refundRequestedAt = requestedAt == null ? LocalDateTime.now() : requestedAt;
+        this.refundProcessedAt = null;
+        this.refundProcessedReason = null;
+    }
+
+    public void processRefundRequest(OrderRefundRequestStatus targetStatus, String processedReason, LocalDateTime processedAt) {
+        if (this.refundRequestStatus == null) {
+            throw new BusinessException(BusinessErrorCode.ORDER_REFUND_REQUEST_NOT_REQUESTED);
+        }
+
+        if (!isValidRefundRequestTransition(this.refundRequestStatus, targetStatus)) {
+            throw new BusinessException(BusinessErrorCode.ORDER_REFUND_REQUEST_INVALID_STATE_TRANSITION);
+        }
+
+        this.refundRequestStatus = targetStatus;
+        this.refundProcessedReason = processedReason;
+        this.refundProcessedAt = processedAt == null ? LocalDateTime.now() : processedAt;
+    }
+
+    private boolean isRefundRequestableOrderState() {
+        return this.orderState == OrderState.PAID;
+    }
+
+    private boolean isValidRefundRequestTransition(OrderRefundRequestStatus currentStatus, OrderRefundRequestStatus targetStatus) {
+        if (currentStatus == null || targetStatus == null) {
+            return false;
+        }
+
+        return switch (currentStatus) {
+            case REQUESTED -> targetStatus == OrderRefundRequestStatus.APPROVED || targetStatus == OrderRefundRequestStatus.REJECTED;
+            case APPROVED -> targetStatus == OrderRefundRequestStatus.REFUNDED;
+            default -> false;
+        };
     }
 
 }

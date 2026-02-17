@@ -12,6 +12,7 @@ import kwh.cofshop.member.api.MemberPointPort;
 import kwh.cofshop.member.api.MemberReadPort;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.order.domain.Address;
+import kwh.cofshop.order.domain.OrderRefundRequestStatus;
 import kwh.cofshop.order.domain.Order;
 import kwh.cofshop.order.domain.OrderItem;
 import kwh.cofshop.order.domain.OrderState;
@@ -28,6 +29,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -56,10 +58,10 @@ public class OrderService {
         Member member = memberReadPort.getByIdWithLock(memberId);
 
         // 옵션 조회
-        List<ItemOption> itemOptions = orderItemService.getItemOptionsWithLock(orderRequestDto.getOrderItemRequestDtoList());
+        List<ItemOption> itemOptions = orderItemService.getItemOptionsWithLock(orderRequestDto.getOrderItems());
 
         // 주문 항목 생성
-        List<OrderItem> orderItems = orderItemService.createOrderItems(orderRequestDto.getOrderItemRequestDtoList(), itemOptions);
+        List<OrderItem> orderItems = orderItemService.createOrderItems(orderRequestDto.getOrderItems(), itemOptions);
 
         // 주문 생성
         Address address = Address.builder()
@@ -93,11 +95,7 @@ public class OrderService {
         validateCancelableByOrderApi(order);
         cancelAndRestore(order);
 
-        OrderCancelResponseDto orderCancelResponseDto = new OrderCancelResponseDto();
-        orderCancelResponseDto.setOrderId(orderId);
-        orderCancelResponseDto.setCancelReason(cancelReason);
-
-        return orderCancelResponseDto;
+        return OrderCancelResponseDto.of(orderId, cancelReason);
     }
 
     @Transactional
@@ -107,6 +105,32 @@ public class OrderService {
         }
         order.cancel();
         restoreOrderCompensation(order);
+    }
+
+    @DistributedLock(keyName = "'order:auto-cancel:' + #orderId")
+    @Transactional
+    public boolean autoCancelStaleUnpaidOrder(Long orderId, LocalDateTime deadline) {
+        if (orderId == null || deadline == null) {
+            return false;
+        }
+
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null || order.getOrderDate() == null || order.getOrderDate().isAfter(deadline)) {
+            return false;
+        }
+
+        OrderState state = order.getOrderState();
+        if (state == OrderState.WAITING_FOR_PAY) {
+            cancelAndRestore(order);
+            return true;
+        }
+
+        if (state == OrderState.PAYMENT_PENDING && orderPaymentStatusPort.hasReadyPayment(orderId)) {
+            cancelAndRestore(order);
+            return true;
+        }
+
+        return false;
     }
 
     private void validateCancelableByOrderApi(Order order) {
@@ -176,6 +200,63 @@ public class OrderService {
         order.changeOrderState(OrderState.COMPLETED); // 구매 확정 가능 - 이 시점에서 반품 불가능함
     }
 
+    @Transactional
+    public void updateOrderStateByAdmin(Long orderId, OrderState targetState) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
+
+        OrderState currentState = order.getOrderState();
+        if (currentState == targetState) {
+            return;
+        }
+
+        if (isRefundRequestInProgress(order.getRefundRequestStatus())) {
+            throw new BusinessException(BusinessErrorCode.ORDER_REFUND_REQUEST_IN_PROGRESS);
+        }
+
+        if (!isValidAdminShippingTransition(currentState, targetState)) {
+            throw new BusinessException(BusinessErrorCode.ORDER_INVALID_STATE_TRANSITION);
+        }
+
+        order.changeOrderState(targetState);
+    }
+
+    @Transactional
+    public void requestRefundRequest(Long memberId, Long orderId, String refundRequestReason) {
+        Order order = getOrderForMember(memberId, orderId);
+        order.requestRefundRequest(refundRequestReason, LocalDateTime.now());
+    }
+
+    @Transactional
+    public void processRefundRequestByAdmin(Long orderId, OrderRefundRequestStatus targetStatus, String processReason) {
+        if (targetStatus == OrderRefundRequestStatus.REQUESTED || targetStatus == OrderRefundRequestStatus.REFUNDED) {
+            throw new BusinessException(BusinessErrorCode.ORDER_REFUND_REQUEST_INVALID_STATE_TRANSITION);
+        }
+        if (targetStatus == OrderRefundRequestStatus.REJECTED && (processReason == null || processReason.isBlank())) {
+            throw new BusinessException(BusinessErrorCode.ORDER_REFUND_REQUEST_INVALID_STATE_TRANSITION);
+        }
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
+
+        order.processRefundRequest(targetStatus, processReason, LocalDateTime.now());
+    }
+
+    void completeRefundRequestByPayment(Order order, String processedReason, LocalDateTime processedAt) {
+        OrderRefundRequestStatus currentStatus = order.getRefundRequestStatus();
+        if (currentStatus == OrderRefundRequestStatus.REFUNDED) {
+            return;
+        }
+        if (currentStatus != OrderRefundRequestStatus.APPROVED) {
+            throw new BusinessException(BusinessErrorCode.ORDER_REFUND_REQUEST_NOT_APPROVED);
+        }
+
+        String finalReason = (processedReason == null || processedReason.isBlank())
+                ? "결제 환불 완료"
+                : processedReason;
+        order.processRefundRequest(OrderRefundRequestStatus.REFUNDED, finalReason, processedAt);
+    }
+
 
     // 쿠폰 할인 적용
     private long applyCoupon(Order order, OrderRequestDto dto, Long memberId) {
@@ -220,5 +301,19 @@ public class OrderService {
         }
 
         return order;
+    }
+
+    private boolean isValidAdminShippingTransition(OrderState currentState, OrderState targetState) {
+        return switch (currentState) {
+            case PAID -> targetState == OrderState.PREPARING_FOR_SHIPMENT;
+            case PREPARING_FOR_SHIPMENT -> targetState == OrderState.SHIPPING;
+            case SHIPPING -> targetState == OrderState.DELIVERED;
+            default -> false;
+        };
+    }
+
+    private boolean isRefundRequestInProgress(OrderRefundRequestStatus refundRequestStatus) {
+        return refundRequestStatus == OrderRefundRequestStatus.REQUESTED
+                || refundRequestStatus == OrderRefundRequestStatus.APPROVED;
     }
 }

@@ -5,6 +5,7 @@ import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.order.api.OrderPaymentPrepareInfo;
 import kwh.cofshop.order.api.OrderPaymentPreparePort;
+import kwh.cofshop.order.api.OrderRefundPort;
 import kwh.cofshop.order.api.OrderStatus;
 import kwh.cofshop.order.api.OrderStatePort;
 import kwh.cofshop.payment.client.portone.PortOneCancellation;
@@ -17,6 +18,7 @@ import kwh.cofshop.payment.dto.request.PaymentRefundRequestDto;
 import kwh.cofshop.payment.dto.response.PaymentResponseDto;
 import kwh.cofshop.payment.dto.request.PaymentVerifyRequestDto;
 import kwh.cofshop.payment.repository.PaymentEntityRepository;
+import kwh.cofshop.payment.repository.projection.PaymentProviderLookupProjection;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,6 +35,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -46,6 +49,9 @@ class PaymentServiceTest {
 
     @Mock
     private OrderStatePort orderStatePort;
+
+    @Mock
+    private OrderRefundPort orderRefundPort;
 
     @Mock
     private PaymentEntityRepository paymentEntityRepository;
@@ -69,9 +75,10 @@ class PaymentServiceTest {
     @Test
     @DisplayName("getPaymentByImpUid_error")
     void getPaymentByImpUid_error() {
-        PaymentEntity paymentEntity = mock(PaymentEntity.class);
-        when(paymentEntityRepository.findByImpUidAndMemberId("imp_1", 1L)).thenReturn(Optional.of(paymentEntity));
-        when(paymentEntity.getMerchantUid()).thenReturn("order-1");
+        PaymentProviderLookupProjection paymentLookup = mock(PaymentProviderLookupProjection.class);
+        when(paymentEntityRepository.findByImpUidAndMemberId("imp_1", 1L))
+                .thenReturn(Optional.of(paymentLookup));
+        when(paymentLookup.getMerchantUid()).thenReturn("order-1");
         when(paymentProviderService.getPayment("order-1")).thenThrow(new BusinessException(BusinessErrorCode.PAYMENT_PROVIDER_ERROR));
 
         assertThatThrownBy(() -> paymentService.getPaymentByImpUid(1L, "imp_1"))
@@ -81,9 +88,10 @@ class PaymentServiceTest {
     @Test
     @DisplayName("getPaymentByImpUid_uidMismatch")
     void getPaymentByImpUid_uidMismatch() {
-        PaymentEntity paymentEntity = mock(PaymentEntity.class);
-        when(paymentEntityRepository.findByImpUidAndMemberId("imp_1", 1L)).thenReturn(Optional.of(paymentEntity));
-        when(paymentEntity.getMerchantUid()).thenReturn("order-1");
+        PaymentProviderLookupProjection paymentLookup = mock(PaymentProviderLookupProjection.class);
+        when(paymentEntityRepository.findByImpUidAndMemberId("imp_1", 1L))
+                .thenReturn(Optional.of(paymentLookup));
+        when(paymentLookup.getMerchantUid()).thenReturn("order-1");
 
         PortOnePayment payment = new PortOnePayment(
                 "order-1",
@@ -101,9 +109,10 @@ class PaymentServiceTest {
     @Test
     @DisplayName("getPaymentByImpUid_success")
     void getPaymentByImpUid_success() {
-        PaymentEntity paymentEntity = mock(PaymentEntity.class);
-        when(paymentEntityRepository.findByImpUidAndMemberId("imp_1", 1L)).thenReturn(Optional.of(paymentEntity));
-        when(paymentEntity.getMerchantUid()).thenReturn("order-1");
+        PaymentProviderLookupProjection paymentLookup = mock(PaymentProviderLookupProjection.class);
+        when(paymentEntityRepository.findByImpUidAndMemberId("imp_1", 1L))
+                .thenReturn(Optional.of(paymentLookup));
+        when(paymentLookup.getMerchantUid()).thenReturn("order-1");
 
         PortOnePayment payment = new PortOnePayment(
                 "order-1",
@@ -128,10 +137,7 @@ class PaymentServiceTest {
         when(orderPaymentPreparePort.prepare(1L, 1L))
                 .thenThrow(new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
 
-        PaymentPrepareRequestDto requestDto = PaymentPrepareRequestDto.builder()
-                .pgProvider("kakaopay")
-                .payMethod("card")
-                .build();
+        PaymentPrepareRequestDto requestDto = new PaymentPrepareRequestDto("kakaopay", "card");
 
         assertThatThrownBy(() -> paymentService.createPaymentRequest(1L, 1L, requestDto))
                 .isInstanceOf(BusinessException.class);
@@ -152,10 +158,7 @@ class PaymentServiceTest {
         when(orderPaymentPreparePort.prepare(1L, 1L)).thenReturn(paymentPrepareInfo);
         when(paymentEntityRepository.save(any(PaymentEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        PaymentPrepareRequestDto requestDto = PaymentPrepareRequestDto.builder()
-                .pgProvider("kakaopay")
-                .payMethod("card")
-                .build();
+        PaymentPrepareRequestDto requestDto = new PaymentPrepareRequestDto("kakaopay", "card");
 
         PaymentResponseDto response = paymentService.createPaymentRequest(1L, 1L, requestDto);
 
@@ -449,6 +452,44 @@ class PaymentServiceTest {
     }
 
     @Test
+    @DisplayName("refundPayment_pending_notCancelled_thenRetryCancel")
+    void refundPayment_pending_notCancelled_thenRetryCancel() {
+        PaymentEntity paymentEntity = mock(PaymentEntity.class);
+        when(paymentEntity.getStatus()).thenReturn(PaymentStatus.REFUND_PENDING);
+        when(paymentEntity.getMerchantUid()).thenReturn("order-1");
+        when(paymentEntityRepository.findByIdAndMemberId(1L, 1L)).thenReturn(Optional.of(paymentEntity));
+
+        PortOnePayment pendingPayment = new PortOnePayment(
+                "order-1",
+                "imp_1",
+                "pg_tid",
+                "PAID",
+                new PortOnePayment.Amount(1000L, 1000L)
+        );
+        PortOnePayment cancelledPayment = new PortOnePayment(
+                "order-1",
+                "imp_1",
+                "pg_tid",
+                "CANCELLED",
+                new PortOnePayment.Amount(1000L, 1000L)
+        );
+        when(paymentProviderService.getPayment("order-1"))
+                .thenReturn(pendingPayment)
+                .thenReturn(cancelledPayment);
+        when(paymentProviderService.cancelPayment("order-1"))
+                .thenReturn(new PortOneCancellation("cancel_1", "SUCCEEDED"));
+
+        PaymentRefundRequestDto requestDto = new PaymentRefundRequestDto();
+        requestDto.setAmount(1000L);
+
+        paymentService.refundPayment(1L, 1L, requestDto);
+
+        verify(paymentProviderService).cancelPayment("order-1");
+        verify(paymentRefundTxService).confirmRefund(1L, 1L);
+        verify(paymentRefundTxService, never()).rollbackRefundPending(1L, 1L);
+    }
+
+    @Test
     @DisplayName("refundPayment_portOneError")
     void refundPayment_portOneError() {
         PaymentEntity paymentEntity = mock(PaymentEntity.class);
@@ -467,6 +508,7 @@ class PaymentServiceTest {
         assertThatThrownBy(() -> paymentService.refundPayment(1L, 1L, requestDto))
                 .isInstanceOf(BusinessException.class);
 
+        verify(orderRefundPort).validateRefundApproved(1L);
         verify(paymentRefundTxService).markRefundPending(1L, 1L);
         verify(paymentRefundTxService).rollbackRefundPending(1L, 1L);
     }
@@ -491,6 +533,7 @@ class PaymentServiceTest {
         assertThatThrownBy(() -> paymentService.refundPayment(1L, 1L, requestDto))
                 .isInstanceOf(BusinessException.class);
 
+        verify(orderRefundPort).validateRefundApproved(1L);
         verify(paymentRefundTxService).markRefundPending(1L, 1L);
         verify(paymentRefundTxService).rollbackRefundPending(1L, 1L);
     }
@@ -523,6 +566,7 @@ class PaymentServiceTest {
         assertThatThrownBy(() -> paymentService.refundPayment(1L, 1L, requestDto))
                 .isInstanceOf(BusinessException.class);
 
+        verify(orderRefundPort).validateRefundApproved(1L);
         verify(paymentRefundTxService).markRefundPending(1L, 1L);
         verify(paymentRefundTxService).rollbackRefundPending(1L, 1L);
     }
@@ -554,8 +598,32 @@ class PaymentServiceTest {
 
         paymentService.refundPayment(1L, 1L, requestDto);
 
+        verify(orderRefundPort).validateRefundApproved(1L);
         verify(paymentRefundTxService).markRefundPending(1L, 1L);
         verify(paymentRefundTxService).confirmRefund(1L, 1L);
+    }
+
+    @Test
+    @DisplayName("refundPayment_refundRequestNotApproved")
+    void refundPayment_refundRequestNotApproved() {
+        PaymentEntity paymentEntity = mock(PaymentEntity.class);
+        when(paymentEntity.getStatus()).thenReturn(PaymentStatus.PAID);
+        when(paymentEntity.getPaidAmount()).thenReturn(1000L);
+        when(paymentEntity.getOrderId()).thenReturn(1L);
+        when(paymentEntityRepository.findByIdAndMemberId(1L, 1L)).thenReturn(Optional.of(paymentEntity));
+        when(orderStatePort.getOrderState(1L)).thenReturn(OrderStatus.PAID);
+        doThrow(new BusinessException(BusinessErrorCode.ORDER_REFUND_REQUEST_NOT_APPROVED))
+                .when(orderRefundPort).validateRefundApproved(1L);
+
+        PaymentRefundRequestDto requestDto = new PaymentRefundRequestDto();
+        requestDto.setAmount(1000L);
+
+        assertThatThrownBy(() -> paymentService.refundPayment(1L, 1L, requestDto))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.ORDER_REFUND_REQUEST_NOT_APPROVED);
+
+        verify(paymentRefundTxService, never()).markRefundPending(anyLong(), anyLong());
     }
 
     @Test

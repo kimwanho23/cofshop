@@ -2,7 +2,7 @@ package kwh.cofshop.payment.service;
 
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
-import kwh.cofshop.order.api.OrderCancellationPort;
+import kwh.cofshop.order.api.OrderRefundPort;
 import kwh.cofshop.order.api.OrderStatus;
 import kwh.cofshop.order.api.OrderStatePort;
 import kwh.cofshop.payment.domain.PaymentEntity;
@@ -18,8 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class PaymentRefundTxService {
 
+    private static final String REFUND_COMPLETED_REASON = "결제 환불 완료";
+
     private final PaymentEntityRepository paymentEntityRepository;
-    private final OrderCancellationPort orderCancellationPort;
+    private final OrderRefundPort orderRefundPort;
     private final OrderStatePort orderStatePort;
     private final RefundCompensationRecoveryQueueService recoveryQueueService;
 
@@ -73,11 +75,11 @@ public class PaymentRefundTxService {
         Long orderId = paymentEntity.getOrderId();
 
         if (paymentEntity.getStatus() == PaymentStatus.CANCELLED) {
-            if (orderId == null || orderStatePort.getOrderState(orderId) == OrderStatus.CANCELLED) {
+            if (orderId == null) {
                 return;
             }
             try {
-                orderCancellationPort.cancelAndRestore(orderId);
+                orderRefundPort.completeRefund(orderId, REFUND_COMPLETED_REASON);
             } catch (BusinessException e) {
                 log.error("[Refund] 결제는 취소 상태지만 주문 보정 실패 paymentId={}, memberId={}",
                         paymentId, memberId, e);
@@ -97,7 +99,7 @@ public class PaymentRefundTxService {
             throw new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND);
         }
         try {
-            orderCancellationPort.cancelAndRestore(orderId);
+            orderRefundPort.completeRefund(orderId, REFUND_COMPLETED_REASON);
         } catch (BusinessException e) {
             log.error("[Refund] 외부 환불은 완료됐지만 주문 취소 보정 실패 paymentId={}, memberId={}",
                     paymentId, memberId, e);

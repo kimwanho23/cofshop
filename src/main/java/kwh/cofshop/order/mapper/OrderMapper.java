@@ -18,7 +18,7 @@ import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
 public interface OrderMapper {
 
     @Mapping(target = "orderId", source = "order.id")
-    @Mapping(target = "orderItemResponseDto", source = "orderItems")
+    @Mapping(target = "orderItems", source = "orderItems")
     OrderResponseDto toResponseDto(Order order);
 
     AddressResponseDto toAddressResponseDto(Address address);

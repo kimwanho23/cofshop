@@ -2,7 +2,7 @@ package kwh.cofshop.payment.service;
 
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
-import kwh.cofshop.order.api.OrderCancellationPort;
+import kwh.cofshop.order.api.OrderRefundPort;
 import kwh.cofshop.order.api.OrderStatus;
 import kwh.cofshop.order.api.OrderStatePort;
 import kwh.cofshop.payment.domain.PaymentEntity;
@@ -30,7 +30,7 @@ class PaymentRefundTxServiceTest {
     private PaymentEntityRepository paymentEntityRepository;
 
     @Mock
-    private OrderCancellationPort orderCancellationPort;
+    private OrderRefundPort orderRefundPort;
 
     @Mock
     private OrderStatePort orderStatePort;
@@ -72,7 +72,7 @@ class PaymentRefundTxServiceTest {
         paymentRefundTxService.confirmRefund(1L, 1L);
 
         verify(paymentEntity).paymentStatusChange(PaymentStatus.CANCELLED);
-        verify(orderCancellationPort).cancelAndRestore(10L);
+        verify(orderRefundPort).completeRefund(10L, "결제 환불 완료");
     }
 
     @Test
@@ -113,13 +113,13 @@ class PaymentRefundTxServiceTest {
         when(paymentEntity.getOrderId()).thenReturn(10L);
         when(paymentEntityRepository.findByIdAndMemberId(1L, 1L)).thenReturn(Optional.of(paymentEntity));
         doThrow(new BusinessException(BusinessErrorCode.ORDER_CANNOT_CANCEL))
-                .when(orderCancellationPort).cancelAndRestore(10L);
+                .when(orderRefundPort).completeRefund(10L, "결제 환불 완료");
 
         assertThatThrownBy(() -> paymentRefundTxService.confirmRefund(1L, 1L))
                 .isInstanceOf(BusinessException.class);
 
         verify(paymentEntity).paymentStatusChange(PaymentStatus.CANCELLED);
-        verify(orderCancellationPort).cancelAndRestore(10L);
+        verify(orderRefundPort).completeRefund(10L, "결제 환불 완료");
         verify(recoveryQueueService).enqueue(1L, 1L, 10L, BusinessErrorCode.ORDER_CANNOT_CANCEL.getCode());
     }
 }

@@ -7,6 +7,7 @@ import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.order.api.OrderPaymentPrepareInfo;
 import kwh.cofshop.order.api.OrderPaymentPreparePort;
+import kwh.cofshop.order.api.OrderRefundPort;
 import kwh.cofshop.order.api.OrderStatus;
 import kwh.cofshop.order.api.OrderStatePort;
 import kwh.cofshop.payment.client.portone.PortOneCancellation;
@@ -19,6 +20,7 @@ import kwh.cofshop.payment.dto.request.PaymentRefundRequestDto;
 import kwh.cofshop.payment.dto.response.PaymentResponseDto;
 import kwh.cofshop.payment.dto.request.PaymentVerifyRequestDto;
 import kwh.cofshop.payment.repository.PaymentEntityRepository;
+import kwh.cofshop.payment.repository.projection.PaymentProviderLookupProjection;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,7 @@ public class PaymentService {
 
     private final OrderPaymentPreparePort orderPaymentPreparePort;
     private final OrderStatePort orderStatePort;
+    private final OrderRefundPort orderRefundPort;
     private final PaymentRefundTxService paymentRefundTxService;
     private final PaymentEntityRepository paymentEntityRepository;
     private final PaymentProviderService paymentProviderService;
@@ -45,10 +48,11 @@ public class PaymentService {
             throw new BadRequestException(BadRequestErrorCode.INVALID_IMP_UID);
         }
 
-        PaymentEntity paymentEntity = paymentEntityRepository.findByImpUidAndMemberId(impUid, memberId)
+        PaymentProviderLookupProjection paymentLookup = paymentEntityRepository
+                .findByImpUidAndMemberId(impUid, memberId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.PAYMENT_NOT_FOUND));
 
-        PortOnePayment payment = paymentProviderService.getPayment(paymentEntity.getMerchantUid());
+        PortOnePayment payment = paymentProviderService.getPayment(paymentLookup.getMerchantUid());
         if (!impUid.equals(payment.transactionId())) {
             throw new BusinessException(BusinessErrorCode.PAYMENT_UID_DISCREPANCY);
         }
@@ -169,7 +173,7 @@ public class PaymentService {
         }
 
         if (paymentEntity.getStatus() == PaymentStatus.REFUND_PENDING) {
-            completePendingRefund(paymentId, memberId, paymentEntity.getMerchantUid());
+            resumePendingRefund(paymentId, memberId, paymentEntity);
             return;
         }
 
@@ -186,9 +190,31 @@ public class PaymentService {
         if (orderStatePort.getOrderState(orderId) != OrderStatus.PAID) {
             throw new BusinessException(BusinessErrorCode.PAYMENT_CANNOT_REFUND);
         }
+        orderRefundPort.validateRefundApproved(orderId);
 
         paymentRefundTxService.markRefundPending(paymentId, memberId);
+        executeRefundCancellation(paymentId, memberId, paymentEntity);
+    }
 
+    private static Long getOrderId(PaymentEntity paymentEntity) {
+        Long orderId = paymentEntity.getOrderId();
+        if (orderId == null) {
+            throw new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND);
+        }
+        return orderId;
+    }
+
+    private void resumePendingRefund(Long paymentId, Long memberId, PaymentEntity paymentEntity) {
+        String merchantUid = paymentEntity.getMerchantUid();
+        PortOnePayment payment = paymentProviderService.getPayment(merchantUid);
+        if (!PORTONE_PAYMENT_STATUS_CANCELLED.equalsIgnoreCase(payment.status())) {
+            executeRefundCancellation(paymentId, memberId, paymentEntity);
+            return;
+        }
+        paymentRefundTxService.confirmRefund(paymentId, memberId);
+    }
+
+    private void executeRefundCancellation(Long paymentId, Long memberId, PaymentEntity paymentEntity) {
         PortOneCancellation cancellation;
         try {
             cancellation = paymentProviderService.cancelPayment(paymentEntity.getMerchantUid());
@@ -212,22 +238,6 @@ public class PaymentService {
             throw new BusinessException(BusinessErrorCode.PAYMENT_REFUND_FAIL);
         }
 
-        paymentRefundTxService.confirmRefund(paymentId, memberId);
-    }
-
-    private static Long getOrderId(PaymentEntity paymentEntity) {
-        Long orderId = paymentEntity.getOrderId();
-        if (orderId == null) {
-            throw new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND);
-        }
-        return orderId;
-    }
-
-    private void completePendingRefund(Long paymentId, Long memberId, String merchantUid) {
-        PortOnePayment payment = paymentProviderService.getPayment(merchantUid);
-        if (!PORTONE_PAYMENT_STATUS_CANCELLED.equalsIgnoreCase(payment.status())) {
-            throw new BusinessException(BusinessErrorCode.PAYMENT_REFUND_FAIL);
-        }
         paymentRefundTxService.confirmRefund(paymentId, memberId);
     }
 }

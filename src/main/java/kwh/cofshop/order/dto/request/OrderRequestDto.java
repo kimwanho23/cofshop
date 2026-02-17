@@ -24,7 +24,7 @@ public class OrderRequestDto {
 
     @Valid
     @NotEmpty(message = "주문 항목은 하나 이상이어야 합니다.")
-    private List<OrderItemRequestDto> orderItemRequestDtoList;
+    private List<OrderItemRequestDto> orderItems;
 
     @Positive(message = "회원 쿠폰 ID는 1 이상이어야 합니다.")
     private Long memberCouponId;

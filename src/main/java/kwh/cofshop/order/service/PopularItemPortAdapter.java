@@ -1,7 +1,6 @@
 package kwh.cofshop.order.service;
 
 import kwh.cofshop.item.api.PopularItemPort;
-import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.order.repository.OrderItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -17,7 +16,7 @@ class PopularItemPortAdapter implements PopularItemPort {
 
     @Override
     @Transactional(readOnly = true)
-    public List<Item> getPopularItems(int limit) {
-        return orderItemRepository.getPopularItems(limit);
+    public List<Long> getPopularItemIds(int limit) {
+        return orderItemRepository.getPopularItemIds(limit);
     }
 }

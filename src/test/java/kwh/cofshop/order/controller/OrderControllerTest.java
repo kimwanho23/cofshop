@@ -3,10 +3,15 @@ package kwh.cofshop.order.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
+import kwh.cofshop.order.domain.OrderRefundRequestStatus;
 import kwh.cofshop.order.dto.request.AddressRequestDto;
 import kwh.cofshop.order.dto.request.OrderCancelRequestDto;
+import kwh.cofshop.order.dto.request.OrderRefundRequestProcessDto;
+import kwh.cofshop.order.dto.request.OrderRefundRequestProcessStatus;
 import kwh.cofshop.order.dto.request.OrderItemRequestDto;
 import kwh.cofshop.order.dto.request.OrderRequestDto;
+import kwh.cofshop.order.dto.request.OrderStateUpdateRequestDto;
+import kwh.cofshop.order.domain.OrderState;
 import kwh.cofshop.order.dto.response.OrderCancelResponseDto;
 import kwh.cofshop.order.dto.response.OrderResponseDto;
 import kwh.cofshop.order.service.OrderService;
@@ -31,11 +36,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
@@ -112,7 +119,7 @@ class OrderControllerTest {
         addressRequestDto.setStreet("강남대로");
         addressRequestDto.setZipCode("12345");
         requestDto.setAddress(addressRequestDto);
-        requestDto.setOrderItemRequestDtoList(List.of(orderItemRequestDto));
+        requestDto.setOrderItems(List.of(orderItemRequestDto));
         requestDto.setMemberCouponId(500L);
 
         mockMvc.perform(post("/api/orders")
@@ -142,7 +149,7 @@ class OrderControllerTest {
         addressRequestDto.setStreet("강남대로");
         addressRequestDto.setZipCode("12345");
         requestDto.setAddress(addressRequestDto);
-        requestDto.setOrderItemRequestDtoList(List.of(orderItemRequestDto));
+        requestDto.setOrderItems(List.of(orderItemRequestDto));
         requestDto.setMemberCouponId(10L);
 
         mockMvc.perform(post("/api/orders")
@@ -154,8 +161,7 @@ class OrderControllerTest {
     @Test
     @DisplayName("주문 취소")
     void cancelOrder() throws Exception {
-        OrderCancelResponseDto responseDto = new OrderCancelResponseDto();
-        responseDto.setOrderId(1L);
+        OrderCancelResponseDto responseDto = OrderCancelResponseDto.of(1L, "변경");
 
         when(orderService.cancelOrder(anyLong(), anyLong(), any())).thenReturn(responseDto);
 
@@ -169,9 +175,97 @@ class OrderControllerTest {
     }
 
     @Test
+    @DisplayName("환불 요청")
+    void requestRefundRequest() throws Exception {
+        mockMvc.perform(post("/api/orders/1/refund-request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "refundRequestReason":"상품 상태 불량"
+                                }
+                                """))
+                .andExpect(status().isNoContent());
+
+        verify(orderService).requestRefundRequest(1L, 1L, "상품 상태 불량");
+    }
+
+    @Test
+    @DisplayName("환불 요청: 사유 누락은 400")
+    void requestRefundRequest_withoutReason() throws Exception {
+        mockMvc.perform(post("/api/orders/1/refund-request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "refundRequestReason":""
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("구매 확정")
     void confirmPurchase() throws Exception {
         mockMvc.perform(patch("/api/orders/1/confirm"))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("관리자 주문 상태 변경")
+    void updateOrderState() throws Exception {
+        OrderStateUpdateRequestDto requestDto = new OrderStateUpdateRequestDto();
+        requestDto.setOrderState(OrderState.SHIPPING);
+
+        mockMvc.perform(patch("/api/orders/1/state")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isNoContent());
+
+        verify(orderService).updateOrderStateByAdmin(1L, OrderState.SHIPPING);
+    }
+
+    @Test
+    @DisplayName("관리자 주문 상태 변경: 환불 요청 진행 중이면 409 + 전용 에러코드")
+    void updateOrderState_refundRequestInProgress_conflict() throws Exception {
+        doThrow(new BusinessException(BusinessErrorCode.ORDER_REFUND_REQUEST_IN_PROGRESS))
+                .when(orderService).updateOrderStateByAdmin(anyLong(), any());
+
+        OrderStateUpdateRequestDto requestDto = new OrderStateUpdateRequestDto();
+        requestDto.setOrderState(OrderState.PREPARING_FOR_SHIPMENT);
+
+        mockMvc.perform(patch("/api/orders/1/state")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code")
+                        .value(BusinessErrorCode.ORDER_REFUND_REQUEST_IN_PROGRESS.getCode()));
+    }
+
+    @Test
+    @DisplayName("관리자 환불 요청 상태 변경")
+    void processRefundRequest() throws Exception {
+        OrderRefundRequestProcessDto requestDto = new OrderRefundRequestProcessDto();
+        requestDto.setRefundRequestStatus(OrderRefundRequestProcessStatus.APPROVED);
+        requestDto.setProcessReason("환불 승인");
+
+        mockMvc.perform(patch("/api/orders/1/refund-request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isNoContent());
+
+        verify(orderService).processRefundRequestByAdmin(1L, OrderRefundRequestStatus.APPROVED, "환불 승인");
+    }
+
+    @Test
+    @DisplayName("관리자 환불 요청 상태 변경: REFUNDED 입력은 400")
+    void processRefundRequest_refundedBadRequest() throws Exception {
+        mockMvc.perform(patch("/api/orders/1/refund-request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "refundRequestStatus":"REFUNDED",
+                                  "processReason":"환불 완료"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
     }
 }

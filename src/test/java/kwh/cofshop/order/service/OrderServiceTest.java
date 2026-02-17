@@ -12,6 +12,7 @@ import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.domain.MemberState;
 import kwh.cofshop.member.domain.Role;
 import kwh.cofshop.order.domain.Order;
+import kwh.cofshop.order.domain.OrderRefundRequestStatus;
 import kwh.cofshop.order.domain.OrderItem;
 import kwh.cofshop.order.domain.OrderState;
 import kwh.cofshop.order.dto.request.AddressRequestDto;
@@ -100,7 +101,7 @@ class OrderServiceTest {
 
         OrderRequestDto requestDto = new OrderRequestDto();
         requestDto.setAddress(createAddressRequestDto());
-        requestDto.setOrderItemRequestDtoList(List.of(new OrderItemRequestDto()));
+        requestDto.setOrderItems(List.of(new OrderItemRequestDto()));
         requestDto.setUsePoint(0);
 
         OrderResponseDto result = orderService.createInstanceOrder(1L, requestDto);
@@ -142,7 +143,7 @@ class OrderServiceTest {
 
         OrderRequestDto requestDto = new OrderRequestDto();
         requestDto.setAddress(createAddressRequestDto());
-        requestDto.setOrderItemRequestDtoList(List.of(new OrderItemRequestDto()));
+        requestDto.setOrderItems(List.of(new OrderItemRequestDto()));
         requestDto.setMemberCouponId(500L);
         requestDto.setUsePoint(100);
 
@@ -180,7 +181,7 @@ class OrderServiceTest {
 
         OrderRequestDto requestDto = new OrderRequestDto();
         requestDto.setAddress(createAddressRequestDto());
-        requestDto.setOrderItemRequestDtoList(List.of(new OrderItemRequestDto()));
+        requestDto.setOrderItems(List.of(new OrderItemRequestDto()));
         requestDto.setMemberCouponId(10L);
 
         assertThatThrownBy(() -> orderService.createInstanceOrder(1L, requestDto))
@@ -215,7 +216,7 @@ class OrderServiceTest {
 
         OrderRequestDto requestDto = new OrderRequestDto();
         requestDto.setAddress(createAddressRequestDto());
-        requestDto.setOrderItemRequestDtoList(List.of(new OrderItemRequestDto()));
+        requestDto.setOrderItems(List.of(new OrderItemRequestDto()));
         requestDto.setMemberCouponId(500L);
 
         assertThatThrownBy(() -> orderService.createInstanceOrder(1L, requestDto))
@@ -343,6 +344,86 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("주문 자동 취소: 결제 대기 주문은 만료 시 취소 및 재고 복구")
+    void autoCancelStaleUnpaidOrder_waitingForPay() {
+        ItemOption option = createOption(createItem(), 100, 1);
+        OrderItem orderItem = OrderItem.builder()
+                .item(option.getItem())
+                .itemOption(option)
+                .orderPrice(1100)
+                .discountRate(0)
+                .quantity(1)
+                .build();
+        Order order = Order.builder()
+                .orderState(OrderState.WAITING_FOR_PAY)
+                .member(createMember(1L))
+                .orderDate(LocalDateTime.now().minusHours(1))
+                .orderItems(List.of(orderItem))
+                .build();
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        boolean cancelled = orderService.autoCancelStaleUnpaidOrder(1L, LocalDateTime.now().minusMinutes(30));
+
+        assertThat(cancelled).isTrue();
+        assertThat(order.getOrderState()).isEqualTo(OrderState.CANCELLED);
+        assertThat(option.getStock()).isEqualTo(2);
+        verify(orderPaymentStatusPort, never()).hasReadyPayment(anyLong());
+    }
+
+    @Test
+    @DisplayName("주문 자동 취소: 결제 요청 상태(READY) 주문은 만료 시 취소")
+    void autoCancelStaleUnpaidOrder_paymentPendingReady() {
+        Order order = Order.builder()
+                .orderState(OrderState.PAYMENT_PENDING)
+                .member(createMember(1L))
+                .orderDate(LocalDateTime.now().minusHours(1))
+                .orderItems(List.of())
+                .build();
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderPaymentStatusPort.hasReadyPayment(1L)).thenReturn(true);
+
+        boolean cancelled = orderService.autoCancelStaleUnpaidOrder(1L, LocalDateTime.now().minusMinutes(30));
+
+        assertThat(cancelled).isTrue();
+        assertThat(order.getOrderState()).isEqualTo(OrderState.CANCELLED);
+    }
+
+    @Test
+    @DisplayName("주문 자동 취소: 결제 요청 상태에서 READY가 아니면 취소하지 않음")
+    void autoCancelStaleUnpaidOrder_paymentPendingNotReady() {
+        Order order = Order.builder()
+                .orderState(OrderState.PAYMENT_PENDING)
+                .member(createMember(1L))
+                .orderDate(LocalDateTime.now().minusHours(1))
+                .orderItems(List.of())
+                .build();
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderPaymentStatusPort.hasReadyPayment(1L)).thenReturn(false);
+
+        boolean cancelled = orderService.autoCancelStaleUnpaidOrder(1L, LocalDateTime.now().minusMinutes(30));
+
+        assertThat(cancelled).isFalse();
+        assertThat(order.getOrderState()).isEqualTo(OrderState.PAYMENT_PENDING);
+    }
+
+    @Test
+    @DisplayName("주문 자동 취소: 만료 시간이 지나지 않았으면 취소하지 않음")
+    void autoCancelStaleUnpaidOrder_notExpired() {
+        Order order = Order.builder()
+                .orderState(OrderState.WAITING_FOR_PAY)
+                .member(createMember(1L))
+                .orderDate(LocalDateTime.now().minusMinutes(5))
+                .orderItems(List.of())
+                .build();
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        boolean cancelled = orderService.autoCancelStaleUnpaidOrder(1L, LocalDateTime.now().minusMinutes(30));
+
+        assertThat(cancelled).isFalse();
+        assertThat(order.getOrderState()).isEqualTo(OrderState.WAITING_FOR_PAY);
+    }
+
+    @Test
     @DisplayName("주문 취소: 주문 상태가 환불 진행 중(REFUND_PENDING)이면 취소 불가")
     void cancelOrder_refundPendingNotAllowed() {
         Member member = createMember(1L);
@@ -419,6 +500,194 @@ class OrderServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(BusinessErrorCode.ORDER_CANNOT_CONFIRM);
         assertThat(order.getOrderState()).isEqualTo(OrderState.SHIPPING);
+    }
+
+    @Test
+    @DisplayName("관리자 주문 상태 변경: PAID -> PREPARING_FOR_SHIPMENT")
+    void updateOrderStateByAdmin_paidToPreparing() {
+        Order order = Order.builder()
+                .orderState(OrderState.PAID)
+                .member(createMember(1L))
+                .build();
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        orderService.updateOrderStateByAdmin(1L, OrderState.PREPARING_FOR_SHIPMENT);
+
+        assertThat(order.getOrderState()).isEqualTo(OrderState.PREPARING_FOR_SHIPMENT);
+    }
+
+    @Test
+    @DisplayName("관리자 주문 상태 변경: 허용되지 않은 전이는 실패")
+    void updateOrderStateByAdmin_invalidTransition() {
+        Order order = Order.builder()
+                .orderState(OrderState.PAID)
+                .member(createMember(1L))
+                .build();
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.updateOrderStateByAdmin(1L, OrderState.DELIVERED))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.ORDER_INVALID_STATE_TRANSITION);
+    }
+
+    @Test
+    @DisplayName("관리자 주문 상태 변경: 환불 요청 접수 중이면 배송 상태 변경 불가")
+    void updateOrderStateByAdmin_requestedRefund_shouldFail() {
+        Order order = Order.builder()
+                .orderState(OrderState.PAID)
+                .refundRequestStatus(OrderRefundRequestStatus.REQUESTED)
+                .member(createMember(1L))
+                .build();
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.updateOrderStateByAdmin(1L, OrderState.PREPARING_FOR_SHIPMENT))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.ORDER_REFUND_REQUEST_IN_PROGRESS);
+    }
+
+    @Test
+    @DisplayName("관리자 주문 상태 변경: 환불 요청 승인 중이면 배송 상태 변경 불가")
+    void updateOrderStateByAdmin_approvedRefund_shouldFail() {
+        Order order = Order.builder()
+                .orderState(OrderState.PAID)
+                .refundRequestStatus(OrderRefundRequestStatus.APPROVED)
+                .member(createMember(1L))
+                .build();
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.updateOrderStateByAdmin(1L, OrderState.PREPARING_FOR_SHIPMENT))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.ORDER_REFUND_REQUEST_IN_PROGRESS);
+    }
+
+    @Test
+    @DisplayName("관리자 주문 상태 변경: 환불 요청 반려 후에는 배송 상태 변경 가능")
+    void updateOrderStateByAdmin_rejectedRefund_shouldAllow() {
+        Order order = Order.builder()
+                .orderState(OrderState.PAID)
+                .refundRequestStatus(OrderRefundRequestStatus.REJECTED)
+                .member(createMember(1L))
+                .build();
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        orderService.updateOrderStateByAdmin(1L, OrderState.PREPARING_FOR_SHIPMENT);
+
+        assertThat(order.getOrderState()).isEqualTo(OrderState.PREPARING_FOR_SHIPMENT);
+    }
+
+    @Test
+    @DisplayName("환불 요청: 결제 완료 주문은 요청 성공")
+    void requestRefundRequest_paidOrder_success() {
+        Member member = createMember(1L);
+        Order order = Order.builder()
+                .orderState(OrderState.PAID)
+                .member(member)
+                .build();
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        orderService.requestRefundRequest(member.getId(), 1L, "단순 변심");
+
+        assertThat(order.getRefundRequestStatus()).isEqualTo(OrderRefundRequestStatus.REQUESTED);
+        assertThat(order.getRefundRequestReason()).isEqualTo("단순 변심");
+        assertThat(order.getRefundRequestedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("환불 요청: 결제 완료 외 상태는 요청 불가")
+    void requestRefundRequest_notPaidOrder_fail() {
+        Member member = createMember(1L);
+        Order order = Order.builder()
+                .orderState(OrderState.SHIPPING)
+                .member(member)
+                .build();
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.requestRefundRequest(member.getId(), 1L, "배송 중 요청"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.ORDER_REFUND_REQUEST_NOT_ALLOWED);
+    }
+
+    @Test
+    @DisplayName("환불 요청: 이미 접수 중인 요청이면 실패")
+    void requestRefundRequest_alreadyRequested_fail() {
+        Member member = createMember(1L);
+        Order order = Order.builder()
+                .orderState(OrderState.PAID)
+                .refundRequestStatus(OrderRefundRequestStatus.REQUESTED)
+                .member(member)
+                .build();
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.requestRefundRequest(member.getId(), 1L, "중복 요청"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.ORDER_REFUND_REQUEST_ALREADY_REQUESTED);
+    }
+
+    @Test
+    @DisplayName("관리자 환불 요청 처리: REQUESTED -> APPROVED")
+    void processRefundRequestByAdmin_requestedToApproved() {
+        Order order = Order.builder()
+                .orderState(OrderState.PAID)
+                .refundRequestStatus(OrderRefundRequestStatus.REQUESTED)
+                .member(createMember(1L))
+                .build();
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        orderService.processRefundRequestByAdmin(1L, OrderRefundRequestStatus.APPROVED, "환불 가능");
+
+        assertThat(order.getRefundRequestStatus()).isEqualTo(OrderRefundRequestStatus.APPROVED);
+        assertThat(order.getRefundProcessedReason()).isEqualTo("환불 가능");
+        assertThat(order.getRefundProcessedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("관리자 환불 요청 처리: APPROVED -> REFUNDED는 실패")
+    void processRefundRequestByAdmin_approvedToRefunded_fail() {
+        assertThatThrownBy(() -> orderService.processRefundRequestByAdmin(1L, OrderRefundRequestStatus.REFUNDED, "환불 완료"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.ORDER_REFUND_REQUEST_INVALID_STATE_TRANSITION);
+        verify(orderRepository, never()).findById(anyLong());
+    }
+
+    @Test
+    @DisplayName("관리자 환불 요청 처리: 접수되지 않은 요청은 실패")
+    void processRefundRequestByAdmin_notRequested_fail() {
+        Order order = Order.builder()
+                .orderState(OrderState.PAID)
+                .member(createMember(1L))
+                .build();
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.processRefundRequestByAdmin(1L, OrderRefundRequestStatus.APPROVED, "승인"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.ORDER_REFUND_REQUEST_NOT_REQUESTED);
+    }
+
+    @Test
+    @DisplayName("관리자 환불 요청 처리: REQUESTED -> REFUNDED는 실패")
+    void processRefundRequestByAdmin_invalidTransition_fail() {
+        assertThatThrownBy(() -> orderService.processRefundRequestByAdmin(1L, OrderRefundRequestStatus.REFUNDED, "바로 환불"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.ORDER_REFUND_REQUEST_INVALID_STATE_TRANSITION);
+        verify(orderRepository, never()).findById(anyLong());
+    }
+
+    @Test
+    @DisplayName("관리자 환불 요청 처리: REJECTED는 처리 사유가 필수")
+    void processRefundRequestByAdmin_rejectedWithoutReason_fail() {
+        assertThatThrownBy(() -> orderService.processRefundRequestByAdmin(1L, OrderRefundRequestStatus.REJECTED, " "))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.ORDER_REFUND_REQUEST_INVALID_STATE_TRANSITION);
+        verify(orderRepository, never()).findById(anyLong());
     }
 
     private Member createMember(Long id) {

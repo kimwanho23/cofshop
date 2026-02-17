@@ -1,7 +1,6 @@
 package kwh.cofshop.order.repository.custom;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.QItem;
 import kwh.cofshop.order.domain.OrderState;
 import kwh.cofshop.order.domain.QOrder;
@@ -18,13 +17,13 @@ public class OrderItemRepositoryImpl implements OrderItemRepositoryCustom {
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public List<Item> getPopularItems(int limit) {
+    public List<Long> getPopularItemIds(int limit) {
         QOrderItem orderItem = QOrderItem.orderItem;
         QItem item = QItem.item;
         QOrder order = QOrder.order;
 
         return queryFactory
-                .select(item)
+                .select(item.id)
                 .from(orderItem)
                 .join(orderItem.order, order)
                 .join(orderItem.item, item)

@@ -5,7 +5,10 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import kwh.cofshop.global.annotation.LoginMember;
 import kwh.cofshop.order.dto.request.OrderCancelRequestDto;
+import kwh.cofshop.order.dto.request.OrderRefundRequestProcessDto;
+import kwh.cofshop.order.dto.request.OrderRefundRequestDto;
 import kwh.cofshop.order.dto.request.OrderRequestDto;
+import kwh.cofshop.order.dto.request.OrderStateUpdateRequestDto;
 import kwh.cofshop.order.dto.response.OrderCancelResponseDto;
 import kwh.cofshop.order.dto.response.OrderResponseDto;
 import kwh.cofshop.order.service.OrderService;
@@ -75,6 +78,17 @@ public class OrderController {
                 .body(responseDto);
     }
 
+    @Operation(summary = "환불 요청", description = "회원이 결제 완료 주문에 대해 환불 요청을 접수합니다.")
+    @PostMapping("/{orderId}/refund-request")
+    @PreAuthorize("hasRole('MEMBER')")
+    public ResponseEntity<Void> requestRefundRequest(
+            @PathVariable Long orderId,
+            @LoginMember Long memberId,
+            @Valid @RequestBody OrderRefundRequestDto requestDto) {
+        orderService.requestRefundRequest(memberId, orderId, requestDto.getRefundRequestReason());
+        return ResponseEntity.noContent().build();
+    }
+
 
     //////////// @PUT, PATCH
     // 주문 취소
@@ -97,6 +111,26 @@ public class OrderController {
             @PathVariable Long orderId,
             @LoginMember Long memberId) {
         orderService.purchaseConfirmation(memberId, orderId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "주문 상태 변경", description = "관리자 전용 배송 상태 전이(PAID -> PREPARING_FOR_SHIPMENT -> SHIPPING -> DELIVERED)")
+    @PatchMapping("/{orderId}/state")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> updateOrderState(
+            @PathVariable Long orderId,
+            @Valid @RequestBody OrderStateUpdateRequestDto requestDto) {
+        orderService.updateOrderStateByAdmin(orderId, requestDto.getOrderState());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "환불 요청 상태 변경", description = "관리자 전용 환불 요청 상태 전이(REQUESTED -> APPROVED|REJECTED)")
+    @PatchMapping("/{orderId}/refund-request")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> processRefundRequest(
+            @PathVariable Long orderId,
+            @Valid @RequestBody OrderRefundRequestProcessDto requestDto) {
+        orderService.processRefundRequestByAdmin(orderId, requestDto.toDomainStatus(), requestDto.getProcessReason());
         return ResponseEntity.noContent().build();
     }
 

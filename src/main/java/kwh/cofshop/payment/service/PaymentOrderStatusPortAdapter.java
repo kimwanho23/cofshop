@@ -20,8 +20,8 @@ class PaymentOrderStatusPortAdapter implements OrderPaymentStatusPort {
             return false;
         }
 
-        return paymentEntityRepository.findByOrderId(orderId)
-                .map(payment -> payment.getStatus() == PaymentStatus.READY)
+        return paymentEntityRepository.findStatusByOrderId(orderId)
+                .map(status -> status == PaymentStatus.READY)
                 .orElse(false);
     }
 }

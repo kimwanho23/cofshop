@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -91,6 +92,25 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(DataIntegrityViolationErrorCode.DATA_INTEGRITY_VIOLATION_ERROR_CODE.getHttpStatus())
                 .body(ErrorResponse.of(DataIntegrityViolationErrorCode.DATA_INTEGRITY_VIOLATION_ERROR_CODE));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    protected ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(
+            HttpMessageNotReadableException e,
+            HttpServletRequest request
+    ) {
+        log.warn(
+                "HttpMessageNotReadableException code={} status={} path={} traceId={} message={}",
+                BadRequestErrorCode.INPUT_INVALID_VALUE.getCode(),
+                BadRequestErrorCode.INPUT_INVALID_VALUE.getHttpStatus().value(),
+                resolvePath(request),
+                resolveTraceId(request),
+                e.getMessage()
+        );
+
+        return ResponseEntity
+                .status(BadRequestErrorCode.INPUT_INVALID_VALUE.getHttpStatus())
+                .body(ErrorResponse.of(BadRequestErrorCode.INPUT_INVALID_VALUE));
     }
 
     @ExceptionHandler(Exception.class)

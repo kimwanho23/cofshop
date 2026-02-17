@@ -51,10 +51,7 @@ class PaymentControllerTest {
 
         when(paymentService.createPaymentRequest(anyLong(), anyLong(), any())).thenReturn(responseDto);
 
-        PaymentPrepareRequestDto requestDto = PaymentPrepareRequestDto.builder()
-                .pgProvider("kakaopay")
-                .payMethod("card")
-                .build();
+        PaymentPrepareRequestDto requestDto = new PaymentPrepareRequestDto("kakaopay", "card");
 
         mockMvc.perform(post("/api/payments/orders/1")
                         .contentType(MediaType.APPLICATION_JSON)
