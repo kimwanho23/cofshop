@@ -43,15 +43,6 @@ public class OrderItem extends BaseTimeEntity {
     private ItemOption itemOption; // 옵션 정보
 
     @Builder
-    public OrderItem(int quantity, int orderPrice, Order order, Item item, ItemOption itemOption) {
-        this.quantity = quantity;
-        this.orderPrice = orderPrice;
-        this.order = order;
-        this.item = item;
-        this.itemOption = itemOption;
-    }
-
-    @Builder
     public OrderItem(Long id, int quantity, int orderPrice, int discountRate, Order order, Item item, ItemOption itemOption) {
         this.id = id;
         this.quantity = quantity;
@@ -79,11 +70,6 @@ public class OrderItem extends BaseTimeEntity {
 
     public int getDiscountedPrice() { // 할인 적용 단가
         return (int) ((long) orderPrice * (100 - discountRate) / 100);
-    }
-
-    // 재고 복구
-    public void restoreStock() {
-        this.itemOption.addStock(this.quantity);
     }
 
     public long getTotalPrice() { // 할인 적용 단가 * 수량

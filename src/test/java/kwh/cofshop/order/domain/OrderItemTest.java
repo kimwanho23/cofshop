@@ -36,6 +36,38 @@ class OrderItemTest {
         assertThat(orderItem.getTotalPrice()).isEqualTo(4_000_000_000L);
     }
 
+    @Test
+    @DisplayName("주문 아이템 생성: 옵션 할인율을 금액에 반영")
+    void createOrderItem_appliesOptionDiscountRate() {
+        ItemOption option = ItemOption.builder()
+                .item(createItem())
+                .additionalPrice(0)
+                .discountRate(10)
+                .stock(10)
+                .optionState(OptionState.SELL)
+                .build();
+
+        OrderItem orderItem = OrderItem.createOrderItem(option, 2);
+
+        assertThat(orderItem.getDiscountRate()).isEqualTo(10);
+        assertThat(orderItem.getDiscountedPrice()).isEqualTo(900);
+        assertThat(orderItem.getTotalPrice()).isEqualTo(1800L);
+    }
+
+    @Test
+    @DisplayName("빌더: 식별자와 할인율을 보존")
+    void builder_keepsIdAndDiscountRate() {
+        OrderItem orderItem = OrderItem.builder()
+                .id(1L)
+                .orderPrice(1000)
+                .discountRate(10)
+                .quantity(1)
+                .build();
+
+        assertThat(orderItem.getId()).isEqualTo(1L);
+        assertThat(orderItem.getDiscountRate()).isEqualTo(10);
+    }
+
     private Item createItem() {
         return Item.builder()
                 .itemName("커피")
