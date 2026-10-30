@@ -70,6 +70,9 @@ public class MemberCoupon {
     }
 
     public void useCoupon() {
+        if (this.state != CouponState.AVAILABLE) {
+            throw new BusinessException(BusinessErrorCode.COUPON_NOT_AVAILABLE);
+        }
         this.state = CouponState.USED;
         this.usedAt = LocalDate.now();
     }
@@ -79,6 +82,7 @@ public class MemberCoupon {
             throw new BusinessException(BusinessErrorCode.COUPON_NOT_AVAILABLE);
         }
         this.state = CouponState.AVAILABLE;
+        this.usedAt = null;
     }
 
     public void expireCoupon() {

@@ -1,5 +1,6 @@
 package kwh.cofshop.order.scheduler;
 
+import kwh.cofshop.global.annotation.DistributedLock;
 import kwh.cofshop.order.domain.OrderState;
 import kwh.cofshop.order.repository.OrderRepository;
 import kwh.cofshop.order.service.OrderService;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Component
 @RequiredArgsConstructor
@@ -31,6 +33,12 @@ public class OrderAutoCancelScheduler {
     private int batchSize;
 
     @Scheduled(fixedDelayString = "${order.auto-cancel.fixed-delay-ms:60000}")
+    @DistributedLock(
+            keyName = "'order:auto-cancel:scheduler'",
+            waitTime = 0,
+            leaseTime = 5,
+            timeUnit = TimeUnit.MINUTES
+    )
     public void autoCancelStaleOrders() {
         long safeTimeoutMinutes = Math.max(timeoutMinutes, 1L);
         int safeBatchSize = Math.max(batchSize, 1);

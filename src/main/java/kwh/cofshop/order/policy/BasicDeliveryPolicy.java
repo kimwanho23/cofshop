@@ -15,7 +15,7 @@ public class BasicDeliveryPolicy implements DeliveryFeePolicy {
         return itemOptions.stream()
                 .map(ItemOption::getItem)
                 .distinct()
-                .mapToInt(Item::getDeliveryFee)
+                .mapToInt(item -> item.getDeliveryFee() == null ? 0 : item.getDeliveryFee())
                 .sum();
     }
 }

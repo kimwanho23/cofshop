@@ -82,6 +82,12 @@ public class Order extends BaseTimeEntity {
     @Column(name = "member_coupon_id")
     private Long memberCouponId;
 
+    @Column(name = "cancel_reason", length = 500)
+    private String cancelReason;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "refund_request_status")
     private OrderRefundRequestStatus refundRequestStatus;
@@ -104,7 +110,7 @@ public class Order extends BaseTimeEntity {
 
     @Builder
     public Order(Long id, Member member, String merchantUid, LocalDateTime orderDate, Integer orderYear, Integer orderMonth, Integer orderDay, OrderState orderState, Address address, String deliveryRequest, int deliveryFee, Long totalPrice,
-                 Long discountFromCoupon, Integer usePoint, Long finalPrice, Long memberCouponId, OrderRefundRequestStatus refundRequestStatus, String refundRequestReason, LocalDateTime refundRequestedAt, LocalDateTime refundProcessedAt, String refundProcessedReason, List<OrderItem> orderItems) {
+                 Long discountFromCoupon, Integer usePoint, Long finalPrice, Long memberCouponId, String cancelReason, LocalDateTime cancelledAt, OrderRefundRequestStatus refundRequestStatus, String refundRequestReason, LocalDateTime refundRequestedAt, LocalDateTime refundProcessedAt, String refundProcessedReason, List<OrderItem> orderItems) {
         this.id = id;
         this.member = member;
         this.merchantUid = merchantUid;
@@ -121,6 +127,8 @@ public class Order extends BaseTimeEntity {
         this.usePoint = usePoint;
         this.finalPrice = finalPrice;
         this.memberCouponId = memberCouponId;
+        this.cancelReason = cancelReason;
+        this.cancelledAt = cancelledAt;
         this.refundRequestStatus = refundRequestStatus;
         this.refundRequestReason = refundRequestReason;
         this.refundRequestedAt = refundRequestedAt;
@@ -195,6 +203,10 @@ public class Order extends BaseTimeEntity {
     }
 
     public void cancel() {
+        cancel(null, LocalDateTime.now());
+    }
+
+    public void cancel(String reason, LocalDateTime cancelledAt) {
         if (this.orderState == OrderState.CANCELLED) {
             throw new BusinessException(BusinessErrorCode.ORDER_ALREADY_CANCELLED);
         }
@@ -208,6 +220,8 @@ public class Order extends BaseTimeEntity {
             throw new BusinessException(BusinessErrorCode.ORDER_CANNOT_CANCEL);
         }
         this.orderState = OrderState.CANCELLED;
+        this.cancelReason = reason;
+        this.cancelledAt = cancelledAt == null ? LocalDateTime.now() : cancelledAt;
     }
 
     public void requestRefundRequest(String reason, LocalDateTime requestedAt) {

@@ -142,6 +142,8 @@ public class OrderRepositoryImpl implements OrderRepositoryCustom {
                         order.discountFromCoupon,
                         order.usePoint,
                         order.finalPrice,
+                        order.cancelReason,
+                        order.cancelledAt,
                         order.refundRequestStatus,
                         order.refundRequestReason,
                         order.refundRequestedAt,
@@ -171,6 +173,8 @@ public class OrderRepositoryImpl implements OrderRepositoryCustom {
             responseDto.setDiscountFromCoupon(row.get(order.discountFromCoupon));
             responseDto.setUsePoint(row.get(order.usePoint));
             responseDto.setFinalPrice(row.get(order.finalPrice));
+            responseDto.setCancelReason(row.get(order.cancelReason));
+            responseDto.setCancelledAt(row.get(order.cancelledAt));
             responseDto.setRefundRequestStatus(row.get(order.refundRequestStatus));
             responseDto.setRefundRequestReason(row.get(order.refundRequestReason));
             responseDto.setRefundRequestedAt(row.get(order.refundRequestedAt));

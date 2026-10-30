@@ -100,11 +100,24 @@ public class Member {
         if (amount <= 0) {
             throw new BusinessException(BusinessErrorCode.INVALID_POINT_OPERATION);
         }
-        this.point += amount;
+        int currentPoint = this.point == null ? 0 : this.point;
+        long restoredPoint = (long) currentPoint + amount;
+        if (restoredPoint > Integer.MAX_VALUE) {
+            throw new BusinessException(BusinessErrorCode.INVALID_POINT_OPERATION);
+        }
+        this.point = (int) restoredPoint;
     }
 
     public void updatePoint(int amount) {
-        this.point += amount;
+        int currentPoint = this.point == null ? 0 : this.point;
+        long updatedPoint = (long) currentPoint + amount;
+        if (updatedPoint < 0) {
+            throw new BusinessException(BusinessErrorCode.INSUFFICIENT_POINT);
+        }
+        if (updatedPoint > Integer.MAX_VALUE) {
+            throw new BusinessException(BusinessErrorCode.INVALID_POINT_OPERATION);
+        }
+        this.point = (int) updatedPoint;
     }
 
     public void changeMemberState(MemberState newState) {

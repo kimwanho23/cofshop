@@ -4,9 +4,7 @@ import kwh.cofshop.global.annotation.DistributedLock;
 import kwh.cofshop.coupon.api.CouponApi;
 import kwh.cofshop.coupon.api.CouponApplyResult;
 import kwh.cofshop.global.exception.BusinessException;
-import kwh.cofshop.global.exception.ForbiddenRequestException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
-import kwh.cofshop.global.exception.errorcodes.ForbiddenErrorCode;
 import kwh.cofshop.item.domain.ItemOption;
 import kwh.cofshop.member.api.MemberPointPort;
 import kwh.cofshop.member.api.MemberReadPort;
@@ -88,45 +86,51 @@ public class OrderService {
     } // 주문 생성을 위한 기틀
 
 
+    @DistributedLock(keyName = "'order:' + #orderId")
     @Transactional // 주문 취소
     public OrderCancelResponseDto cancelOrder(Long memberId, Long orderId, String cancelReason) {
-        Order order = getOrderForMember(memberId, orderId);
+        Order order = getOrderForMemberWithLock(memberId, orderId);
 
         validateCancelableByOrderApi(order);
-        cancelAndRestore(order);
+        cancelAndRestore(order, cancelReason);
 
         return OrderCancelResponseDto.of(orderId, cancelReason);
     }
 
     @Transactional
     public void cancelAndRestore(Order order) {
+        cancelAndRestore(order, null);
+    }
+
+    @Transactional
+    public void cancelAndRestore(Order order, String cancelReason) {
         if (order.getOrderState() == OrderState.CANCELLED) {
             return;
         }
-        order.cancel();
+        order.cancel(cancelReason, LocalDateTime.now());
         restoreOrderCompensation(order);
     }
 
-    @DistributedLock(keyName = "'order:auto-cancel:' + #orderId")
+    @DistributedLock(keyName = "'order:' + #orderId")
     @Transactional
     public boolean autoCancelStaleUnpaidOrder(Long orderId, LocalDateTime deadline) {
         if (orderId == null || deadline == null) {
             return false;
         }
 
-        Order order = orderRepository.findById(orderId).orElse(null);
+        Order order = orderRepository.findByIdWithLock(orderId).orElse(null);
         if (order == null || order.getOrderDate() == null || order.getOrderDate().isAfter(deadline)) {
             return false;
         }
 
         OrderState state = order.getOrderState();
         if (state == OrderState.WAITING_FOR_PAY) {
-            cancelAndRestore(order);
+            cancelAndRestore(order, "결제 시간 초과 자동 취소");
             return true;
         }
 
         if (state == OrderState.PAYMENT_PENDING && orderPaymentStatusPort.hasReadyPayment(orderId)) {
-            cancelAndRestore(order);
+            cancelAndRestore(order, "결제 시간 초과 자동 취소");
             return true;
         }
 
@@ -188,9 +192,10 @@ public class OrderService {
     }
 
     // 구매 확정(소비자)
+    @DistributedLock(keyName = "'order:' + #orderId")
     @Transactional
     public void purchaseConfirmation(Long memberId, Long orderId) {
-        Order order = getOrderForMember(memberId, orderId);
+        Order order = getOrderForMemberWithLock(memberId, orderId);
         if (order.getOrderState() == OrderState.COMPLETED) {
             throw new BusinessException(BusinessErrorCode.ORDER_ALREADY_COMPLETED);
         }
@@ -200,9 +205,10 @@ public class OrderService {
         order.changeOrderState(OrderState.COMPLETED); // 구매 확정 가능 - 이 시점에서 반품 불가능함
     }
 
+    @DistributedLock(keyName = "'order:' + #orderId")
     @Transactional
     public void updateOrderStateByAdmin(Long orderId, OrderState targetState) {
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdWithLock(orderId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
 
         OrderState currentState = order.getOrderState();
@@ -221,12 +227,14 @@ public class OrderService {
         order.changeOrderState(targetState);
     }
 
+    @DistributedLock(keyName = "'order:' + #orderId")
     @Transactional
     public void requestRefundRequest(Long memberId, Long orderId, String refundRequestReason) {
-        Order order = getOrderForMember(memberId, orderId);
+        Order order = getOrderForMemberWithLock(memberId, orderId);
         order.requestRefundRequest(refundRequestReason, LocalDateTime.now());
     }
 
+    @DistributedLock(keyName = "'order:' + #orderId")
     @Transactional
     public void processRefundRequestByAdmin(Long orderId, OrderRefundRequestStatus targetStatus, String processReason) {
         if (targetStatus == OrderRefundRequestStatus.REQUESTED || targetStatus == OrderRefundRequestStatus.REFUNDED) {
@@ -236,7 +244,7 @@ public class OrderService {
             throw new BusinessException(BusinessErrorCode.ORDER_REFUND_REQUEST_INVALID_STATE_TRANSITION);
         }
 
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdWithLock(orderId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
 
         order.processRefundRequest(targetStatus, processReason, LocalDateTime.now());
@@ -281,26 +289,22 @@ public class OrderService {
         }
 
         int availablePoint = member.getPoint() == null ? 0 : member.getPoint();
-        int usablePoint = (int) Math.min(Math.min(requestedPoint, availablePoint), priceAfterCoupon);
-
-        if (usablePoint <= 0) {
-            return 0;
+        if (requestedPoint > availablePoint) {
+            throw new BusinessException(BusinessErrorCode.INSUFFICIENT_POINT);
         }
 
-        member.usePoint(usablePoint);
-        order.addUsePoint(usablePoint);
-        return usablePoint;
+        if (requestedPoint > priceAfterCoupon) {
+            throw new BusinessException(BusinessErrorCode.INVALID_POINT_OPERATION);
+        }
+
+        member.usePoint(requestedPoint);
+        order.addUsePoint(requestedPoint);
+        return requestedPoint;
     }
 
-    private Order getOrderForMember(Long memberId, Long orderId) {
-        Order order = orderRepository.findById(orderId)
+    private Order getOrderForMemberWithLock(Long memberId, Long orderId) {
+        return orderRepository.findByIdAndMemberIdWithLock(orderId, memberId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
-
-        if (!order.getMember().getId().equals(memberId)) {
-            throw new ForbiddenRequestException(ForbiddenErrorCode.MEMBER_UNAUTHORIZED);
-        }
-
-        return order;
     }
 
     private boolean isValidAdminShippingTransition(OrderState currentState, OrderState targetState) {

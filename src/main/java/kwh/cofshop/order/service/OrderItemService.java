@@ -1,6 +1,8 @@
 package kwh.cofshop.order.service;
 
+import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.item.api.ItemReadPort;
 import kwh.cofshop.item.domain.ItemOption;
@@ -23,6 +25,7 @@ public class OrderItemService {
 
     // 옵션 조회
     public List<ItemOption> getItemOptionsWithLock(List<OrderItemRequestDto> itemDtoList) {
+        validateOrderItemDtos(itemDtoList);
         List<Long> optionIds = itemDtoList.stream()
                 .map(OrderItemRequestDto::getOptionId)
                 .toList();
@@ -32,12 +35,13 @@ public class OrderItemService {
 
     // 주문 생성
     public List<OrderItem> createOrderItems(List<OrderItemRequestDto> dtoList, List<ItemOption> options) {
+        validateOrderItemDtos(dtoList);
         Map<Long, ItemOption> optionMap = options.stream()
                 .collect(Collectors.toMap(ItemOption::getId, Function.identity()));
-        Map<Long, Integer> requestedQuantityByItemId = dtoList.stream()
+        Map<Long, Long> requestedQuantityByItemId = dtoList.stream()
                 .collect(Collectors.groupingBy(
                         OrderItemRequestDto::getItemId,
-                        Collectors.summingInt(OrderItemRequestDto::getQuantity)
+                        Collectors.summingLong(OrderItemRequestDto::getQuantity)
                 ));
 
         List<OrderItem> result = new ArrayList<>();
@@ -48,12 +52,32 @@ public class OrderItemService {
             }
             option.validatePurchasable();
             Integer itemLimit = option.getItem().getItemLimit();
-            int requestedQuantity = requestedQuantityByItemId.getOrDefault(dto.getItemId(), dto.getQuantity());
+            long requestedQuantity = requestedQuantityByItemId.getOrDefault(dto.getItemId(), (long) dto.getQuantity());
             if (itemLimit != null && requestedQuantity > itemLimit) {
                 throw new BusinessException(BusinessErrorCode.ITEM_LIMIT_EXCEEDED);
             }
             result.add(OrderItem.createOrderItem(option, dto.getQuantity()));
         }
         return result;
+    }
+
+    private void validateOrderItemDtos(List<OrderItemRequestDto> dtoList) {
+        if (dtoList == null || dtoList.isEmpty()) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+        dtoList.forEach(this::validateOrderItemDto);
+    }
+
+    private void validateOrderItemDto(OrderItemRequestDto dto) {
+        if (dto == null || dto.getItemId() == null || dto.getOptionId() == null) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+        validateQuantity(dto.getQuantity());
+    }
+
+    private void validateQuantity(int quantity) {
+        if (quantity <= 0) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
     }
 }

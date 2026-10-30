@@ -4,7 +4,9 @@ import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemOption;
 import kwh.cofshop.item.domain.OptionState;
 import kwh.cofshop.item.api.ItemReadPort;
+import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.order.domain.OrderItem;
 import kwh.cofshop.order.dto.request.OrderItemRequestDto;
@@ -35,7 +37,9 @@ class OrderItemServiceTest {
     @DisplayName("옵션 조회")
     void getItemOptionsWithLock() {
         OrderItemRequestDto dto = new OrderItemRequestDto();
+        dto.setItemId(1L);
         dto.setOptionId(10L);
+        dto.setQuantity(1);
 
         ItemOption option = createOption(10L, createItem(1L), 100, 10);
 
@@ -116,6 +120,47 @@ class OrderItemServiceTest {
                 List.of(first, second),
                 List.of(firstOption, secondOption)
         )).isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    @DisplayName("주문 아이템 생성: 수량은 1 이상이어야 함")
+    void createOrderItems_invalidQuantity() {
+        OrderItemRequestDto dto = new OrderItemRequestDto();
+        dto.setItemId(1L);
+        dto.setOptionId(10L);
+        dto.setQuantity(0);
+
+        ItemOption option = createOption(10L, createItem(1L), 100, 100);
+
+        assertThatThrownBy(() -> orderItemService.createOrderItems(List.of(dto), List.of(option)))
+                .isInstanceOf(BadRequestException.class);
+    }
+
+    @Test
+    @DisplayName("주문 아이템 생성: 같은 상품 분할 수량 합계 검증은 int 오버플로우 없이 동작")
+    void createOrderItems_splitLinesQuantityOverflowSafe() {
+        OrderItemRequestDto first = new OrderItemRequestDto();
+        first.setItemId(1L);
+        first.setOptionId(10L);
+        first.setQuantity(Integer.MAX_VALUE);
+
+        OrderItemRequestDto second = new OrderItemRequestDto();
+        second.setItemId(1L);
+        second.setOptionId(11L);
+        second.setQuantity(1);
+
+        Item item = createItem(1L);
+        ReflectionTestUtils.setField(item, "itemLimit", Integer.MAX_VALUE);
+        ItemOption firstOption = createOption(10L, item, 100, Integer.MAX_VALUE);
+        ItemOption secondOption = createOption(11L, item, 100, 1);
+
+        assertThatThrownBy(() -> orderItemService.createOrderItems(
+                List.of(first, second),
+                List.of(firstOption, secondOption)
+        ))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.ITEM_LIMIT_EXCEEDED);
     }
 
     private Item createItem(Long id) {

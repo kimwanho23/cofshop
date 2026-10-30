@@ -1,7 +1,9 @@
 package kwh.cofshop.item.domain;
 
 import jakarta.persistence.*;
+import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -56,6 +58,12 @@ public class ItemOption {
 
     // 정적 팩토리 메서드
     public static ItemOption createOption(String description, Integer additionalPrice, Integer stock, Item item) {
+        if (stock == null || stock < 0 || item == null) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+        if (additionalPrice != null && additionalPrice < 0) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
         ItemOption itemOption = ItemOption.builder()
                 .description(description)
                 .additionalPrice(additionalPrice)
@@ -69,16 +77,32 @@ public class ItemOption {
     }
 
     public void updateOption(String description, Integer additionalPrice, Integer stock) {
+        if (stock == null || stock < 0) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+        if (additionalPrice != null && additionalPrice < 0) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
         this.description = description;
         this.additionalPrice = additionalPrice;
         this.stock = stock;
     }
 
     public void addStock(int stock) { // 재고 더하기 (주문 취소, 재고 추가)
-        this.stock += stock;
+        if (stock <= 0) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+        long updatedStock = (long) this.stock + stock;
+        if (updatedStock > Integer.MAX_VALUE) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+        this.stock = (int) updatedStock;
     }
 
     public void removeStock(int stock) { // 재고 감소 (주문, 재고 조정)
+        if (stock <= 0) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
         if (this.stock < stock) {
             throw new BusinessException(BusinessErrorCode.ITEM_OUT_OF_STOCK);
         }

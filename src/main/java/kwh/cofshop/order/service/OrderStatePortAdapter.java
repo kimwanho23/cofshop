@@ -1,19 +1,35 @@
 package kwh.cofshop.order.service;
 
+import kwh.cofshop.global.annotation.DistributedLock;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.order.api.OrderStatus;
 import kwh.cofshop.order.api.OrderStatePort;
-import kwh.cofshop.order.domain.Order;
 import kwh.cofshop.order.domain.OrderState;
 import kwh.cofshop.order.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Map;
+
 @Component
 @RequiredArgsConstructor
 class OrderStatePortAdapter implements OrderStatePort {
+
+    private static final Map<OrderState, List<OrderState>> ALLOWED_CURRENT_STATES = Map.of(
+            OrderState.PAID, List.of(
+                    OrderState.WAITING_FOR_PAY,
+                    OrderState.PAYMENT_PENDING,
+                    OrderState.REFUND_PENDING,
+                    OrderState.PAID
+            ),
+            OrderState.REFUND_PENDING, List.of(
+                    OrderState.PAID,
+                    OrderState.REFUND_PENDING
+            )
+    );
 
     private final OrderRepository orderRepository;
 
@@ -26,13 +42,25 @@ class OrderStatePortAdapter implements OrderStatePort {
     }
 
     @Override
+    @DistributedLock(keyName = "'order:' + #orderId")
     @Transactional
     public void changeOrderState(Long orderId, OrderStatus orderStatus) {
-        findOrder(orderId).changeOrderState(OrderState.valueOf(orderStatus.name()));
-    }
+        OrderState targetState = OrderState.valueOf(orderStatus.name());
+        List<OrderState> currentStates = ALLOWED_CURRENT_STATES.get(targetState);
+        if (currentStates == null) {
+            throw new BusinessException(BusinessErrorCode.ORDER_INVALID_STATE_TRANSITION);
+        }
 
-    private Order findOrder(Long orderId) {
-        return orderRepository.findById(orderId)
+        int updated = orderRepository.updateOrderStateIfCurrentIn(orderId, currentStates, targetState);
+        if (updated > 0) {
+            return;
+        }
+
+        OrderState currentState = orderRepository.findOrderStateById(orderId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
+        if (currentState == targetState) {
+            return;
+        }
+        throw new BusinessException(BusinessErrorCode.ORDER_INVALID_STATE_TRANSITION);
     }
 }

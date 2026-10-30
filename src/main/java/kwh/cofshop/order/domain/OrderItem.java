@@ -2,6 +2,8 @@ package kwh.cofshop.order.domain;
 
 import jakarta.persistence.*;
 import kwh.cofshop.global.domain.BaseTimeEntity;
+import kwh.cofshop.global.exception.BadRequestException;
+import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemOption;
 import lombok.*;
@@ -61,6 +63,9 @@ public class OrderItem extends BaseTimeEntity {
     }
 
     public static OrderItem createOrderItem(ItemOption itemOption, int quantity) {
+        if (quantity <= 0) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
         itemOption.removeStock(quantity);
         int optionDiscountRate = itemOption.getDiscountRate() == null ? 0 : itemOption.getDiscountRate();
         return OrderItem.builder()
@@ -73,7 +78,7 @@ public class OrderItem extends BaseTimeEntity {
     }
 
     public int getDiscountedPrice() { // 할인 적용 단가
-        return orderPrice * (100 - discountRate) / 100;
+        return (int) ((long) orderPrice * (100 - discountRate) / 100);
     }
 
     // 재고 복구
@@ -81,7 +86,7 @@ public class OrderItem extends BaseTimeEntity {
         this.itemOption.addStock(this.quantity);
     }
 
-    public int getTotalPrice() { // 할인 적용 단가 * 수량
-        return getDiscountedPrice() * quantity;
+    public long getTotalPrice() { // 할인 적용 단가 * 수량
+        return (long) getDiscountedPrice() * quantity;
     }
 }

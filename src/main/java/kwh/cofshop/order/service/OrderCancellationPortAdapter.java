@@ -1,5 +1,6 @@
 package kwh.cofshop.order.service;
 
+import kwh.cofshop.global.annotation.DistributedLock;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.order.api.OrderCancellationPort;
@@ -17,9 +18,10 @@ class OrderCancellationPortAdapter implements OrderCancellationPort {
     private final OrderService orderService;
 
     @Override
+    @DistributedLock(keyName = "'order:' + #orderId")
     @Transactional
     public void cancelAndRestore(Long orderId) {
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findByIdWithLock(orderId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
 
         orderService.cancelAndRestore(order);

@@ -1,5 +1,6 @@
 package kwh.cofshop.order.service;
 
+import kwh.cofshop.global.annotation.DistributedLock;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.order.api.OrderRefundPort;
@@ -30,15 +31,16 @@ class OrderRefundPortAdapter implements OrderRefundPort {
     }
 
     @Override
+    @DistributedLock(keyName = "'order:' + #orderId")
     @Transactional
     public void completeRefund(Long orderId, String processedReason) {
         Order order = findOrder(orderId);
-        orderService.cancelAndRestore(order);
+        orderService.cancelAndRestore(order, processedReason);
         orderService.completeRefundRequestByPayment(order, processedReason, LocalDateTime.now());
     }
 
     private Order findOrder(Long orderId) {
-        return orderRepository.findById(orderId)
+        return orderRepository.findByIdWithLock(orderId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
     }
 }

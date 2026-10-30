@@ -22,6 +22,8 @@ public class OrderResponseDto {
     private Long discountFromCoupon; // 총 할인 금액
     private Integer usePoint;        // 사용 포인트
     private Long finalPrice;         // 최종 결제 금액 (배송비 포함)
+    private String cancelReason;     // 주문 취소 사유
+    private LocalDateTime cancelledAt; // 주문 취소 시각
     private OrderRefundRequestStatus refundRequestStatus; // 환불 요청 상태
     private String refundRequestReason;      // 환불 요청 사유
     private LocalDateTime refundRequestedAt; // 환불 요청 시각

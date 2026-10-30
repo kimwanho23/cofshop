@@ -160,6 +160,17 @@ class MemberServiceTest {
     }
 
     @Test
+    @DisplayName("Update point fails when deduction exceeds current point")
+    void updatePoint_deductionExceedsCurrentPoint() {
+        Member member = Member.builder().build();
+        ReflectionTestUtils.setField(member, "point", 10);
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> memberService.updatePoint(1L, -20))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
     @DisplayName("Get member fails when not found")
     void getMember_notFound() {
         when(memberRepository.findById(1L)).thenReturn(Optional.empty());

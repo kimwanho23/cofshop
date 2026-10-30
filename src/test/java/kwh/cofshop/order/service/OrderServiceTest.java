@@ -45,6 +45,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -159,6 +160,66 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("주문 생성: 요청 포인트가 보유 포인트보다 크면 실패")
+    void createInstanceOrder_usePointExceedsAvailablePoint() {
+        Member member = createMember(1L);
+        ReflectionTestUtils.setField(member, "point", 50);
+        when(memberReadPort.getByIdWithLock(1L)).thenReturn(member);
+
+        ItemOption option = createOption(createItem(), 100, 10);
+        when(orderItemService.getItemOptionsWithLock(any())).thenReturn(List.of(option));
+        when(orderItemService.createOrderItems(any(), any())).thenReturn(List.of(
+                OrderItem.builder()
+                        .item(option.getItem())
+                        .itemOption(option)
+                        .orderPrice(1100)
+                        .discountRate(0)
+                        .quantity(1)
+                        .build()
+        ));
+
+        OrderRequestDto requestDto = new OrderRequestDto();
+        requestDto.setAddress(createAddressRequestDto());
+        requestDto.setOrderItems(List.of(new OrderItemRequestDto()));
+        requestDto.setUsePoint(100);
+
+        assertThatThrownBy(() -> orderService.createInstanceOrder(1L, requestDto))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.INSUFFICIENT_POINT);
+    }
+
+    @Test
+    @DisplayName("주문 생성: 요청 포인트가 결제 가능 금액을 초과하면 실패")
+    void createInstanceOrder_usePointExceedsPayableAmount() {
+        Member member = createMember(1L);
+        ReflectionTestUtils.setField(member, "point", 5000);
+        when(memberReadPort.getByIdWithLock(1L)).thenReturn(member);
+
+        ItemOption option = createOption(createItem(), 100, 10);
+        when(orderItemService.getItemOptionsWithLock(any())).thenReturn(List.of(option));
+        when(orderItemService.createOrderItems(any(), any())).thenReturn(List.of(
+                OrderItem.builder()
+                        .item(option.getItem())
+                        .itemOption(option)
+                        .orderPrice(1100)
+                        .discountRate(0)
+                        .quantity(1)
+                        .build()
+        ));
+
+        OrderRequestDto requestDto = new OrderRequestDto();
+        requestDto.setAddress(createAddressRequestDto());
+        requestDto.setOrderItems(List.of(new OrderItemRequestDto()));
+        requestDto.setUsePoint(2000);
+
+        assertThatThrownBy(() -> orderService.createInstanceOrder(1L, requestDto))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.INVALID_POINT_OPERATION);
+    }
+
+    @Test
     @DisplayName("주문 생성: couponId를 memberCouponId로 보내면 쿠폰 조회 실패")
     void createInstanceOrder_withCouponTemplateId_shouldFail() {
         Member member = createMember(1L);
@@ -228,10 +289,21 @@ class OrderServiceTest {
     @Test
     @DisplayName("주문 취소: 주문 없음")
     void cancelOrder_notFound() {
-        when(orderRepository.findById(anyLong())).thenReturn(Optional.empty());
+        when(orderRepository.findByIdAndMemberIdWithLock(anyLong(), anyLong())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> orderService.cancelOrder(1L, 1L, "변경"))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    @DisplayName("주문 취소: 본인 주문이 아니면 실패")
+    void cancelOrder_unauthorized() {
+        when(orderRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> orderService.cancelOrder(1L, 1L, "변경"))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.ORDER_NOT_FOUND);
     }
 
     @Test
@@ -242,7 +314,7 @@ class OrderServiceTest {
                 .member(createMember(1L))
                 .orderItems(List.of())
                 .build();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.of(order));
 
         assertThatThrownBy(() -> orderService.cancelOrder(1L, 1L, "변경"))
                 .isInstanceOf(BusinessException.class);
@@ -269,13 +341,15 @@ class OrderServiceTest {
                 .orderItems(List.of(orderItem))
                 .build();
 
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.of(order));
 
         OrderCancelResponseDto result = orderService.cancelOrder(member.getId(), 1L, "변경");
 
         assertThat(result.getOrderId()).isEqualTo(1L);
         assertThat(result.getCancelReason()).isEqualTo("변경");
         assertThat(option.getStock()).isEqualTo(2);
+        assertThat(order.getCancelReason()).isEqualTo("변경");
+        assertThat(order.getCancelledAt()).isNotNull();
         verify(memberPointPort).restorePoint(member.getId(), 100);
         verify(couponApi).restoreCoupon(55L);
     }
@@ -288,7 +362,7 @@ class OrderServiceTest {
                 .orderState(OrderState.PAID)
                 .member(member)
                 .build();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.of(order));
 
         assertThatThrownBy(() -> orderService.cancelOrder(member.getId(), 1L, "변경"))
                 .isInstanceOf(BusinessException.class)
@@ -307,7 +381,7 @@ class OrderServiceTest {
                 .orderItems(List.of())
                 .build();
         ReflectionTestUtils.setField(order, "id", 1L);
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.of(order));
         when(orderPaymentStatusPort.hasReadyPayment(1L)).thenReturn(true);
 
         OrderCancelResponseDto result = orderService.cancelOrder(member.getId(), 1L, "결제 취소");
@@ -360,12 +434,13 @@ class OrderServiceTest {
                 .orderDate(LocalDateTime.now().minusHours(1))
                 .orderItems(List.of(orderItem))
                 .build();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdWithLock(1L)).thenReturn(Optional.of(order));
 
         boolean cancelled = orderService.autoCancelStaleUnpaidOrder(1L, LocalDateTime.now().minusMinutes(30));
 
         assertThat(cancelled).isTrue();
         assertThat(order.getOrderState()).isEqualTo(OrderState.CANCELLED);
+        assertThat(order.getCancelReason()).isEqualTo("결제 시간 초과 자동 취소");
         assertThat(option.getStock()).isEqualTo(2);
         verify(orderPaymentStatusPort, never()).hasReadyPayment(anyLong());
     }
@@ -379,13 +454,50 @@ class OrderServiceTest {
                 .orderDate(LocalDateTime.now().minusHours(1))
                 .orderItems(List.of())
                 .build();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdWithLock(1L)).thenReturn(Optional.of(order));
         when(orderPaymentStatusPort.hasReadyPayment(1L)).thenReturn(true);
 
         boolean cancelled = orderService.autoCancelStaleUnpaidOrder(1L, LocalDateTime.now().minusMinutes(30));
 
         assertThat(cancelled).isTrue();
         assertThat(order.getOrderState()).isEqualTo(OrderState.CANCELLED);
+        assertThat(order.getCancelReason()).isEqualTo("결제 시간 초과 자동 취소");
+    }
+
+    @Test
+    @DisplayName("주문 취소 후 자동 취소가 재실행되어도 보상은 중복 반영되지 않음")
+    void cancelOrder_thenAutoCancel_shouldNotDuplicateCompensation() {
+        Member member = createMember(1L);
+        ItemOption option = createOption(createItem(), 100, 1);
+        OrderItem orderItem = OrderItem.builder()
+                .item(option.getItem())
+                .itemOption(option)
+                .orderPrice(1100)
+                .discountRate(0)
+                .quantity(1)
+                .build();
+
+        Order order = Order.builder()
+                .id(1L)
+                .orderState(OrderState.WAITING_FOR_PAY)
+                .member(member)
+                .usePoint(100)
+                .memberCouponId(55L)
+                .orderDate(LocalDateTime.now().minusHours(1))
+                .orderItems(List.of(orderItem))
+                .build();
+
+        when(orderRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdWithLock(1L)).thenReturn(Optional.of(order));
+
+        orderService.cancelOrder(member.getId(), 1L, "사용자 취소");
+        boolean autoCancelled = orderService.autoCancelStaleUnpaidOrder(1L, LocalDateTime.now().minusMinutes(30));
+
+        assertThat(autoCancelled).isFalse();
+        assertThat(order.getOrderState()).isEqualTo(OrderState.CANCELLED);
+        assertThat(option.getStock()).isEqualTo(2);
+        verify(memberPointPort, times(1)).restorePoint(member.getId(), 100);
+        verify(couponApi, times(1)).restoreCoupon(55L);
     }
 
     @Test
@@ -397,7 +509,7 @@ class OrderServiceTest {
                 .orderDate(LocalDateTime.now().minusHours(1))
                 .orderItems(List.of())
                 .build();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdWithLock(1L)).thenReturn(Optional.of(order));
         when(orderPaymentStatusPort.hasReadyPayment(1L)).thenReturn(false);
 
         boolean cancelled = orderService.autoCancelStaleUnpaidOrder(1L, LocalDateTime.now().minusMinutes(30));
@@ -415,7 +527,7 @@ class OrderServiceTest {
                 .orderDate(LocalDateTime.now().minusMinutes(5))
                 .orderItems(List.of())
                 .build();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdWithLock(1L)).thenReturn(Optional.of(order));
 
         boolean cancelled = orderService.autoCancelStaleUnpaidOrder(1L, LocalDateTime.now().minusMinutes(30));
 
@@ -431,7 +543,7 @@ class OrderServiceTest {
                 .orderState(OrderState.REFUND_PENDING)
                 .member(member)
                 .build();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.of(order));
 
         assertThatThrownBy(() -> orderService.cancelOrder(member.getId(), 1L, "환불 중 취소"))
                 .isInstanceOf(BusinessException.class)
@@ -478,7 +590,7 @@ class OrderServiceTest {
                 .orderState(OrderState.DELIVERED)
                 .member(member)
                 .build();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.of(order));
 
         orderService.purchaseConfirmation(member.getId(), 1L);
 
@@ -493,7 +605,7 @@ class OrderServiceTest {
                 .orderState(OrderState.SHIPPING)
                 .member(member)
                 .build();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.of(order));
 
         assertThatThrownBy(() -> orderService.purchaseConfirmation(member.getId(), 1L))
                 .isInstanceOf(BusinessException.class)
@@ -509,7 +621,7 @@ class OrderServiceTest {
                 .orderState(OrderState.PAID)
                 .member(createMember(1L))
                 .build();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdWithLock(1L)).thenReturn(Optional.of(order));
 
         orderService.updateOrderStateByAdmin(1L, OrderState.PREPARING_FOR_SHIPMENT);
 
@@ -523,7 +635,7 @@ class OrderServiceTest {
                 .orderState(OrderState.PAID)
                 .member(createMember(1L))
                 .build();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdWithLock(1L)).thenReturn(Optional.of(order));
 
         assertThatThrownBy(() -> orderService.updateOrderStateByAdmin(1L, OrderState.DELIVERED))
                 .isInstanceOf(BusinessException.class)
@@ -539,7 +651,7 @@ class OrderServiceTest {
                 .refundRequestStatus(OrderRefundRequestStatus.REQUESTED)
                 .member(createMember(1L))
                 .build();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdWithLock(1L)).thenReturn(Optional.of(order));
 
         assertThatThrownBy(() -> orderService.updateOrderStateByAdmin(1L, OrderState.PREPARING_FOR_SHIPMENT))
                 .isInstanceOf(BusinessException.class)
@@ -555,7 +667,7 @@ class OrderServiceTest {
                 .refundRequestStatus(OrderRefundRequestStatus.APPROVED)
                 .member(createMember(1L))
                 .build();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdWithLock(1L)).thenReturn(Optional.of(order));
 
         assertThatThrownBy(() -> orderService.updateOrderStateByAdmin(1L, OrderState.PREPARING_FOR_SHIPMENT))
                 .isInstanceOf(BusinessException.class)
@@ -571,7 +683,7 @@ class OrderServiceTest {
                 .refundRequestStatus(OrderRefundRequestStatus.REJECTED)
                 .member(createMember(1L))
                 .build();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdWithLock(1L)).thenReturn(Optional.of(order));
 
         orderService.updateOrderStateByAdmin(1L, OrderState.PREPARING_FOR_SHIPMENT);
 
@@ -586,7 +698,7 @@ class OrderServiceTest {
                 .orderState(OrderState.PAID)
                 .member(member)
                 .build();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.of(order));
 
         orderService.requestRefundRequest(member.getId(), 1L, "단순 변심");
 
@@ -603,7 +715,7 @@ class OrderServiceTest {
                 .orderState(OrderState.SHIPPING)
                 .member(member)
                 .build();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.of(order));
 
         assertThatThrownBy(() -> orderService.requestRefundRequest(member.getId(), 1L, "배송 중 요청"))
                 .isInstanceOf(BusinessException.class)
@@ -620,7 +732,7 @@ class OrderServiceTest {
                 .refundRequestStatus(OrderRefundRequestStatus.REQUESTED)
                 .member(member)
                 .build();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.of(order));
 
         assertThatThrownBy(() -> orderService.requestRefundRequest(member.getId(), 1L, "중복 요청"))
                 .isInstanceOf(BusinessException.class)
@@ -636,7 +748,7 @@ class OrderServiceTest {
                 .refundRequestStatus(OrderRefundRequestStatus.REQUESTED)
                 .member(createMember(1L))
                 .build();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdWithLock(1L)).thenReturn(Optional.of(order));
 
         orderService.processRefundRequestByAdmin(1L, OrderRefundRequestStatus.APPROVED, "환불 가능");
 
@@ -652,7 +764,7 @@ class OrderServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(BusinessErrorCode.ORDER_REFUND_REQUEST_INVALID_STATE_TRANSITION);
-        verify(orderRepository, never()).findById(anyLong());
+        verify(orderRepository, never()).findByIdWithLock(anyLong());
     }
 
     @Test
@@ -662,7 +774,7 @@ class OrderServiceTest {
                 .orderState(OrderState.PAID)
                 .member(createMember(1L))
                 .build();
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdWithLock(1L)).thenReturn(Optional.of(order));
 
         assertThatThrownBy(() -> orderService.processRefundRequestByAdmin(1L, OrderRefundRequestStatus.APPROVED, "승인"))
                 .isInstanceOf(BusinessException.class)
@@ -677,7 +789,7 @@ class OrderServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(BusinessErrorCode.ORDER_REFUND_REQUEST_INVALID_STATE_TRANSITION);
-        verify(orderRepository, never()).findById(anyLong());
+        verify(orderRepository, never()).findByIdWithLock(anyLong());
     }
 
     @Test
@@ -687,7 +799,7 @@ class OrderServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(BusinessErrorCode.ORDER_REFUND_REQUEST_INVALID_STATE_TRANSITION);
-        verify(orderRepository, never()).findById(anyLong());
+        verify(orderRepository, never()).findByIdWithLock(anyLong());
     }
 
     private Member createMember(Long id) {

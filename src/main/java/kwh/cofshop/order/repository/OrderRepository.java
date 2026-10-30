@@ -1,10 +1,13 @@
 package kwh.cofshop.order.repository;
 
+import jakarta.persistence.LockModeType;
 import kwh.cofshop.order.domain.OrderRefundRequestStatus;
 import kwh.cofshop.order.domain.OrderState;
 import kwh.cofshop.order.domain.Order;
 import kwh.cofshop.order.repository.custom.OrderRepositoryCustom;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -18,6 +21,14 @@ import java.util.Optional;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long>, OrderRepositoryCustom {
     Optional<Order> findByIdAndMember_Id(Long id, Long memberId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT o FROM Order o WHERE o.id = :orderId")
+    Optional<Order> findByIdWithLock(@Param("orderId") Long orderId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT o FROM Order o WHERE o.id = :orderId AND o.member.id = :memberId")
+    Optional<Order> findByIdAndMemberIdWithLock(@Param("orderId") Long orderId, @Param("memberId") Long memberId);
 
     @Query("""
             SELECT o.id
@@ -35,6 +46,17 @@ public interface OrderRepository extends JpaRepository<Order, Long>, OrderReposi
 
     @Query("SELECT o.refundRequestStatus FROM Order o WHERE o.id = :orderId")
     Optional<OrderRefundRequestStatus> findRefundRequestStatusById(@Param("orderId") Long orderId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE Order o
+            SET o.orderState = :targetState
+            WHERE o.id = :orderId
+              AND o.orderState IN :currentStates
+            """)
+    int updateOrderStateIfCurrentIn(@Param("orderId") Long orderId,
+                                    @Param("currentStates") List<OrderState> currentStates,
+                                    @Param("targetState") OrderState targetState);
 
     @Query(value = """
                 SELECT COUNT(*)

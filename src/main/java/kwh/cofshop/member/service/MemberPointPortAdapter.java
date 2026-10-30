@@ -16,7 +16,7 @@ class MemberPointPortAdapter implements MemberPointPort {
 
     @Override
     public void restorePoint(Long memberId, int point) {
-        Member member = memberRepository.findById(memberId)
+        Member member = memberRepository.findByIdWithLock(memberId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.MEMBER_NOT_FOUND));
         member.restorePoint(point);
     }
