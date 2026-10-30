@@ -15,10 +15,12 @@ import java.util.List;
 public interface ItemOptionRepository extends JpaRepository<ItemOption, Long>, ItemOptionRepositoryCustom {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    List<ItemOption> findByItemId(Long id);
+    @Query("SELECT io FROM ItemOption io WHERE io.item.id = :id ORDER BY io.id")
+    List<ItemOption> findByItemId(@Param("id") Long id);
 
+    // 데드락 방지를 위해 항상 ID 순서로 락 획득
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT io FROM ItemOption io WHERE io.id IN :ids")
+    @Query("SELECT io FROM ItemOption io WHERE io.id IN :ids ORDER BY io.id")
     List<ItemOption> findAllByIdInWithLock(@Param("ids") List<Long> ids);
 
 

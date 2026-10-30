@@ -347,7 +347,7 @@ class OrderServiceTest {
 
         assertThat(result.getOrderId()).isEqualTo(1L);
         assertThat(result.getCancelReason()).isEqualTo("변경");
-        assertThat(option.getStock()).isEqualTo(2);
+        verify(orderItemService, times(1)).restoreStock(order.getOrderItems());
         assertThat(order.getCancelReason()).isEqualTo("변경");
         assertThat(order.getCancelledAt()).isNotNull();
         verify(memberPointPort).restorePoint(member.getId(), 100);
@@ -413,7 +413,7 @@ class OrderServiceTest {
         orderService.cancelAndRestore(order);
 
         assertThat(order.getOrderState()).isEqualTo(OrderState.CANCELLED);
-        assertThat(option.getStock()).isEqualTo(2);
+        verify(orderItemService, times(1)).restoreStock(order.getOrderItems());
         verify(memberPointPort).restorePoint(member.getId(), 50);
     }
 
@@ -441,7 +441,7 @@ class OrderServiceTest {
         assertThat(cancelled).isTrue();
         assertThat(order.getOrderState()).isEqualTo(OrderState.CANCELLED);
         assertThat(order.getCancelReason()).isEqualTo("결제 시간 초과 자동 취소");
-        assertThat(option.getStock()).isEqualTo(2);
+        verify(orderItemService, times(1)).restoreStock(order.getOrderItems());
         verify(orderPaymentStatusPort, never()).hasReadyPayment(anyLong());
     }
 
@@ -495,7 +495,7 @@ class OrderServiceTest {
 
         assertThat(autoCancelled).isFalse();
         assertThat(order.getOrderState()).isEqualTo(OrderState.CANCELLED);
-        assertThat(option.getStock()).isEqualTo(2);
+        verify(orderItemService, times(1)).restoreStock(order.getOrderItems());
         verify(memberPointPort, times(1)).restorePoint(member.getId(), 100);
         verify(couponApi, times(1)).restoreCoupon(55L);
     }

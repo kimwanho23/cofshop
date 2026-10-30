@@ -51,6 +51,21 @@ class OrderItemServiceTest {
     }
 
     @Test
+    @DisplayName("재고 복구: 락으로 다시 읽은 옵션에 같은 옵션 수량을 합쳐 반영")
+    void restoreStock_usesLockedOptions() {
+        ItemOption staleOption = createOption(10L, createItem(1L), 100, 3);
+        ItemOption lockedOption = createOption(10L, createItem(1L), 100, 7);
+        OrderItem first = OrderItem.builder().itemOption(staleOption).quantity(1).build();
+        OrderItem second = OrderItem.builder().itemOption(staleOption).quantity(2).build();
+        when(itemReadPort.findItemOptionsByIdsWithLock(List.of(10L))).thenReturn(List.of(lockedOption));
+
+        orderItemService.restoreStock(List.of(first, second));
+
+        assertThat(lockedOption.getStock()).isEqualTo(10);
+        assertThat(staleOption.getStock()).isEqualTo(3);
+    }
+
+    @Test
     @DisplayName("주문 아이템 생성")
     void createOrderItems() {
         OrderItemRequestDto dto = new OrderItemRequestDto();

@@ -152,15 +152,9 @@ public class OrderService {
     }
 
     private void restoreOrderCompensation(Order order) {
-        restoreStock(order);
+        // 주문 생성과 같은 순서(회원 -> 옵션)로 락을 획득해 데드락 방지
         restoreMemberBenefits(order);
-    }
-
-    private void restoreStock(Order order) {
-        if (order.getOrderItems() == null) {
-            return;
-        }
-        order.getOrderItems().forEach(OrderItem::restoreStock);
+        orderItemService.restoreStock(order.getOrderItems());
     }
 
     private void restoreMemberBenefits(Order order) {

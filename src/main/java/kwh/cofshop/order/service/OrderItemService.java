@@ -61,6 +61,22 @@ public class OrderItemService {
         return result;
     }
 
+    // 재고 복구: 락 없이 읽은 값을 저장하면 동시 주문의 차감이 유실되므로 락을 걸고 다시 읽음
+    public void restoreStock(List<OrderItem> orderItems) {
+        if (orderItems == null || orderItems.isEmpty()) {
+            return;
+        }
+
+        Map<Long, Integer> restoredQuantityByOptionId = orderItems.stream()
+                .collect(Collectors.groupingBy(
+                        orderItem -> orderItem.getItemOption().getId(),
+                        Collectors.summingInt(OrderItem::getQuantity)
+                ));
+
+        itemReadPort.findItemOptionsByIdsWithLock(List.copyOf(restoredQuantityByOptionId.keySet()))
+                .forEach(option -> option.addStock(restoredQuantityByOptionId.get(option.getId())));
+    }
+
     private void validateOrderItemDtos(List<OrderItemRequestDto> dtoList) {
         if (dtoList == null || dtoList.isEmpty()) {
             throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
