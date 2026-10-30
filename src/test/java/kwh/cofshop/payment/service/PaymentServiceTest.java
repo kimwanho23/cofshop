@@ -681,7 +681,7 @@ class PaymentServiceTest {
 
         verify(orderRefundPort).validateRefundApproved(1L);
         verify(paymentRefundTxService).markRefundPending(1L, 1L);
-        verify(paymentRefundTxService).rollbackRefundPending(1L, 1L);
+        verify(paymentRefundTxService, never()).rollbackRefundPending(1L, 1L);
     }
 
     @Test
@@ -739,7 +739,7 @@ class PaymentServiceTest {
 
         verify(orderRefundPort).validateRefundApproved(1L);
         verify(paymentRefundTxService).markRefundPending(1L, 1L);
-        verify(paymentRefundTxService).rollbackRefundPending(1L, 1L);
+        verify(paymentRefundTxService, never()).rollbackRefundPending(1L, 1L);
     }
 
     @Test

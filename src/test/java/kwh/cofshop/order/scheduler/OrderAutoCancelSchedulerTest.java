@@ -32,8 +32,27 @@ class OrderAutoCancelSchedulerTest {
     @Mock
     private OrderService orderService;
 
+    @Mock
+    private kwh.cofshop.order.api.OrderPaymentReconcilePort orderPaymentReconcilePort;
+
     @InjectMocks
     private OrderAutoCancelScheduler scheduler;
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("자동 취소: PG 조회가 실패하면 그 주문은 취소하지 않고 다음 주문을 처리")
+    void autoCancelStaleOrders_skipsWhenPgLookupFails() {
+        ReflectionTestUtils.setField(scheduler, "timeoutMinutes", 30L);
+        ReflectionTestUtils.setField(scheduler, "batchSize", 2);
+        when(orderRepository.findStaleOrderIdsForAutoCancel(any(), any(), any(Pageable.class)))
+                .thenReturn(List.of(10L, 20L));
+        org.mockito.Mockito.doThrow(new RuntimeException("pg down"))
+                .when(orderPaymentReconcilePort).reconcileBeforeCancel(10L);
+
+        scheduler.autoCancelStaleOrders();
+
+        verify(orderService, org.mockito.Mockito.never()).autoCancelStaleUnpaidOrder(eq(10L), any(LocalDateTime.class));
+        verify(orderService).autoCancelStaleUnpaidOrder(eq(20L), any(LocalDateTime.class));
+    }
 
     @Test
     @DisplayName("주문 자동취소 스케줄러: 만료 주문이 없으면 아무 동작 안 함")

@@ -23,7 +23,9 @@ import kwh.cofshop.payment.dto.response.PaymentResponseDto;
 import kwh.cofshop.payment.dto.request.PaymentVerifyRequestDto;
 import kwh.cofshop.payment.repository.PaymentEntityRepository;
 import kwh.cofshop.payment.repository.projection.PaymentProviderLookupProjection;
+import io.micrometer.core.instrument.Metrics;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +34,7 @@ import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PaymentService {
 
     private static final String PORTONE_PAYMENT_STATUS_PAID = "PAID";
@@ -174,6 +177,51 @@ public class PaymentService {
         );
     }
 
+    // 고객의 검증 요청 없이 PG 상태로 결제를 맞춤. 결제 완료면 확정하고, 주문이 이미 취소됐으면 PG 취소까지 진행
+    @DistributedLock(keyName = "'payment:' + #paymentId")
+    public void reconcilePayment(Long paymentId) {
+        PaymentEntity paymentEntity = paymentEntityRepository.findById(paymentId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.PAYMENT_NOT_FOUND));
+        if (paymentEntity.getStatus() != PaymentStatus.READY) {
+            return;
+        }
+
+        PortOnePayment payment = paymentProviderService.findPayment(paymentEntity.getMerchantUid()).orElse(null);
+        if (payment == null || !PORTONE_PAYMENT_STATUS_PAID.equalsIgnoreCase(payment.status())) {
+            return;
+        }
+
+        Long paidAmount = payment.paidAmount();
+        if (paidAmount == null) {
+            throw new BusinessException(BusinessErrorCode.PAYMENT_AMOUNT_DISCREPANCY);
+        }
+
+        Long orderId = getOrderId(paymentEntity);
+        if (orderStatePort.getOrderState(orderId) == OrderStatus.CANCELLED) {
+            settleCancelledOrderPayment(
+                    paymentId,
+                    paymentEntity.getMemberId(),
+                    paymentEntity.getMerchantUid(),
+                    payment.transactionId(),
+                    payment.pgTxId(),
+                    paidAmount
+            );
+            log.warn("[Reconcile] 취소된 주문의 결제를 PG 취소 처리 paymentId={}, orderId={}", paymentId, orderId);
+            Metrics.counter("payment.reconciliation.recovered", "result", "refunded").increment();
+            return;
+        }
+
+        paymentVerificationTxService.confirmPaidPayment(
+                paymentId,
+                paymentEntity.getMemberId(),
+                payment.transactionId(),
+                payment.pgTxId(),
+                paidAmount
+        );
+        log.warn("[Reconcile] 검증 요청이 없던 결제를 확정 paymentId={}, orderId={}", paymentId, orderId);
+        Metrics.counter("payment.reconciliation.recovered", "result", "confirmed").increment();
+    }
+
     private void settleCancelledOrderPayment(
             Long paymentId,
             Long memberId,
@@ -301,6 +349,8 @@ public class PaymentService {
         paymentRefundTxService.confirmRefund(paymentId, memberId);
     }
 
+    // PG가 취소 실패를 명확히 응답한 경우에만 되돌림. 타임아웃이나 처리 중이면 이미 환불됐을 수 있으므로
+    // REFUND_PENDING을 유지하고, 재시도(ApprovedRefundRetryScheduler)에서 PG 상태로 확정
     private void executeRefundCancellation(Long paymentId, Long memberId, PaymentEntity paymentEntity) {
         PortOneCancellation cancellation;
         try {
@@ -310,7 +360,6 @@ public class PaymentService {
                 paymentRefundTxService.confirmRefund(paymentId, memberId);
                 return;
             }
-            paymentRefundTxService.rollbackRefundPending(paymentId, memberId);
             throw e;
         }
 
@@ -321,7 +370,6 @@ public class PaymentService {
 
         PortOnePayment payment = paymentProviderService.getPayment(paymentEntity.getMerchantUid());
         if (!PORTONE_PAYMENT_STATUS_CANCELLED.equalsIgnoreCase(payment.status())) {
-            paymentRefundTxService.rollbackRefundPending(paymentId, memberId);
             throw new BusinessException(BusinessErrorCode.PAYMENT_REFUND_FAIL);
         }
 

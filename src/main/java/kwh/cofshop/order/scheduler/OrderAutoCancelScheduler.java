@@ -1,6 +1,7 @@
 package kwh.cofshop.order.scheduler;
 
 import kwh.cofshop.global.annotation.DistributedLock;
+import kwh.cofshop.order.api.OrderPaymentReconcilePort;
 import kwh.cofshop.order.domain.OrderState;
 import kwh.cofshop.order.repository.OrderRepository;
 import kwh.cofshop.order.service.OrderService;
@@ -25,6 +26,7 @@ public class OrderAutoCancelScheduler {
 
     private final OrderRepository orderRepository;
     private final OrderService orderService;
+    private final OrderPaymentReconcilePort orderPaymentReconcilePort;
 
     @Value("${order.auto-cancel.timeout-minutes:30}")
     private long timeoutMinutes;
@@ -56,6 +58,8 @@ public class OrderAutoCancelScheduler {
         int cancelledCount = 0;
         for (Long orderId : staleOrderIds) {
             try {
+                // 실패하면 결제 여부를 모르는 채로 취소하지 않고 다음 실행으로 넘김
+                orderPaymentReconcilePort.reconcileBeforeCancel(orderId);
                 if (orderService.autoCancelStaleUnpaidOrder(orderId, deadline)) {
                     cancelledCount++;
                 }

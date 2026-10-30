@@ -66,6 +66,9 @@ public class PaymentEntity {
     @Column(name = "requested_at", nullable = false)
     private LocalDateTime requestedAt; // 결제 요청 시간
 
+    @Column(name = "last_reconciled_at", nullable = true)
+    private LocalDateTime lastReconciledAt; // PG 대사 마지막 확인 시간
+
     // 연관관계
 
     @Builder
