@@ -44,6 +44,7 @@ application-prod.properties
 .gradle-user/
 .gradle-home/
 node_modules/
+backups/
 
 # Local artifacts in info folder
 정보/
