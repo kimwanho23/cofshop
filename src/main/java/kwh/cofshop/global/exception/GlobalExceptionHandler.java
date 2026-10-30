@@ -10,15 +10,24 @@ import org.slf4j.MDC;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.util.Arrays;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Map<String, BadRequestErrorCode> CONSTRAINT_ERROR_CODE_MAP = Map.of(
+            "SupportedPgProvider", BadRequestErrorCode.UNSUPPORTED_PG_PROVIDER,
+            "SupportedPaymentMethod", BadRequestErrorCode.UNSUPPORTED_PAY_METHOD
+    );
 
     @ExceptionHandler(BusinessException.class)
     protected ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e, HttpServletRequest request) {
@@ -55,26 +64,28 @@ public class GlobalExceptionHandler {
             MethodArgumentNotValidException e,
             HttpServletRequest request
     ) {
+        BadRequestErrorCode validationErrorCode = resolveValidationErrorCode(e);
+
         String details = e.getBindingResult().getFieldErrors().stream()
                 .map(fieldError -> fieldError.getField() + ": " + fieldError.getDefaultMessage())
                 .collect(Collectors.joining(", "));
 
         if (details.isBlank()) {
-            details = BadRequestErrorCode.INPUT_INVALID_VALUE.getMessage();
+            details = validationErrorCode.getMessage();
         }
 
         log.warn(
                 "MethodArgumentNotValidException code={} status={} path={} traceId={} details={}",
-                BadRequestErrorCode.INPUT_INVALID_VALUE.getCode(),
-                BadRequestErrorCode.INPUT_INVALID_VALUE.getHttpStatus().value(),
+                validationErrorCode.getCode(),
+                validationErrorCode.getHttpStatus().value(),
                 resolvePath(request),
                 resolveTraceId(request),
                 details
         );
 
         return ResponseEntity
-                .status(BadRequestErrorCode.INPUT_INVALID_VALUE.getHttpStatus())
-                .body(ErrorResponse.of(BadRequestErrorCode.INPUT_INVALID_VALUE, details));
+                .status(validationErrorCode.getHttpStatus())
+                .body(ErrorResponse.of(validationErrorCode, details));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
@@ -146,6 +157,40 @@ public class GlobalExceptionHandler {
 
     private String resolvePath(HttpServletRequest request) {
         return request == null ? "N/A" : request.getRequestURI();
+    }
+
+    private BadRequestErrorCode resolveValidationErrorCode(MethodArgumentNotValidException e) {
+        return e.getBindingResult().getFieldErrors().stream()
+                .map(this::resolveConstraintErrorCode)
+                .flatMap(Optional::stream)
+                .findFirst()
+                .orElse(BadRequestErrorCode.INPUT_INVALID_VALUE);
+    }
+
+    private Optional<BadRequestErrorCode> resolveConstraintErrorCode(FieldError fieldError) {
+        if (fieldError.getCode() != null) {
+            Optional<BadRequestErrorCode> code = resolveConstraintErrorCode(fieldError.getCode());
+            if (code.isPresent()) {
+                return code;
+            }
+        }
+
+        String[] codes = fieldError.getCodes();
+        if (codes == null) {
+            return Optional.empty();
+        }
+        return Arrays.stream(codes)
+                .filter(code -> code != null)
+                .map(this::resolveConstraintErrorCode)
+                .flatMap(Optional::stream)
+                .findFirst();
+    }
+
+    private Optional<BadRequestErrorCode> resolveConstraintErrorCode(String code) {
+        return CONSTRAINT_ERROR_CODE_MAP.entrySet().stream()
+                .filter(entry -> code.startsWith(entry.getKey()))
+                .map(Map.Entry::getValue)
+                .findFirst();
     }
 
     private String resolveTraceId(HttpServletRequest request) {

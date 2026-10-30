@@ -9,6 +9,7 @@ import kwh.cofshop.payment.dto.request.PaymentRefundRequestDto;
 import kwh.cofshop.payment.dto.response.PaymentResponseDto;
 import kwh.cofshop.payment.dto.request.PaymentVerifyRequestDto;
 import kwh.cofshop.payment.service.PaymentService;
+import kwh.cofshop.payment.service.PaymentService.PaymentCreateResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -46,7 +47,11 @@ public class PaymentController {
     public ResponseEntity<PaymentResponseDto> requestPayment(@PathVariable Long orderId,
                                                              @LoginMember Long memberId,
                                                              @RequestBody @Valid PaymentPrepareRequestDto requestDto) {
-        PaymentResponseDto paymentRequest = paymentService.createPaymentRequest(memberId, orderId, requestDto);
+        PaymentCreateResult paymentCreateResult = paymentService.createPaymentRequest(memberId, orderId, requestDto);
+        if (!paymentCreateResult.created()) {
+            return ResponseEntity.ok(paymentCreateResult.response());
+        }
+        PaymentResponseDto paymentRequest = paymentCreateResult.response();
         return ResponseEntity.created(URI.create("/api/payments/" + paymentRequest.getPaymentId()))
                 .body(paymentRequest);
     }

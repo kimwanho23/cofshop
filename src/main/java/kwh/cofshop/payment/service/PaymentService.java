@@ -13,6 +13,8 @@ import kwh.cofshop.order.api.OrderStatePort;
 import kwh.cofshop.payment.client.portone.PortOneCancellation;
 import kwh.cofshop.payment.client.portone.PortOnePayment;
 import kwh.cofshop.payment.domain.PaymentEntity;
+import kwh.cofshop.payment.domain.PaymentMethod;
+import kwh.cofshop.payment.domain.PGProvider;
 import kwh.cofshop.payment.domain.PaymentStatus;
 import kwh.cofshop.payment.dto.request.PaymentPrepareRequestDto;
 import kwh.cofshop.payment.dto.response.PaymentProviderResponseDto;
@@ -22,10 +24,10 @@ import kwh.cofshop.payment.dto.request.PaymentVerifyRequestDto;
 import kwh.cofshop.payment.repository.PaymentEntityRepository;
 import kwh.cofshop.payment.repository.projection.PaymentProviderLookupProjection;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.Objects;
 
 @Service
@@ -40,6 +42,7 @@ public class PaymentService {
     private final OrderStatePort orderStatePort;
     private final OrderRefundPort orderRefundPort;
     private final PaymentRefundTxService paymentRefundTxService;
+    private final PaymentVerificationTxService paymentVerificationTxService;
     private final PaymentEntityRepository paymentEntityRepository;
     private final PaymentProviderService paymentProviderService;
 
@@ -60,9 +63,20 @@ public class PaymentService {
         return PaymentProviderResponseDto.from(payment);
     }
 
-    @DistributedLock(keyName = "'payment:' + #orderId")
+    @DistributedLock(keyName = "'order:' + #orderId")
     @Transactional
-    public PaymentResponseDto createPaymentRequest(Long memberId, Long orderId, PaymentPrepareRequestDto requestDto) {
+    public PaymentCreateResult createPaymentRequest(Long memberId, Long orderId, PaymentPrepareRequestDto requestDto) {
+        String normalizedPgProvider = normalizePgProvider(requestDto.getPgProvider());
+        String normalizedPayMethod = normalizePayMethod(requestDto.getPayMethod());
+
+        PaymentEntity existingPayment = paymentEntityRepository.findByOrderId(orderId).orElse(null);
+        if (existingPayment != null) {
+            if (!existingPayment.getMemberId().equals(memberId)) {
+                throw new BusinessException(BusinessErrorCode.PAYMENT_NOT_FOUND);
+            }
+            return PaymentCreateResult.reused(PaymentResponseDto.from(existingPayment));
+        }
+
         OrderPaymentPrepareInfo paymentPrepareInfo = orderPaymentPreparePort.prepare(orderId, memberId);
 
         PaymentEntity currentPayment = PaymentEntity.createPayment(
@@ -73,14 +87,37 @@ public class PaymentService {
                 paymentPrepareInfo.buyerEmail(),
                 paymentPrepareInfo.buyerName(),
                 paymentPrepareInfo.buyerTel(),
-                requestDto.getPgProvider(),
-                requestDto.getPayMethod()
+                normalizedPgProvider,
+                normalizedPayMethod
         );
-        paymentEntityRepository.save(currentPayment);
-        return PaymentResponseDto.from(currentPayment);
+        try {
+            paymentEntityRepository.save(currentPayment);
+        } catch (DataIntegrityViolationException e) {
+            PaymentEntity duplicatedPayment = paymentEntityRepository.findByOrderId(orderId)
+                    .orElseThrow(() -> e);
+            if (!duplicatedPayment.getMemberId().equals(memberId)) {
+                throw new BusinessException(BusinessErrorCode.PAYMENT_NOT_FOUND);
+            }
+            return PaymentCreateResult.reused(PaymentResponseDto.from(duplicatedPayment));
+        }
+        return PaymentCreateResult.created(PaymentResponseDto.from(currentPayment));
     }
 
-    @Transactional
+    private String normalizePgProvider(String rawProvider) {
+        if (!PGProvider.isSupported(rawProvider)) {
+            throw new BadRequestException(BadRequestErrorCode.UNSUPPORTED_PG_PROVIDER);
+        }
+        return PGProvider.normalize(rawProvider);
+    }
+
+    private String normalizePayMethod(String rawMethod) {
+        if (!PaymentMethod.isSupported(rawMethod)) {
+            throw new BadRequestException(BadRequestErrorCode.UNSUPPORTED_PAY_METHOD);
+        }
+        return PaymentMethod.normalize(rawMethod);
+    }
+
+    @DistributedLock(keyName = "'payment:' + #paymentEntityId")
     public void verifyPayment(Long memberId, Long paymentEntityId, PaymentVerifyRequestDto requestDto) {
         PaymentEntity paymentEntity = paymentEntityRepository.findByIdAndMemberId(paymentEntityId, memberId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.PAYMENT_NOT_FOUND));
@@ -96,41 +133,95 @@ public class PaymentService {
         Long orderId = getOrderId(paymentEntity);
         OrderStatus orderStatus = orderStatePort.getOrderState(orderId);
 
-        if (paymentEntity.getStatus() == PaymentStatus.PAID) {
-            if (orderStatus == OrderStatus.CANCELLED) {
-                throw new BusinessException(BusinessErrorCode.ORDER_ALREADY_CANCELLED);
-            }
-
-            if (!Objects.equals(paymentEntity.getImpUid(), payment.transactionId())) {
-                throw new BusinessException(BusinessErrorCode.PAYMENT_UID_DISCREPANCY);
-            }
-            if (!Objects.equals(paymentEntity.getPaidAmount(), paidAmount)) {
-                throw new BusinessException(BusinessErrorCode.PAYMENT_AMOUNT_DISCREPANCY);
-            }
-            if (orderStatus == OrderStatus.WAITING_FOR_PAY || orderStatus == OrderStatus.PAYMENT_PENDING) {
-                orderStatePort.changeOrderState(orderId, OrderStatus.PAID);
-            }
+        if (isAlreadyCancelledVerification(paymentEntity, payment, paidAmount, orderStatus)) {
             return;
         }
 
-        if (!paymentEntity.getPrice().equals(paidAmount)) {
-            throw new BusinessException(BusinessErrorCode.PAYMENT_AMOUNT_DISCREPANCY);
+        if (orderStatus == OrderStatus.CANCELLED
+                && PORTONE_PAYMENT_STATUS_CANCELLED.equalsIgnoreCase(payment.status())) {
+            paymentVerificationTxService.syncCancelledOrderPayment(
+                    paymentEntityId,
+                    memberId,
+                    payment.transactionId(),
+                    payment.pgTxId(),
+                    paidAmount
+            );
+            return;
         }
 
-        if (orderStatus == OrderStatus.CANCELLED) {
-            throw new BusinessException(BusinessErrorCode.ORDER_ALREADY_CANCELLED);
-        }
-        if (orderStatus != OrderStatus.WAITING_FOR_PAY && orderStatus != OrderStatus.PAYMENT_PENDING) {
+        if (!PORTONE_PAYMENT_STATUS_PAID.equalsIgnoreCase(payment.status())) {
             throw new BusinessException(BusinessErrorCode.PAYMENT_FAIL);
         }
 
-        paymentEntity.paymentSuccess(
+        if (orderStatus == OrderStatus.CANCELLED) {
+            settleCancelledOrderPayment(
+                    paymentEntityId,
+                    memberId,
+                    paymentEntity.getMerchantUid(),
+                    payment.transactionId(),
+                    payment.pgTxId(),
+                    paidAmount
+            );
+            return;
+        }
+
+        paymentVerificationTxService.confirmPaidPayment(
+                paymentEntityId,
+                memberId,
                 payment.transactionId(),
                 payment.pgTxId(),
-                paidAmount,
-                LocalDateTime.now()
+                paidAmount
         );
-        orderStatePort.changeOrderState(orderId, OrderStatus.PAID);
+    }
+
+    private void settleCancelledOrderPayment(
+            Long paymentId,
+            Long memberId,
+            String merchantUid,
+            String impUid,
+            String pgTxId,
+            Long paidAmount
+    ) {
+        PortOneCancellation cancellation = paymentProviderService.cancelPayment(merchantUid);
+        if (PORTONE_CANCELLATION_STATUS_FAILED.equalsIgnoreCase(cancellation.status())) {
+            throw new BusinessException(BusinessErrorCode.PAYMENT_REFUND_FAIL);
+        }
+
+        PortOnePayment cancelledPayment = paymentProviderService.getPayment(merchantUid);
+        if (!PORTONE_PAYMENT_STATUS_CANCELLED.equalsIgnoreCase(cancelledPayment.status())) {
+            throw new BusinessException(BusinessErrorCode.PAYMENT_REFUND_FAIL);
+        }
+
+        paymentVerificationTxService.settleCancelledOrderPayment(paymentId, memberId, impUid, pgTxId, paidAmount);
+    }
+
+    private boolean isAlreadyCancelledVerification(
+            PaymentEntity paymentEntity,
+            PortOnePayment payment,
+            Long paidAmount,
+            OrderStatus orderStatus) {
+        if (orderStatus != OrderStatus.CANCELLED) {
+            return false;
+        }
+
+        if (paymentEntity.getStatus() != PaymentStatus.CANCELLED) {
+            return false;
+        }
+
+        if (!PORTONE_PAYMENT_STATUS_CANCELLED.equalsIgnoreCase(payment.status())) {
+            return false;
+        }
+
+        if (paymentEntity.getImpUid() != null
+                && !Objects.equals(paymentEntity.getImpUid(), payment.transactionId())) {
+            throw new BusinessException(BusinessErrorCode.PAYMENT_UID_DISCREPANCY);
+        }
+
+        if (paymentEntity.getPaidAmount() != null
+                && !Objects.equals(paymentEntity.getPaidAmount(), paidAmount)) {
+            throw new BusinessException(BusinessErrorCode.PAYMENT_AMOUNT_DISCREPANCY);
+        }
+        return true;
     }
 
     private static void validatePayment(
@@ -153,16 +244,12 @@ public class PaymentService {
             throw new BusinessException(BusinessErrorCode.PAYMENT_UID_DISCREPANCY);
         }
 
-        if (!PORTONE_PAYMENT_STATUS_PAID.equalsIgnoreCase(payment.status())) {
-            throw new BusinessException(BusinessErrorCode.PAYMENT_FAIL);
-        }
-
         if (!requestDto.getAmount().equals(payment.paidAmount())) {
             throw new BusinessException(BusinessErrorCode.PAYMENT_AMOUNT_DISCREPANCY);
         }
     }
 
-    @DistributedLock(keyName = "'refund:' + #paymentId")
+    @DistributedLock(keyName = "'payment:' + #paymentId")
     public void refundPayment(Long paymentId, Long memberId, PaymentRefundRequestDto requestDto) {
         PaymentEntity paymentEntity = paymentEntityRepository
                 .findByIdAndMemberId(paymentId, memberId)
@@ -239,5 +326,16 @@ public class PaymentService {
         }
 
         paymentRefundTxService.confirmRefund(paymentId, memberId);
+    }
+
+    public record PaymentCreateResult(PaymentResponseDto response, boolean created) {
+
+        public static PaymentCreateResult created(PaymentResponseDto response) {
+            return new PaymentCreateResult(response, true);
+        }
+
+        public static PaymentCreateResult reused(PaymentResponseDto response) {
+            return new PaymentCreateResult(response, false);
+        }
     }
 }

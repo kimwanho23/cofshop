@@ -28,7 +28,7 @@ public class PaymentRefundTxService {
     @Transactional
     public void markRefundPending(Long paymentId, Long memberId) {
         PaymentEntity paymentEntity = paymentEntityRepository
-                .findByIdAndMemberId(paymentId, memberId)
+                .findByIdAndMemberIdWithLock(paymentId, memberId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.PAYMENT_NOT_FOUND));
         Long orderId = getOrderId(paymentEntity);
 
@@ -55,7 +55,7 @@ public class PaymentRefundTxService {
     @Transactional
     public void rollbackRefundPending(Long paymentId, Long memberId) {
         PaymentEntity paymentEntity = paymentEntityRepository
-                .findByIdAndMemberId(paymentId, memberId)
+                .findByIdAndMemberIdWithLock(paymentId, memberId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.PAYMENT_NOT_FOUND));
         Long orderId = paymentEntity.getOrderId();
 
@@ -70,13 +70,15 @@ public class PaymentRefundTxService {
     @Transactional
     public void confirmRefund(Long paymentId, Long memberId) {
         PaymentEntity paymentEntity = paymentEntityRepository
-                .findByIdAndMemberId(paymentId, memberId)
+                .findByIdAndMemberIdWithLock(paymentId, memberId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.PAYMENT_NOT_FOUND));
         Long orderId = paymentEntity.getOrderId();
 
         if (paymentEntity.getStatus() == PaymentStatus.CANCELLED) {
             if (orderId == null) {
-                return;
+                log.error("[Refund] 결제 취소 상태이지만 주문 ID가 없어 환불 확정을 완료할 수 없음 paymentId={}, memberId={}",
+                        paymentId, memberId);
+                throw new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND);
             }
             try {
                 orderRefundPort.completeRefund(orderId, REFUND_COMPLETED_REASON);

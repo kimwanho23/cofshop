@@ -12,7 +12,9 @@ public enum BadRequestErrorCode implements ErrorCode {
     // 400 Bad Request
     BAD_REQUEST("F-1", HttpStatus.BAD_REQUEST, "잘못된 접근입니다."),
     INPUT_INVALID_VALUE("D", HttpStatus.BAD_REQUEST, "잘못된 입력입니다"),
-    INVALID_IMP_UID("UID-NULL", HttpStatus.BAD_REQUEST, "결제 UID는 비어있을 수 없습니다.");
+    INVALID_IMP_UID("UID-NULL", HttpStatus.BAD_REQUEST, "결제 UID는 비어있을 수 없습니다."),
+    UNSUPPORTED_PG_PROVIDER("PAY-PG-400", HttpStatus.BAD_REQUEST, "지원하지 않는 PG사입니다."),
+    UNSUPPORTED_PAY_METHOD("PAY-METHOD-400", HttpStatus.BAD_REQUEST, "지원하지 않는 결제수단입니다.");
 
     private final String code;
     private final HttpStatus httpStatus;

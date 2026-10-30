@@ -19,14 +19,15 @@ import kwh.cofshop.payment.dto.response.PaymentResponseDto;
 import kwh.cofshop.payment.dto.request.PaymentVerifyRequestDto;
 import kwh.cofshop.payment.repository.PaymentEntityRepository;
 import kwh.cofshop.payment.repository.projection.PaymentProviderLookupProjection;
+import kwh.cofshop.payment.service.PaymentService.PaymentCreateResult;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
-import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -61,6 +62,9 @@ class PaymentServiceTest {
 
     @Mock
     private PaymentRefundTxService paymentRefundTxService;
+
+    @Mock
+    private PaymentVerificationTxService paymentVerificationTxService;
 
     @InjectMocks
     private PaymentService paymentService;
@@ -160,11 +164,78 @@ class PaymentServiceTest {
 
         PaymentPrepareRequestDto requestDto = new PaymentPrepareRequestDto("kakaopay", "card");
 
-        PaymentResponseDto response = paymentService.createPaymentRequest(1L, 1L, requestDto);
+        PaymentCreateResult result = paymentService.createPaymentRequest(1L, 1L, requestDto);
+        PaymentResponseDto response = result.response();
 
         assertThat(response.getPgProvider()).isEqualTo("kakaopay");
         assertThat(response.getPayMethod()).isEqualTo("card");
+        assertThat(result.created()).isTrue();
         verify(orderPaymentPreparePort).prepare(1L, 1L);
+    }
+
+    @Test
+    @DisplayName("createPaymentRequest_existingPayment_returnsExisting")
+    void createPaymentRequest_existingPayment_returnsExisting() {
+        PaymentEntity existingPayment = mock(PaymentEntity.class);
+        when(existingPayment.getMemberId()).thenReturn(1L);
+        when(existingPayment.getId()).thenReturn(10L);
+        when(existingPayment.getMerchantUid()).thenReturn("order-1");
+        when(existingPayment.getPrice()).thenReturn(1000L);
+        when(existingPayment.getPgProvider()).thenReturn("kakaopay");
+        when(existingPayment.getPayMethod()).thenReturn("card");
+        when(existingPayment.getStatus()).thenReturn(PaymentStatus.READY);
+        when(paymentEntityRepository.findByOrderId(1L)).thenReturn(Optional.of(existingPayment));
+
+        PaymentPrepareRequestDto requestDto = new PaymentPrepareRequestDto("kakaopay", "card");
+
+        PaymentCreateResult result = paymentService.createPaymentRequest(1L, 1L, requestDto);
+        PaymentResponseDto response = result.response();
+
+        assertThat(response.getPaymentId()).isEqualTo(10L);
+        assertThat(result.created()).isFalse();
+        verify(orderPaymentPreparePort, never()).prepare(anyLong(), anyLong());
+        verify(paymentEntityRepository, never()).save(any(PaymentEntity.class));
+    }
+
+    @Test
+    @DisplayName("createPaymentRequest_duplicateInsert_returnsExisting")
+    void createPaymentRequest_duplicateInsert_returnsExisting() {
+        OrderPaymentPrepareInfo paymentPrepareInfo = new OrderPaymentPrepareInfo(
+                1L,
+                "order-1",
+                1000L,
+                1L,
+                "test@test.com",
+                "tester",
+                "010-0000-0000"
+        );
+        when(paymentEntityRepository.findByOrderId(1L))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(mockDuplicatedPayment(1L, 11L)));
+        when(orderPaymentPreparePort.prepare(1L, 1L)).thenReturn(paymentPrepareInfo);
+        when(paymentEntityRepository.save(any(PaymentEntity.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate"));
+
+        PaymentPrepareRequestDto requestDto = new PaymentPrepareRequestDto("kakaopay", "card");
+
+        PaymentCreateResult result = paymentService.createPaymentRequest(1L, 1L, requestDto);
+        PaymentResponseDto response = result.response();
+
+        assertThat(response.getPaymentId()).isEqualTo(11L);
+        assertThat(response.getMerchantUid()).isEqualTo("order-1");
+        assertThat(result.created()).isFalse();
+        verify(orderPaymentPreparePort).prepare(1L, 1L);
+    }
+
+    @Test
+    @DisplayName("createPaymentRequest_invalidPayMethod")
+    void createPaymentRequest_invalidPayMethod() {
+        PaymentPrepareRequestDto requestDto = new PaymentPrepareRequestDto("kakaopay", "bad_method");
+
+        assertThatThrownBy(() -> paymentService.createPaymentRequest(1L, 1L, requestDto))
+                .isInstanceOf(BadRequestException.class);
+
+        verify(orderPaymentPreparePort, never()).prepare(anyLong(), anyLong());
     }
 
     @Test
@@ -277,7 +348,6 @@ class PaymentServiceTest {
         PaymentEntity paymentEntity = mock(PaymentEntity.class);
         when(paymentEntityRepository.findByIdAndMemberId(1L, 1L)).thenReturn(Optional.of(paymentEntity));
         when(paymentEntity.getMerchantUid()).thenReturn("order-1");
-        when(paymentEntity.getPrice()).thenReturn(1000L);
         when(paymentEntity.getOrderId()).thenReturn(1L);
         when(orderStatePort.getOrderState(1L)).thenReturn(OrderStatus.PAYMENT_PENDING);
 
@@ -297,18 +367,55 @@ class PaymentServiceTest {
 
         paymentService.verifyPayment(1L, 1L, requestDto);
 
-        verify(paymentEntity).paymentSuccess(eq("imp_1"), eq("pg_tid"), eq(1000L), any(LocalDateTime.class));
-        verify(orderStatePort).changeOrderState(1L, OrderStatus.PAID);
+        verify(paymentVerificationTxService)
+                .confirmPaidPayment(1L, 1L, "imp_1", "pg_tid", 1000L);
     }
 
     @Test
-    @DisplayName("verifyPayment_cancelledOrder_shouldFail")
-    void verifyPayment_cancelledOrder_shouldFail() {
+    @DisplayName("verifyPayment_cancelledOrder_thenAutoCancelPayment")
+    void verifyPayment_cancelledOrder_thenAutoCancelPayment() {
         PaymentEntity paymentEntity = mock(PaymentEntity.class);
         when(paymentEntityRepository.findByIdAndMemberId(1L, 1L)).thenReturn(Optional.of(paymentEntity));
         when(paymentEntity.getMerchantUid()).thenReturn("order-1");
-        when(paymentEntity.getStatus()).thenReturn(PaymentStatus.READY);
-        when(paymentEntity.getPrice()).thenReturn(1000L);
+        when(paymentEntity.getOrderId()).thenReturn(1L);
+        when(orderStatePort.getOrderState(1L)).thenReturn(OrderStatus.CANCELLED);
+
+        PortOnePayment payment = new PortOnePayment(
+                "order-1",
+                "imp_1",
+                "pg_tid",
+                "PAID",
+                new PortOnePayment.Amount(1000L, 1000L)
+        );
+        PortOnePayment cancelledPayment = new PortOnePayment(
+                "order-1",
+                "imp_1",
+                "pg_tid",
+                "CANCELLED",
+                new PortOnePayment.Amount(1000L, 1000L)
+        );
+        when(paymentProviderService.getPayment("order-1")).thenReturn(payment, cancelledPayment);
+        when(paymentProviderService.cancelPayment("order-1"))
+                .thenReturn(new PortOneCancellation("cancel_1", "SUCCEEDED"));
+
+        PaymentVerifyRequestDto requestDto = new PaymentVerifyRequestDto();
+        requestDto.setImpUid("imp_1");
+        requestDto.setMerchantUid("order-1");
+        requestDto.setAmount(1000L);
+
+        paymentService.verifyPayment(1L, 1L, requestDto);
+
+        verify(paymentProviderService).cancelPayment("order-1");
+        verify(paymentVerificationTxService)
+                .settleCancelledOrderPayment(1L, 1L, "imp_1", "pg_tid", 1000L);
+    }
+
+    @Test
+    @DisplayName("verifyPayment_cancelledOrder_autoCancelFailed")
+    void verifyPayment_cancelledOrder_autoCancelFailed() {
+        PaymentEntity paymentEntity = mock(PaymentEntity.class);
+        when(paymentEntityRepository.findByIdAndMemberId(1L, 1L)).thenReturn(Optional.of(paymentEntity));
+        when(paymentEntity.getMerchantUid()).thenReturn("order-1");
         when(paymentEntity.getOrderId()).thenReturn(1L);
         when(orderStatePort.getOrderState(1L)).thenReturn(OrderStatus.CANCELLED);
 
@@ -320,6 +427,8 @@ class PaymentServiceTest {
                 new PortOnePayment.Amount(1000L, 1000L)
         );
         when(paymentProviderService.getPayment("order-1")).thenReturn(payment);
+        when(paymentProviderService.cancelPayment("order-1"))
+                .thenReturn(new PortOneCancellation("cancel_1", "FAILED"));
 
         PaymentVerifyRequestDto requestDto = new PaymentVerifyRequestDto();
         requestDto.setImpUid("imp_1");
@@ -329,10 +438,77 @@ class PaymentServiceTest {
         assertThatThrownBy(() -> paymentService.verifyPayment(1L, 1L, requestDto))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
-                .isEqualTo(BusinessErrorCode.ORDER_ALREADY_CANCELLED);
+                .isEqualTo(BusinessErrorCode.PAYMENT_REFUND_FAIL);
 
-        verify(paymentEntity, never()).paymentSuccess(anyString(), anyString(), anyLong(), any(LocalDateTime.class));
-        verify(orderStatePort, never()).changeOrderState(1L, OrderStatus.PAID);
+        verify(paymentVerificationTxService, never())
+                .settleCancelledOrderPayment(anyLong(), anyLong(), anyString(), anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("verifyPayment_cancelledOrder_alreadyCancelled_noOp")
+    void verifyPayment_cancelledOrder_alreadyCancelled_noOp() {
+        PaymentEntity paymentEntity = mock(PaymentEntity.class);
+        when(paymentEntityRepository.findByIdAndMemberId(1L, 1L)).thenReturn(Optional.of(paymentEntity));
+        when(paymentEntity.getMerchantUid()).thenReturn("order-1");
+        when(paymentEntity.getStatus()).thenReturn(PaymentStatus.CANCELLED);
+        when(paymentEntity.getImpUid()).thenReturn("imp_1");
+        when(paymentEntity.getPaidAmount()).thenReturn(1000L);
+        when(paymentEntity.getOrderId()).thenReturn(1L);
+        when(orderStatePort.getOrderState(1L)).thenReturn(OrderStatus.CANCELLED);
+
+        PortOnePayment cancelledPayment = new PortOnePayment(
+                "order-1",
+                "imp_1",
+                "pg_tid",
+                "CANCELLED",
+                new PortOnePayment.Amount(1000L, 1000L)
+        );
+        when(paymentProviderService.getPayment("order-1")).thenReturn(cancelledPayment);
+
+        PaymentVerifyRequestDto requestDto = new PaymentVerifyRequestDto();
+        requestDto.setImpUid("imp_1");
+        requestDto.setMerchantUid("order-1");
+        requestDto.setAmount(1000L);
+
+        paymentService.verifyPayment(1L, 1L, requestDto);
+
+        verify(paymentProviderService, never()).cancelPayment("order-1");
+        verify(paymentVerificationTxService, never())
+                .syncCancelledOrderPayment(anyLong(), anyLong(), anyString(), anyString(), anyLong());
+        verify(paymentVerificationTxService, never())
+                .settleCancelledOrderPayment(anyLong(), anyLong(), anyString(), anyString(), anyLong());
+        verify(paymentVerificationTxService, never())
+                .confirmPaidPayment(anyLong(), anyLong(), anyString(), anyString(), anyLong());
+    }
+
+    @Test
+    @DisplayName("verifyPayment_cancelledOrder_pgCancelled_thenSyncLocalState")
+    void verifyPayment_cancelledOrder_pgCancelled_thenSyncLocalState() {
+        PaymentEntity paymentEntity = mock(PaymentEntity.class);
+        when(paymentEntityRepository.findByIdAndMemberId(1L, 1L)).thenReturn(Optional.of(paymentEntity));
+        when(paymentEntity.getMerchantUid()).thenReturn("order-1");
+        when(paymentEntity.getOrderId()).thenReturn(1L);
+        when(orderStatePort.getOrderState(1L)).thenReturn(OrderStatus.CANCELLED);
+
+        PortOnePayment cancelledPayment = new PortOnePayment(
+                "order-1",
+                "imp_1",
+                "pg_tid",
+                "CANCELLED",
+                new PortOnePayment.Amount(1000L, 1000L)
+        );
+        when(paymentProviderService.getPayment("order-1")).thenReturn(cancelledPayment);
+
+        PaymentVerifyRequestDto requestDto = new PaymentVerifyRequestDto();
+        requestDto.setImpUid("imp_1");
+        requestDto.setMerchantUid("order-1");
+        requestDto.setAmount(1000L);
+
+        paymentService.verifyPayment(1L, 1L, requestDto);
+
+        verify(paymentVerificationTxService)
+                .syncCancelledOrderPayment(1L, 1L, "imp_1", "pg_tid", 1000L);
+        verify(paymentProviderService, never()).cancelPayment("order-1");
     }
 
     @Test
@@ -341,9 +517,6 @@ class PaymentServiceTest {
         PaymentEntity paymentEntity = mock(PaymentEntity.class);
         when(paymentEntityRepository.findByIdAndMemberId(1L, 1L)).thenReturn(Optional.of(paymentEntity));
         when(paymentEntity.getMerchantUid()).thenReturn("order-1");
-        when(paymentEntity.getStatus()).thenReturn(PaymentStatus.PAID);
-        when(paymentEntity.getImpUid()).thenReturn("imp_1");
-        when(paymentEntity.getPaidAmount()).thenReturn(1000L);
         when(paymentEntity.getOrderId()).thenReturn(1L);
         when(orderStatePort.getOrderState(1L)).thenReturn(OrderStatus.DELIVERED);
 
@@ -363,8 +536,8 @@ class PaymentServiceTest {
 
         paymentService.verifyPayment(1L, 1L, requestDto);
 
-        verify(paymentEntity, never()).paymentSuccess(anyString(), anyString(), anyLong(), any(LocalDateTime.class));
-        verify(orderStatePort, never()).changeOrderState(1L, OrderStatus.PAID);
+        verify(paymentVerificationTxService)
+                .confirmPaidPayment(1L, 1L, "imp_1", "pg_tid", 1000L);
     }
 
     @Test
@@ -373,9 +546,6 @@ class PaymentServiceTest {
         PaymentEntity paymentEntity = mock(PaymentEntity.class);
         when(paymentEntityRepository.findByIdAndMemberId(1L, 1L)).thenReturn(Optional.of(paymentEntity));
         when(paymentEntity.getMerchantUid()).thenReturn("order-1");
-        when(paymentEntity.getStatus()).thenReturn(PaymentStatus.PAID);
-        when(paymentEntity.getImpUid()).thenReturn("imp_1");
-        when(paymentEntity.getPaidAmount()).thenReturn(1000L);
         when(paymentEntity.getOrderId()).thenReturn(1L);
         when(orderStatePort.getOrderState(1L)).thenReturn(OrderStatus.PAYMENT_PENDING);
 
@@ -395,7 +565,8 @@ class PaymentServiceTest {
 
         paymentService.verifyPayment(1L, 1L, requestDto);
 
-        verify(orderStatePort).changeOrderState(1L, OrderStatus.PAID);
+        verify(paymentVerificationTxService)
+                .confirmPaidPayment(1L, 1L, "imp_1", "pg_tid", 1000L);
     }
 
     @Test
@@ -641,6 +812,18 @@ class PaymentServiceTest {
 
         assertThatThrownBy(() -> paymentService.refundPayment(1L, 1L, requestDto))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    private PaymentEntity mockDuplicatedPayment(Long memberId, Long paymentId) {
+        PaymentEntity duplicatedPayment = mock(PaymentEntity.class);
+        when(duplicatedPayment.getMemberId()).thenReturn(memberId);
+        when(duplicatedPayment.getId()).thenReturn(paymentId);
+        when(duplicatedPayment.getMerchantUid()).thenReturn("order-1");
+        when(duplicatedPayment.getPrice()).thenReturn(1000L);
+        when(duplicatedPayment.getPgProvider()).thenReturn("kakaopay");
+        when(duplicatedPayment.getPayMethod()).thenReturn("card");
+        when(duplicatedPayment.getStatus()).thenReturn(PaymentStatus.READY);
+        return duplicatedPayment;
     }
 
 }

@@ -4,6 +4,7 @@ import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.payment.service.PaymentRefundTxService;
 import kwh.cofshop.payment.service.RefundCompensationRecoveryQueueService;
+import kwh.cofshop.payment.service.RefundCompensationRecoveryQueueService.ClaimedRecoveryTask;
 import kwh.cofshop.payment.service.RefundCompensationRecoveryQueueService.RecoveryTask;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,28 +41,65 @@ class RefundCompensationRecoverySchedulerTest {
         ReflectionTestUtils.setField(scheduler, "maxRetries", 5);
 
         RecoveryTask task = RecoveryTask.of(10L, 1L, 100L, "ORDER-CANNOT-CANCEL", 1, Instant.now());
-        when(recoveryQueueService.dequeueBatch(20)).thenReturn(List.of(task));
+        ClaimedRecoveryTask claimedTask = ClaimedRecoveryTask.of("payload", task);
+        when(recoveryQueueService.dequeueBatch(20)).thenReturn(List.of(claimedTask));
         doThrow(new BusinessException(BusinessErrorCode.ORDER_CANNOT_CANCEL))
                 .when(paymentRefundTxService).confirmRefund(10L, 1L);
 
         scheduler.recoverFailedCompensations();
 
-        verify(recoveryQueueService).requeue(task, BusinessErrorCode.ORDER_CANNOT_CANCEL.getCode());
+        verify(recoveryQueueService).requeue(claimedTask, BusinessErrorCode.ORDER_CANNOT_CANCEL.getCode());
     }
 
     @Test
-    @DisplayName("복구 스케줄러: 최대 재시도 초과면 재큐잉하지 않음")
+    @DisplayName("복구 스케줄러: 최대 재시도 초과면 DLQ 이동")
     void recoverFailedCompensations_noRequeueWhenExceeded() {
         ReflectionTestUtils.setField(scheduler, "batchSize", 20);
         ReflectionTestUtils.setField(scheduler, "maxRetries", 2);
 
         RecoveryTask task = RecoveryTask.of(10L, 1L, 100L, "ORDER-CANNOT-CANCEL", 2, Instant.now());
-        when(recoveryQueueService.dequeueBatch(20)).thenReturn(List.of(task));
+        ClaimedRecoveryTask claimedTask = ClaimedRecoveryTask.of("payload", task);
+        when(recoveryQueueService.dequeueBatch(20)).thenReturn(List.of(claimedTask));
         doThrow(new BusinessException(BusinessErrorCode.ORDER_CANNOT_CANCEL))
                 .when(paymentRefundTxService).confirmRefund(10L, 1L);
 
         scheduler.recoverFailedCompensations();
 
-        verify(recoveryQueueService, never()).requeue(task, BusinessErrorCode.ORDER_CANNOT_CANCEL.getCode());
+        verify(recoveryQueueService, never()).requeue(claimedTask, BusinessErrorCode.ORDER_CANNOT_CANCEL.getCode());
+        verify(recoveryQueueService).deadLetter(claimedTask, BusinessErrorCode.ORDER_CANNOT_CANCEL.getCode());
+    }
+
+    @Test
+    @DisplayName("복구 스케줄러: 복구 성공 시 ack")
+    void recoverFailedCompensations_ackOnSuccess() {
+        ReflectionTestUtils.setField(scheduler, "batchSize", 20);
+        ReflectionTestUtils.setField(scheduler, "maxRetries", 5);
+
+        RecoveryTask task = RecoveryTask.of(10L, 1L, 100L, "ORDER-CANNOT-CANCEL", 0, Instant.now());
+        ClaimedRecoveryTask claimedTask = ClaimedRecoveryTask.of("payload", task);
+        when(recoveryQueueService.dequeueBatch(20)).thenReturn(List.of(claimedTask));
+
+        scheduler.recoverFailedCompensations();
+
+        verify(paymentRefundTxService).confirmRefund(10L, 1L);
+        verify(recoveryQueueService).acknowledge(claimedTask);
+    }
+
+    @Test
+    @DisplayName("복구 스케줄러: 내부 오류 재시도 초과면 DLQ 이동")
+    void recoverFailedCompensations_deadLetterOnInternalFailureExceeded() {
+        ReflectionTestUtils.setField(scheduler, "batchSize", 20);
+        ReflectionTestUtils.setField(scheduler, "maxRetries", 1);
+
+        RecoveryTask task = RecoveryTask.of(10L, 1L, 100L, "ORDER-CANNOT-CANCEL", 1, Instant.now());
+        ClaimedRecoveryTask claimedTask = ClaimedRecoveryTask.of("payload", task);
+        when(recoveryQueueService.dequeueBatch(20)).thenReturn(List.of(claimedTask));
+        doThrow(new RuntimeException("unexpected"))
+                .when(paymentRefundTxService).confirmRefund(10L, 1L);
+
+        scheduler.recoverFailedCompensations();
+
+        verify(recoveryQueueService).deadLetter(claimedTask, "INTERNAL");
+        verify(recoveryQueueService, never()).requeue(claimedTask, "INTERNAL");
     }
 }

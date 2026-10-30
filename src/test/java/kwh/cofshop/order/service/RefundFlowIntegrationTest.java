@@ -24,6 +24,7 @@ import kwh.cofshop.payment.repository.PaymentEntityRepository;
 import kwh.cofshop.payment.service.PaymentProviderService;
 import kwh.cofshop.payment.service.PaymentRefundTxService;
 import kwh.cofshop.payment.service.PaymentService;
+import kwh.cofshop.payment.service.PaymentVerificationTxService;
 import kwh.cofshop.payment.service.RefundCompensationRecoveryQueueService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -75,6 +76,7 @@ class RefundFlowIntegrationTest {
     private OrderService orderService;
     private PaymentRefundTxService paymentRefundTxService;
     private PaymentService paymentService;
+    private PaymentVerificationTxService paymentVerificationTxService;
 
     @BeforeEach
     void setUp() {
@@ -95,11 +97,16 @@ class RefundFlowIntegrationTest {
                 orderStatePort,
                 recoveryQueueService
         );
+        paymentVerificationTxService = new PaymentVerificationTxService(
+                paymentEntityRepository,
+                orderStatePort
+        );
         paymentService = new PaymentService(
                 orderPaymentPreparePort,
                 orderStatePort,
                 orderRefundPort,
                 paymentRefundTxService,
+                paymentVerificationTxService,
                 paymentEntityRepository,
                 paymentProviderService
         );
@@ -137,9 +144,10 @@ class RefundFlowIntegrationTest {
         );
         paymentEntity.paymentSuccess("imp_1", "pg_tid", 1000L, LocalDateTime.now());
 
-        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.findByIdWithLock(1L)).thenReturn(Optional.of(order));
         when(orderRepository.findRefundRequestStatusById(1L)).thenReturn(Optional.of(OrderRefundRequestStatus.APPROVED));
         when(paymentEntityRepository.findByIdAndMemberId(10L, 1L)).thenReturn(Optional.of(paymentEntity));
+        when(paymentEntityRepository.findByIdAndMemberIdWithLock(10L, 1L)).thenReturn(Optional.of(paymentEntity));
         when(orderStatePort.getOrderState(1L)).thenReturn(OrderStatus.PAID);
         when(paymentProviderService.cancelPayment("order-1"))
                 .thenReturn(new PortOneCancellation("cancel_1", "SUCCEEDED"));

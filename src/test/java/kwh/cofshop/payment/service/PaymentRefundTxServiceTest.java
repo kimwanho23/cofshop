@@ -18,8 +18,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -44,7 +47,7 @@ class PaymentRefundTxServiceTest {
     @Test
     @DisplayName("confirmRefund_notFound")
     void confirmRefund_notFound() {
-        when(paymentEntityRepository.findByIdAndMemberId(1L, 1L)).thenReturn(Optional.empty());
+        when(paymentEntityRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> paymentRefundTxService.confirmRefund(1L, 1L))
                 .isInstanceOf(BusinessException.class);
@@ -55,10 +58,27 @@ class PaymentRefundTxServiceTest {
     void confirmRefund_notPaid() {
         PaymentEntity paymentEntity = mock(PaymentEntity.class);
         when(paymentEntity.getStatus()).thenReturn(PaymentStatus.READY);
-        when(paymentEntityRepository.findByIdAndMemberId(1L, 1L)).thenReturn(Optional.of(paymentEntity));
+        when(paymentEntityRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.of(paymentEntity));
 
         assertThatThrownBy(() -> paymentRefundTxService.confirmRefund(1L, 1L))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    @DisplayName("confirmRefund_cancelledAndOrderIdMissing")
+    void confirmRefund_cancelledAndOrderIdMissing() {
+        PaymentEntity paymentEntity = mock(PaymentEntity.class);
+        when(paymentEntity.getStatus()).thenReturn(PaymentStatus.CANCELLED);
+        when(paymentEntity.getOrderId()).thenReturn(null);
+        when(paymentEntityRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.of(paymentEntity));
+
+        assertThatThrownBy(() -> paymentRefundTxService.confirmRefund(1L, 1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.ORDER_NOT_FOUND);
+
+        verify(orderRefundPort, never()).completeRefund(anyLong(), eq("결제 환불 완료"));
+        verify(recoveryQueueService, never()).enqueue(1L, 1L, null, BusinessErrorCode.ORDER_NOT_FOUND.getCode());
     }
 
     @Test
@@ -67,7 +87,7 @@ class PaymentRefundTxServiceTest {
         PaymentEntity paymentEntity = mock(PaymentEntity.class);
         when(paymentEntity.getStatus()).thenReturn(PaymentStatus.PAID);
         when(paymentEntity.getOrderId()).thenReturn(10L);
-        when(paymentEntityRepository.findByIdAndMemberId(1L, 1L)).thenReturn(Optional.of(paymentEntity));
+        when(paymentEntityRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.of(paymentEntity));
 
         paymentRefundTxService.confirmRefund(1L, 1L);
 
@@ -82,7 +102,7 @@ class PaymentRefundTxServiceTest {
         when(paymentEntity.getStatus()).thenReturn(PaymentStatus.PAID);
         when(paymentEntity.getOrderId()).thenReturn(10L);
         when(orderStatePort.getOrderState(10L)).thenReturn(OrderStatus.PAID);
-        when(paymentEntityRepository.findByIdAndMemberId(1L, 1L)).thenReturn(Optional.of(paymentEntity));
+        when(paymentEntityRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.of(paymentEntity));
 
         paymentRefundTxService.markRefundPending(1L, 1L);
 
@@ -97,7 +117,7 @@ class PaymentRefundTxServiceTest {
         when(paymentEntity.getStatus()).thenReturn(PaymentStatus.REFUND_PENDING);
         when(paymentEntity.getOrderId()).thenReturn(10L);
         when(orderStatePort.getOrderState(10L)).thenReturn(OrderStatus.REFUND_PENDING);
-        when(paymentEntityRepository.findByIdAndMemberId(1L, 1L)).thenReturn(Optional.of(paymentEntity));
+        when(paymentEntityRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.of(paymentEntity));
 
         paymentRefundTxService.rollbackRefundPending(1L, 1L);
 
@@ -111,7 +131,7 @@ class PaymentRefundTxServiceTest {
         PaymentEntity paymentEntity = mock(PaymentEntity.class);
         when(paymentEntity.getStatus()).thenReturn(PaymentStatus.PAID);
         when(paymentEntity.getOrderId()).thenReturn(10L);
-        when(paymentEntityRepository.findByIdAndMemberId(1L, 1L)).thenReturn(Optional.of(paymentEntity));
+        when(paymentEntityRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.of(paymentEntity));
         doThrow(new BusinessException(BusinessErrorCode.ORDER_CANNOT_CANCEL))
                 .when(orderRefundPort).completeRefund(10L, "결제 환불 완료");
 
