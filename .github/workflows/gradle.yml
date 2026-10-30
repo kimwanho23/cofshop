@@ -50,17 +50,34 @@ jobs:
       - name: Test with Gradle Wrapper
         run: |
           chmod +x ./gradlew
-          ./gradlew clean test
+          ./gradlew clean test jacocoTestCoverageVerification
 
       # Testcontainers 테스트는 Docker가 없으면 건너뛰므로 CI에서는 실제 실행 여부를 검사
-      - name: Verify MySQL integration tests ran
+      - name: Verify container integration tests ran
         run: |
-          report=build/test-results/test/TEST-kwh.cofshop.order.service.OrderStockConcurrencyMySqlTest.xml
-          if [ ! -f "$report" ] || ! grep -Eq '<testsuite [^>]*tests="[1-9][0-9]*" skipped="0" failures="0" errors="0"' "$report"; then
-            echo "::error::MySQL integration tests did not run"
-            exit 1
-          fi
-          echo "::notice::MySQL integration tests ran: $(grep -Eo 'tests="[0-9]+" skipped="[0-9]+"' "$report")"
+          for test_class in \
+            kwh.cofshop.ApplicationIntegrationTest \
+            kwh.cofshop.ActuatorIntegrationTest \
+            kwh.cofshop.order.service.OrderStockConcurrencyMySqlTest \
+            kwh.cofshop.aspect.DistributedLockIntegrationTest \
+            kwh.cofshop.coupon.redisstream.service.CouponRedisServiceIntegrationTest \
+            kwh.cofshop.coupon.redisstream.service.LimitedCouponIssueIntegrationTest \
+            kwh.cofshop.payment.service.RefundRecoveryQueueIntegrationTest; do
+            report="build/test-results/test/TEST-${test_class}.xml"
+            if [ ! -f "$report" ] || ! grep -Eq '<testsuite [^>]*tests="[1-9][0-9]*" skipped="0" failures="0" errors="0"' "$report"; then
+              echo "::error::Integration tests did not run: ${test_class}"
+              exit 1
+            fi
+            echo "::notice::Integration tests ran: ${test_class} $(grep -Eo 'tests="[0-9]+" skipped="[0-9]+"' "$report")"
+          done
+
+      - name: Verify Prometheus alert rules
+        run: |
+          docker run --rm -v "$PWD/monitoring/prometheus:/cfg:ro" --workdir /cfg --entrypoint promtool \
+            prom/prometheus:v3.5.0 test rules alerts.test.yml
+
+      - name: Rehearse database backup and restore
+        run: bash scripts/db-backup-rehearsal.sh
 
       - name: Upload test results
         if: ${{ always() }}
@@ -70,6 +87,7 @@ jobs:
           path: |
             build/test-results/test
             build/reports/tests/test
+            build/reports/jacoco/test
           retention-days: 14
 
   deploy:
