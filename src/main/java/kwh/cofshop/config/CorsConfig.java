@@ -28,7 +28,7 @@ public class CorsConfig {
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
-        config.setExposedHeaders(List.of("Authorization"));
+        config.setExposedHeaders(List.of("Authorization", RequestTraceFilter.REQUEST_ID_HEADER));
 
         source.registerCorsConfiguration("/**", config);
         return source;
