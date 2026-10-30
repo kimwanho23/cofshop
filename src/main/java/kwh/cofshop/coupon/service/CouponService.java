@@ -3,11 +3,14 @@ package kwh.cofshop.coupon.service;
 import kwh.cofshop.coupon.application.command.CreateCouponCommand;
 import kwh.cofshop.coupon.domain.Coupon;
 import kwh.cofshop.coupon.domain.CouponState;
+import kwh.cofshop.coupon.domain.CouponType;
 import kwh.cofshop.coupon.domain.event.CouponCreatedEvent;
 import kwh.cofshop.coupon.dto.response.CouponResponseDto;
 import kwh.cofshop.coupon.repository.CouponRepository;
 import kwh.cofshop.coupon.repository.projection.CouponReadProjection;
+import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -26,6 +29,8 @@ public class CouponService {
 
     @Transactional
     public Long createCoupon(CreateCouponCommand command) {
+        validateCouponCreateCommand(command);
+
         Coupon savedCoupon = couponRepository.save(
                 Coupon.createCoupon(
                         command.getName(),
@@ -41,6 +46,36 @@ public class CouponService {
 
         applicationEventPublisher.publishEvent(new CouponCreatedEvent(savedCoupon.getId(), savedCoupon.getCouponCount()));
         return savedCoupon.getId();
+    }
+
+    private void validateCouponCreateCommand(CreateCouponCommand command) {
+        if (command.getValidFrom().isAfter(command.getValidTo())) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+
+        Integer couponCount = command.getCouponCount();
+        if (couponCount != null && couponCount <= 0) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+
+        Integer minOrderPrice = command.getMinOrderPrice();
+        if (minOrderPrice != null && minOrderPrice < 0) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+
+        Integer discountValue = command.getDiscountValue();
+        if (discountValue == null || discountValue <= 0) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+
+        Integer maxDiscountAmount = command.getMaxDiscountAmount();
+        if (maxDiscountAmount != null && maxDiscountAmount < 0) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+
+        if (command.getType() == CouponType.RATE && discountValue > 100) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
     }
 
     @Transactional

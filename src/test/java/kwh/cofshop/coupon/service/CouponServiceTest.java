@@ -8,6 +8,7 @@ import kwh.cofshop.coupon.domain.event.CouponCreatedEvent;
 import kwh.cofshop.coupon.dto.response.CouponResponseDto;
 import kwh.cofshop.coupon.repository.CouponRepository;
 import kwh.cofshop.coupon.repository.projection.CouponReadProjection;
+import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.global.exception.BusinessException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class CouponServiceTest {
@@ -68,6 +70,25 @@ class CouponServiceTest {
         verify(applicationEventPublisher).publishEvent(captor.capture());
         assertThat(captor.getValue().couponId()).isEqualTo(1L);
         assertThat(captor.getValue().couponCount()).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("createCoupon_rateDiscountExceeds100")
+    void createCoupon_rateDiscountExceeds100() {
+        CreateCouponCommand command = CreateCouponCommand.of(
+                "rate-coupon",
+                null,
+                101,
+                null,
+                CouponType.RATE,
+                10,
+                LocalDate.now(),
+                LocalDate.now().plusDays(7)
+        );
+
+        assertThatThrownBy(() -> couponService.createCoupon(command))
+                .isInstanceOf(BadRequestException.class);
+        verify(couponStore, never()).save(any(Coupon.class));
     }
 
     @Test

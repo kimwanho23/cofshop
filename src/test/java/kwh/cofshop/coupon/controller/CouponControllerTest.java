@@ -84,6 +84,22 @@ class CouponControllerTest {
     }
 
     @Test
+    @DisplayName("createCoupon: RATE 할인율 100 초과면 400")
+    void createCoupon_rateDiscountTooHigh() throws Exception {
+        CouponRequestDto requestDto = new CouponRequestDto();
+        requestDto.setName("invalid-rate-coupon");
+        requestDto.setType(CouponType.RATE);
+        requestDto.setDiscountValue(101);
+        requestDto.setValidFrom(LocalDate.now());
+        requestDto.setValidTo(LocalDate.now().plusDays(10));
+
+        mockMvc.perform(post("/api/coupon")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("Update coupon state")
     void updateCouponState() throws Exception {
         mockMvc.perform(patch("/api/coupon/1/state")

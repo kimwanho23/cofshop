@@ -49,4 +49,12 @@ public class CouponRequestDto {
         }
         return !validFrom.isAfter(validTo);
     }
+
+    @AssertTrue(message = "Rate coupon discountValue must be 100 or less.")
+    private boolean isRateDiscountValid() {
+        if (type != CouponType.RATE || discountValue == null) {
+            return true;
+        }
+        return discountValue <= 100;
+    }
 }
