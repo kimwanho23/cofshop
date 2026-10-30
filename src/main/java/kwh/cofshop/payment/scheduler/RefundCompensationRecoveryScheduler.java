@@ -40,7 +40,7 @@ public class RefundCompensationRecoveryScheduler {
         for (ClaimedRecoveryTask claimedTask : claimedTasks) {
             RecoveryTask task = claimedTask.task();
             try {
-                paymentRefundTxService.confirmRefund(task.paymentId(), task.memberId());
+                paymentRefundTxService.confirmRefundForRecovery(task.paymentId(), task.memberId());
                 acknowledge(claimedTask, task);
                 log.info("[RefundRecovery] 복구 성공 paymentId={}, memberId={}, retry={}",
                         task.paymentId(), task.memberId(), task.retryCount());

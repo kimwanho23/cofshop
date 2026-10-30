@@ -44,7 +44,7 @@ class RefundCompensationRecoverySchedulerTest {
         ClaimedRecoveryTask claimedTask = ClaimedRecoveryTask.of("payload", task);
         when(recoveryQueueService.dequeueBatch(20)).thenReturn(List.of(claimedTask));
         doThrow(new BusinessException(BusinessErrorCode.ORDER_CANNOT_CANCEL))
-                .when(paymentRefundTxService).confirmRefund(10L, 1L);
+                .when(paymentRefundTxService).confirmRefundForRecovery(10L, 1L);
 
         scheduler.recoverFailedCompensations();
 
@@ -61,7 +61,7 @@ class RefundCompensationRecoverySchedulerTest {
         ClaimedRecoveryTask claimedTask = ClaimedRecoveryTask.of("payload", task);
         when(recoveryQueueService.dequeueBatch(20)).thenReturn(List.of(claimedTask));
         doThrow(new BusinessException(BusinessErrorCode.ORDER_CANNOT_CANCEL))
-                .when(paymentRefundTxService).confirmRefund(10L, 1L);
+                .when(paymentRefundTxService).confirmRefundForRecovery(10L, 1L);
 
         scheduler.recoverFailedCompensations();
 
@@ -81,7 +81,7 @@ class RefundCompensationRecoverySchedulerTest {
 
         scheduler.recoverFailedCompensations();
 
-        verify(paymentRefundTxService).confirmRefund(10L, 1L);
+        verify(paymentRefundTxService).confirmRefundForRecovery(10L, 1L);
         verify(recoveryQueueService).acknowledge(claimedTask);
     }
 
@@ -95,7 +95,7 @@ class RefundCompensationRecoverySchedulerTest {
         ClaimedRecoveryTask claimedTask = ClaimedRecoveryTask.of("payload", task);
         when(recoveryQueueService.dequeueBatch(20)).thenReturn(List.of(claimedTask));
         doThrow(new RuntimeException("unexpected"))
-                .when(paymentRefundTxService).confirmRefund(10L, 1L);
+                .when(paymentRefundTxService).confirmRefundForRecovery(10L, 1L);
 
         scheduler.recoverFailedCompensations();
 

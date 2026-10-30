@@ -24,6 +24,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -123,6 +124,40 @@ class PaymentRefundTxServiceTest {
 
         verify(paymentEntity).paymentStatusChange(PaymentStatus.PAID);
         verify(orderStatePort).changeOrderState(10L, OrderStatus.PAID);
+    }
+
+    @Test
+    @DisplayName("confirmRefundForRecovery_failureDoesNotEnqueue")
+    void confirmRefundForRecovery_failureDoesNotEnqueue() {
+        PaymentEntity paymentEntity = mock(PaymentEntity.class);
+        when(paymentEntity.getStatus()).thenReturn(PaymentStatus.REFUND_PENDING);
+        when(paymentEntity.getOrderId()).thenReturn(10L);
+        when(paymentEntityRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.of(paymentEntity));
+        doThrow(new BusinessException(BusinessErrorCode.ORDER_CANNOT_CANCEL))
+                .when(orderRefundPort).completeRefund(10L, "결제 환불 완료");
+
+        assertThatThrownBy(() -> paymentRefundTxService.confirmRefundForRecovery(1L, 1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.ORDER_CANNOT_CANCEL);
+
+        verifyNoInteractions(recoveryQueueService);
+    }
+
+    @Test
+    @DisplayName("confirmRefundForRecovery_cancelledFailureDoesNotEnqueue")
+    void confirmRefundForRecovery_cancelledFailureDoesNotEnqueue() {
+        PaymentEntity paymentEntity = mock(PaymentEntity.class);
+        when(paymentEntity.getStatus()).thenReturn(PaymentStatus.CANCELLED);
+        when(paymentEntity.getOrderId()).thenReturn(10L);
+        when(paymentEntityRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.of(paymentEntity));
+        doThrow(new BusinessException(BusinessErrorCode.ORDER_CANNOT_CANCEL))
+                .when(orderRefundPort).completeRefund(10L, "결제 환불 완료");
+
+        assertThatThrownBy(() -> paymentRefundTxService.confirmRefundForRecovery(1L, 1L))
+                .isInstanceOf(BusinessException.class);
+
+        verifyNoInteractions(recoveryQueueService);
     }
 
     @Test

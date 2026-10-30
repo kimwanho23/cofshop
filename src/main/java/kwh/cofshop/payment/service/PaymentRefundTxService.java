@@ -69,6 +69,16 @@ public class PaymentRefundTxService {
 
     @Transactional
     public void confirmRefund(Long paymentId, Long memberId) {
+        applyRefundConfirmation(paymentId, memberId, true);
+    }
+
+    // 복구 스케줄러 전용: 실패 시 재적재는 스케줄러가 재시도 횟수와 함께 처리
+    @Transactional
+    public void confirmRefundForRecovery(Long paymentId, Long memberId) {
+        applyRefundConfirmation(paymentId, memberId, false);
+    }
+
+    private void applyRefundConfirmation(Long paymentId, Long memberId, boolean enqueueOnFailure) {
         PaymentEntity paymentEntity = paymentEntityRepository
                 .findByIdAndMemberIdWithLock(paymentId, memberId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.PAYMENT_NOT_FOUND));
@@ -85,7 +95,9 @@ public class PaymentRefundTxService {
             } catch (BusinessException e) {
                 log.error("[Refund] 결제는 취소 상태지만 주문 보정 실패 paymentId={}, memberId={}",
                         paymentId, memberId, e);
-                enqueueRecovery(paymentEntity, paymentId, memberId, e);
+                if (enqueueOnFailure) {
+                    enqueueRecovery(paymentEntity, paymentId, memberId, e);
+                }
                 throw e;
             }
             return;
@@ -105,7 +117,9 @@ public class PaymentRefundTxService {
         } catch (BusinessException e) {
             log.error("[Refund] 외부 환불은 완료됐지만 주문 취소 보정 실패 paymentId={}, memberId={}",
                     paymentId, memberId, e);
-            enqueueRecovery(paymentEntity, paymentId, memberId, e);
+            if (enqueueOnFailure) {
+                enqueueRecovery(paymentEntity, paymentId, memberId, e);
+            }
             throw e;
         }
     }
