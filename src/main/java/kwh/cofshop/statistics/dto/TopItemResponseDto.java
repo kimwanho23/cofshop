@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 public class TopItemResponseDto {
     private Long itemId;
     private String itemName;
-    private Integer totalSold;
-    private Integer totalRevenue;
+    private Long totalSold;
+    private Long totalRevenue;
     private LocalDateTime lastOrderDate;
 }

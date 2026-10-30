@@ -5,8 +5,8 @@ import java.time.LocalDateTime;
 public record OrderTopItemSales(
         Long itemId,
         String itemName,
-        Integer totalSold,
-        Integer totalRevenue,
+        Long totalSold,
+        Long totalRevenue,
         LocalDateTime lastOrderDate
 ) {
 }

@@ -73,7 +73,7 @@ class ModularitySmokeTest {
         assertThat(paymentDeps).doesNotContain("member", "item", "coupon", "security");
 
         Set<String> statisticsDeps = directDependencyNames(requiredModule(modules, "statistics"), modules);
-        assertThat(statisticsDeps).containsExactly("order");
+        assertThat(statisticsDeps).containsExactlyInAnyOrder("order", "global");
 
         Set<String> securityDeps = directDependencyNames(requiredModule(modules, "security"), modules);
         assertThat(securityDeps).contains("member", "global");

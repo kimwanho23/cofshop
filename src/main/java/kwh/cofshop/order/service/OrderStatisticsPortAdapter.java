@@ -24,6 +24,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class OrderStatisticsPortAdapter implements OrderStatisticsPort {
 
+    private static final long TOP_ITEMS_LIMIT = 10L;
+
     private final JPAQueryFactory queryFactory;
 
     private final QOrder order = QOrder.order;
@@ -39,7 +41,10 @@ public class OrderStatisticsPortAdapter implements OrderStatisticsPort {
     @Override
     public List<OrderDailySales> getDailySales(LocalDate date) {
         NumberExpression<Long> totalSales = orderItem.quantity.sum().longValue();
-        NumberExpression<Long> totalRevenue = discountedUnitPrice().multiply(orderItem.quantity).sum().longValue();
+        NumberExpression<Long> totalRevenue = discountedUnitPrice()
+                .longValue()
+                .multiply(orderItem.quantity.longValue())
+                .sum();
 
         return queryFactory
                 .select(Projections.constructor(
@@ -58,8 +63,11 @@ public class OrderStatisticsPortAdapter implements OrderStatisticsPort {
 
     @Override
     public List<OrderTopItemSales> getTopItemsLast7Days(LocalDateTime time) {
-        NumberExpression<Integer> totalSold = orderItem.quantity.sum();
-        NumberExpression<Integer> totalRevenue = discountedUnitPrice().multiply(orderItem.quantity).sum();
+        NumberExpression<Long> totalSold = orderItem.quantity.sum().longValue();
+        NumberExpression<Long> totalRevenue = discountedUnitPrice()
+                .longValue()
+                .multiply(orderItem.quantity.longValue())
+                .sum();
 
         return queryFactory.select(Projections.constructor(
                         OrderTopItemSales.class,
@@ -76,14 +84,17 @@ public class OrderStatisticsPortAdapter implements OrderStatisticsPort {
                         .and(order.orderDate.goe(time)))
                 .groupBy(item.id, item.itemName)
                 .orderBy(totalSold.desc(), totalRevenue.desc())
-                .limit(5)
+                .limit(TOP_ITEMS_LIMIT)
                 .fetch();
     }
 
     @Override
     public List<OrderDailySales> getDailySalesBetween(LocalDate start, LocalDate end) {
         NumberExpression<Long> totalSales = orderItem.quantity.sum().longValue();
-        NumberExpression<Long> totalRevenue = discountedUnitPrice().multiply(orderItem.quantity).sum().longValue();
+        NumberExpression<Long> totalRevenue = discountedUnitPrice()
+                .longValue()
+                .multiply(orderItem.quantity.longValue())
+                .sum();
 
         return queryFactory
                 .select(Projections.constructor(

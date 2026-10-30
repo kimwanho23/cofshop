@@ -1,5 +1,7 @@
 package kwh.cofshop.statistics.controller;
 
+import kwh.cofshop.global.exception.BadRequestException;
+import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import kwh.cofshop.statistics.dto.DailySalesResponseDto;
 import kwh.cofshop.statistics.dto.TopItemResponseDto;
 import kwh.cofshop.statistics.service.StatisticsService;
@@ -53,7 +55,7 @@ class StatisticsControllerTest {
     @DisplayName("최근 7일 인기 상품 조회")
     void getTopItemsLast7Days() throws Exception {
         when(statisticsService.getTopItemsLast7Days())
-                .thenReturn(List.of(new TopItemResponseDto(1L, "커피", 10, 1000, LocalDateTime.now())));
+                .thenReturn(List.of(new TopItemResponseDto(1L, "커피", 10L, 1000L, LocalDateTime.now())));
 
         mockMvc.perform(get("/api/statistics/last-7days"))
                 .andExpect(status().isOk());
@@ -69,5 +71,17 @@ class StatisticsControllerTest {
                         .param("start", LocalDate.now().minusDays(7).toString())
                         .param("end", LocalDate.now().toString()))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("기간 매출 조회: 서비스 검증 실패 시 400")
+    void getSalesBetween_invalidRange() throws Exception {
+        when(statisticsService.getDailySalesBetween(any(), any()))
+                .thenThrow(new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE));
+
+        mockMvc.perform(get("/api/statistics/sales-between")
+                        .param("start", LocalDate.now().toString())
+                        .param("end", LocalDate.now().minusDays(1).toString()))
+                .andExpect(status().isBadRequest());
     }
 }

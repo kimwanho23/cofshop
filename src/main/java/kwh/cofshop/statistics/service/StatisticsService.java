@@ -2,6 +2,8 @@ package kwh.cofshop.statistics.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import kwh.cofshop.global.exception.BadRequestException;
+import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import kwh.cofshop.statistics.dto.DailySalesResponseDto;
 import kwh.cofshop.statistics.dto.TopItemResponseDto;
 import kwh.cofshop.statistics.repository.StatisticsRepository;
@@ -74,6 +76,9 @@ public class StatisticsService {
 
     // 기간 별 판매량
     public List<DailySalesResponseDto> getDailySalesBetween(LocalDate from, LocalDate to) {
+        if (from == null || to == null || from.isAfter(to)) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
         return statisticsRepository.getDailySalesBetween(from, to);
     }
 }

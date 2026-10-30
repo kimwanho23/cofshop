@@ -2,6 +2,7 @@ package kwh.cofshop.statistics.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.statistics.dto.DailySalesResponseDto;
 import kwh.cofshop.statistics.dto.TopItemResponseDto;
 import kwh.cofshop.statistics.repository.StatisticsRepository;
@@ -19,6 +20,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
@@ -59,7 +61,7 @@ class StatisticsServiceTest {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("ranking:top_items:last7days")).thenReturn(null);
         when(statisticsRepository.getTopItemsLast7Days(any())).thenReturn(
-                List.of(new TopItemResponseDto(1L, "커피", 10, 1000, LocalDateTime.now()))
+                List.of(new TopItemResponseDto(1L, "커피", 10L, 1000L, LocalDateTime.now()))
         );
 
         List<TopItemResponseDto> result = statisticsService.getTopItemsLast7Days();
@@ -70,7 +72,7 @@ class StatisticsServiceTest {
     @Test
     @DisplayName("최근 7일 인기 상품: 캐시 히트면 DB 조회 생략")
     void getTopItemsLast7Days_cacheHit() throws JsonProcessingException {
-        TopItemResponseDto cached = new TopItemResponseDto(1L, "커피", 10, 1000, LocalDateTime.now());
+        TopItemResponseDto cached = new TopItemResponseDto(1L, "커피", 10L, 1000L, LocalDateTime.now());
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("ranking:top_items:last7days")).thenReturn("[{\"itemId\":1}]");
         when(objectMapper.readValue(anyString(), any(TypeReference.class))).thenReturn(List.of(cached));
@@ -95,7 +97,7 @@ class StatisticsServiceTest {
     @Test
     @DisplayName("최근 7일 인기 상품(레디스): 캐시 히트")
     void getTopItemsLast7DaysFromRedis_hit() throws JsonProcessingException {
-        TopItemResponseDto topItem = new TopItemResponseDto(1L, "커피", 10, 1000, LocalDateTime.now());
+        TopItemResponseDto topItem = new TopItemResponseDto(1L, "커피", 10L, 1000L, LocalDateTime.now());
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("ranking:top_items:last7days")).thenReturn("[{\"itemId\":1}]");
         when(objectMapper.readValue(anyString(), any(TypeReference.class))).thenReturn(List.of(topItem));
@@ -128,5 +130,13 @@ class StatisticsServiceTest {
         List<DailySalesResponseDto> result = statisticsService.getDailySalesBetween(LocalDate.now().minusDays(1), LocalDate.now());
 
         assertThat(result).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("기간 매출 조회: 시작일이 종료일보다 크면 예외")
+    void getDailySalesBetween_invalidRange() {
+        assertThatThrownBy(() -> statisticsService.getDailySalesBetween(LocalDate.now(), LocalDate.now().minusDays(1)))
+                .isInstanceOf(BadRequestException.class);
+        verify(statisticsRepository, never()).getDailySalesBetween(any(), any());
     }
 }

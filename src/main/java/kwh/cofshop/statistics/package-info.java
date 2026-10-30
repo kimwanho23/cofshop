@@ -1,5 +1,9 @@
 @org.springframework.modulith.ApplicationModule(
         type = org.springframework.modulith.ApplicationModule.Type.CLOSED,
-        allowedDependencies = {"order::api"}
+        allowedDependencies = {
+                "order::api",
+                "global::exception",
+                "global::errorcodes"
+        }
 )
 package kwh.cofshop.statistics;
