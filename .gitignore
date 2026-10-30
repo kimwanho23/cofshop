@@ -43,6 +43,7 @@ application-prod.properties
 .env
 .gradle-user/
 .gradle-home/
+node_modules/
 
 # Local artifacts in info folder
 정보/
