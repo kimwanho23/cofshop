@@ -52,6 +52,26 @@ jobs:
           chmod +x ./gradlew
           ./gradlew clean test
 
+      # Testcontainers 테스트는 Docker가 없으면 건너뛰므로 CI에서는 실제 실행 여부를 검사
+      - name: Verify MySQL integration tests ran
+        run: |
+          report=build/test-results/test/TEST-kwh.cofshop.order.service.OrderStockConcurrencyMySqlTest.xml
+          if [ ! -f "$report" ] || ! grep -Eq '<testsuite [^>]*tests="[1-9][0-9]*" skipped="0" failures="0" errors="0"' "$report"; then
+            echo "::error::MySQL integration tests did not run"
+            exit 1
+          fi
+          echo "::notice::MySQL integration tests ran: $(grep -Eo 'tests="[0-9]+" skipped="[0-9]+"' "$report")"
+
+      - name: Upload test results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            build/test-results/test
+            build/reports/tests/test
+          retention-days: 14
+
   deploy:
     # Temporarily disabled until deployment infrastructure (e.g., EC2) is available.
     if: ${{ false }}
