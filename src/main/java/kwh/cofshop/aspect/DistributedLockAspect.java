@@ -19,7 +19,9 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Aspect
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE)
+// ExposeInvocationInterceptor(HIGHEST_PRECEDENCE + 1)보다 먼저 실행되면 어노테이션 인자 바인딩이 실패하고,
+// 트랜잭션보다 늦게 실행되면 커밋 전에 락이 풀리므로 그 사이의 순서를 사용
+@Order(Ordered.HIGHEST_PRECEDENCE + 100)
 @RequiredArgsConstructor
 public class DistributedLockAspect {
 
