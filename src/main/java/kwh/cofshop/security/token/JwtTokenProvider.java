@@ -160,9 +160,10 @@ public class JwtTokenProvider {
                     .parseClaimsJws(token);
             return true;
         } catch (ExpiredJwtException e) {
-            log.error("Token expired: {}", e.getMessage());
+            // 만료는 정상 흐름이고, 잘못된 토큰은 외부 입력이므로 오류 등급과 메시지를 남기지 않음
+            log.debug("Token expired");
         } catch (JwtException e) {
-            log.error("Invalid token: {}", e.getMessage());
+            log.warn("Invalid token: {}", e.getClass().getSimpleName());
         }
         return false;
     }

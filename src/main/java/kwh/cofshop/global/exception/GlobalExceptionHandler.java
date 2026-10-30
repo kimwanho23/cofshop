@@ -4,16 +4,27 @@ import jakarta.servlet.http.HttpServletRequest;
 import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import kwh.cofshop.global.exception.errorcodes.DataIntegrityViolationErrorCode;
 import kwh.cofshop.global.exception.errorcodes.ErrorCode;
+import kwh.cofshop.global.exception.errorcodes.ForbiddenErrorCode;
 import kwh.cofshop.global.exception.errorcodes.InternalServerErrorCode;
+import kwh.cofshop.global.exception.errorcodes.WebRequestErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -93,11 +104,10 @@ public class GlobalExceptionHandler {
             DataIntegrityViolationException e,
             HttpServletRequest request
     ) {
-        logKnownException(
+        logWithoutMessage(
                 "DataIntegrityViolationException",
                 DataIntegrityViolationErrorCode.DATA_INTEGRITY_VIOLATION_ERROR_CODE,
-                request,
-                e
+                request
         );
 
         return ResponseEntity
@@ -110,18 +120,65 @@ public class GlobalExceptionHandler {
             HttpMessageNotReadableException e,
             HttpServletRequest request
     ) {
-        log.warn(
-                "HttpMessageNotReadableException code={} status={} path={} traceId={} message={}",
-                BadRequestErrorCode.INPUT_INVALID_VALUE.getCode(),
-                BadRequestErrorCode.INPUT_INVALID_VALUE.getHttpStatus().value(),
-                resolvePath(request),
-                resolveTraceId(request),
-                e.getMessage()
-        );
+        logWithoutMessage("HttpMessageNotReadableException", BadRequestErrorCode.INPUT_INVALID_VALUE, request);
 
         return ResponseEntity
                 .status(BadRequestErrorCode.INPUT_INVALID_VALUE.getHttpStatus())
                 .body(ErrorResponse.of(BadRequestErrorCode.INPUT_INVALID_VALUE));
+    }
+
+    // 메서드 보안(@PreAuthorize) 거부는 컨트롤러 호출 중에 발생하므로 여기서 처리
+    @ExceptionHandler(AccessDeniedException.class)
+    protected ResponseEntity<ErrorResponse> handleAccessDeniedException(
+            AccessDeniedException e,
+            HttpServletRequest request
+    ) {
+        logKnownException("AccessDeniedException", ForbiddenErrorCode.ACCESS_DENIED, request, e);
+        return buildErrorResponse(ForbiddenErrorCode.ACCESS_DENIED);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    protected ResponseEntity<ErrorResponse> handleNoResourceFound(NoResourceFoundException e, HttpServletRequest request) {
+        logKnownException("NoResourceFoundException", WebRequestErrorCode.RESOURCE_NOT_FOUND, request, e);
+        return buildErrorResponse(WebRequestErrorCode.RESOURCE_NOT_FOUND);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    protected ResponseEntity<ErrorResponse> handleMethodNotSupported(
+            HttpRequestMethodNotSupportedException e,
+            HttpServletRequest request
+    ) {
+        logKnownException("HttpRequestMethodNotSupportedException", WebRequestErrorCode.METHOD_NOT_ALLOWED, request, e);
+        return buildErrorResponse(WebRequestErrorCode.METHOD_NOT_ALLOWED);
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    protected ResponseEntity<ErrorResponse> handleMediaTypeNotSupported(
+            HttpMediaTypeNotSupportedException e,
+            HttpServletRequest request
+    ) {
+        logKnownException("HttpMediaTypeNotSupportedException", WebRequestErrorCode.UNSUPPORTED_MEDIA_TYPE, request, e);
+        return buildErrorResponse(WebRequestErrorCode.UNSUPPORTED_MEDIA_TYPE);
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
+    protected ResponseEntity<ErrorResponse> handleMediaTypeNotAcceptable(
+            HttpMediaTypeNotAcceptableException e,
+            HttpServletRequest request
+    ) {
+        logKnownException("HttpMediaTypeNotAcceptableException", WebRequestErrorCode.NOT_ACCEPTABLE, request, e);
+        return buildErrorResponse(WebRequestErrorCode.NOT_ACCEPTABLE);
+    }
+
+    @ExceptionHandler({
+            MissingServletRequestParameterException.class,
+            MissingServletRequestPartException.class,
+            MethodArgumentTypeMismatchException.class,
+            HandlerMethodValidationException.class
+    })
+    protected ResponseEntity<ErrorResponse> handleInvalidRequest(Exception e, HttpServletRequest request) {
+        logWithoutMessage(e.getClass().getSimpleName(), BadRequestErrorCode.INPUT_INVALID_VALUE, request);
+        return buildErrorResponse(BadRequestErrorCode.INPUT_INVALID_VALUE);
     }
 
     @ExceptionHandler(Exception.class)
@@ -152,6 +209,18 @@ public class GlobalExceptionHandler {
                 resolvePath(request),
                 resolveTraceId(request),
                 e.getMessage()
+        );
+    }
+
+    // 예외 메시지에 사용자 입력값(본문 값, 중복된 이메일 등)이 포함될 수 있는 경우 사용
+    private void logWithoutMessage(String type, ErrorCode errorCode, HttpServletRequest request) {
+        log.warn(
+                "{} code={} status={} path={} traceId={}",
+                type,
+                errorCode.getCode(),
+                errorCode.getHttpStatus().value(),
+                resolvePath(request),
+                resolveTraceId(request)
         );
     }
 
