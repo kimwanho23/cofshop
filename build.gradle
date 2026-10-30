@@ -1,3 +1,16 @@
+buildscript {
+	dependencies {
+		constraints {
+			classpath 'com.fasterxml.jackson.core:jackson-core:2.21.7'
+			classpath 'com.fasterxml.jackson.core:jackson-databind:2.21.7'
+			classpath 'org.apache.commons:commons-lang3:3.18.0'
+			classpath 'org.apache.httpcomponents.client5:httpclient5:5.6.5'
+			classpath 'org.apache.httpcomponents.core5:httpcore5:5.4.4'
+			classpath 'org.apache.httpcomponents.core5:httpcore5-h2:5.4.4'
+		}
+	}
+}
+
 plugins {
 	id 'java'
 	id 'org.springframework.boot' version '3.5.16'
@@ -30,6 +43,9 @@ ext {
 	set('tomcat.version', '10.1.61')
 	set('netty.version', '4.1.137.Final')
 	set('jackson-bom.version', '2.21.7')
+	set('rabbit-amqp-client.version', '5.37.0')
+	set('commons-lang3.version', '3.18.0')
+	set('log4j2.version', '2.25.5')
 }
 
 dependencyManagement {
