@@ -62,9 +62,9 @@ export DB_HOST="$CONTAINER" DB_NAME=source_db DB_USER=root MYSQL_PWD="$ROOT_PASS
 export DOCKER_NETWORK="$NETWORK" BACKUP_DIR="$WORK_DIR/backups"
 
 backup_start="$(date +%s)"
-backup_file="$("$ROOT_DIR"/scripts/db-backup.sh | tail -n 1)"
+backup_file="$(bash "$ROOT_DIR"/scripts/db-backup.sh | tail -n 1)"
 restore_start="$(date +%s)"
-"$ROOT_DIR"/scripts/db-restore.sh "$backup_file" restored_db
+bash "$ROOT_DIR"/scripts/db-restore.sh "$backup_file" restored_db
 restore_end="$(date +%s)"
 
 snapshot restored_db > "$WORK_DIR/restored.txt"
@@ -76,14 +76,14 @@ if ! diff "$WORK_DIR/source.txt" "$WORK_DIR/restored.txt" > "$WORK_DIR/diff.txt"
 fi
 
 echo "checks: non-empty target must be refused"
-if "$ROOT_DIR"/scripts/db-restore.sh "$backup_file" restored_db >/dev/null 2>&1; then
+if bash "$ROOT_DIR"/scripts/db-restore.sh "$backup_file" restored_db >/dev/null 2>&1; then
   echo "REHEARSAL FAILED: restore overwrote a non-empty database" >&2
   exit 1
 fi
 
 echo "checks: corrupted backup must be refused"
 printf 'x' >> "$backup_file"
-if "$ROOT_DIR"/scripts/db-restore.sh "$backup_file" corrupted_db >/dev/null 2>&1; then
+if bash "$ROOT_DIR"/scripts/db-restore.sh "$backup_file" corrupted_db >/dev/null 2>&1; then
   echo "REHEARSAL FAILED: restore accepted a corrupted backup" >&2
   exit 1
 fi
