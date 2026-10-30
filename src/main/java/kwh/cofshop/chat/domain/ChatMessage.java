@@ -34,6 +34,7 @@ public class ChatMessage extends BaseTimeEntity {
 
     private String messageGroupId; // UUID 기반 그룹핑
 
+    @Enumerated(EnumType.STRING)
     private MessageType messageType; // 메시지 타입 구분
 
     @Column(nullable = false)

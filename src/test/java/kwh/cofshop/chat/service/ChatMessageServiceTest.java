@@ -9,6 +9,7 @@ import kwh.cofshop.chat.dto.response.DeletedMessageResponseDto;
 import kwh.cofshop.chat.mapper.ChatMessageMapper;
 import kwh.cofshop.chat.repository.ChatMessageRepository;
 import kwh.cofshop.chat.repository.ChatRoomRepository;
+import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.ForbiddenRequestException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
@@ -179,6 +180,29 @@ class ChatMessageServiceTest {
     }
 
     @Test
+    @DisplayName("채팅 메시지 조회: 종료 후에도 담당 상담사는 이력 조회 가능")
+    void getChatMessages_closedRoomAssignedAgentCanRead() {
+        Member customer = createMember(1L);
+        Member agent = createMember(2L);
+        ChatRoom chatRoom = ChatRoom.createChatRoom(customer);
+        chatRoom.assignAgent(agent);
+        chatRoom.close();
+
+        ChatMessageResponseDto responseDto = new ChatMessageResponseDto();
+        responseDto.setMessageId(20L);
+        responseDto.setMessage("종료 후 조회");
+        Slice<ChatMessageResponseDto> slice = new SliceImpl<>(List.of(responseDto), PageRequest.of(0, 20), false);
+
+        when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
+        when(memberReadPort.getById(2L)).thenReturn(createMember(2L));
+        when(chatMessageRepository.findMessagesByRoom(1L, null, 20)).thenReturn(slice);
+
+        Slice<ChatMessageResponseDto> result = chatMessageService.getChatMessages(1L, null, 20, 2L);
+
+        assertThat(result.getContent()).hasSize(1);
+    }
+
+    @Test
     @DisplayName("채팅 메시지 조회: 참여자 아님")
     void getChatMessages_notParticipant() {
         Member customer = createMember(1L);
@@ -190,6 +214,13 @@ class ChatMessageServiceTest {
 
         assertThatThrownBy(() -> chatMessageService.getChatMessages(1L, null, 20, 2L))
                 .isInstanceOf(ForbiddenRequestException.class);
+    }
+
+    @Test
+    @DisplayName("채팅 메시지 조회: pageSize 검증")
+    void getChatMessages_invalidPageSize() {
+        assertThatThrownBy(() -> chatMessageService.getChatMessages(1L, null, 0, 1L))
+                .isInstanceOf(BadRequestException.class);
     }
 
     @Test

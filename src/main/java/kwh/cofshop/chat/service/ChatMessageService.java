@@ -8,8 +8,10 @@ import kwh.cofshop.chat.dto.response.DeletedMessageResponseDto;
 import kwh.cofshop.chat.mapper.ChatMessageMapper;
 import kwh.cofshop.chat.repository.ChatMessageRepository;
 import kwh.cofshop.chat.repository.ChatRoomRepository;
+import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.ForbiddenRequestException;
+import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.global.exception.errorcodes.ForbiddenErrorCode;
 import kwh.cofshop.member.api.MemberReadPort;
@@ -66,6 +68,10 @@ public class ChatMessageService {
     // 채팅 메시지 조회
     @Transactional(readOnly = true)
     public Slice<ChatMessageResponseDto> getChatMessages(Long roomId, Long lastMessageId, int pageSize, Long memberId) {
+        if (pageSize <= 0 || pageSize > 100) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+
         ChatRoom chatRoom = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.CHAT_ROOM_NOT_FOUND));
         Member member = memberReadPort.getById(memberId);

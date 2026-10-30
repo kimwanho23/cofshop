@@ -20,11 +20,13 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Value("${file.dir}")
     private String fileDir;
+    @Value("${security.cors.allowed-origin-patterns:http://localhost:8080}")
+    private List<String> allowedOriginPatterns;
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/v3/api-docs/**")
-                .allowedOrigins("http://localhost:8080") // Swagger UI 도메인
+                .allowedOriginPatterns(allowedOriginPatterns.toArray(String[]::new))
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS");
     }
 

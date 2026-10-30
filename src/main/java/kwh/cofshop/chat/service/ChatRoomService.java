@@ -5,6 +5,7 @@ import kwh.cofshop.chat.domain.ChatRoomStatus;
 import kwh.cofshop.chat.dto.response.ChatRoomResponseDto;
 import kwh.cofshop.chat.mapper.ChatRoomMapper;
 import kwh.cofshop.chat.repository.ChatRoomRepository;
+import kwh.cofshop.global.annotation.DistributedLock;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.member.api.MemberReadPort;
@@ -33,6 +34,7 @@ public class ChatRoomService {
     }
 
     // 상담사 연결
+    @DistributedLock(keyName = "'chat:room:' + #roomId")
     @Transactional
     public void joinChatAgent(Long roomId, Long agentId) {
         ChatRoom chatRoom = chatRoomRepository.findById(roomId)
@@ -55,6 +57,7 @@ public class ChatRoomService {
     }
 
     // 상담 채팅 종료(상태 변경)
+    @DistributedLock(keyName = "'chat:room:' + #roomId")
     @Transactional
     public void closeChatRoom(Long roomId) {
         ChatRoom chatRoom = chatRoomRepository.findById(roomId)

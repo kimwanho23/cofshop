@@ -26,6 +26,8 @@ public class ChatRoom extends BaseTimeEntity {
     @JoinColumn(name = "agent_id")
     private Member agent; // 상담사
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private ChatRoomStatus chatRoomStatus; // 채팅방 상태
 
     @Builder
@@ -47,8 +49,8 @@ public class ChatRoom extends BaseTimeEntity {
 
     // 채팅 종료
     public void close() {
-        this.agent = null; // 상담사 연결 해제
-        this.chatRoomStatus = ChatRoomStatus.CLOSED; // 채팅방 종료
+        // 담당 상담사 이력은 유지하고 상태만 종료로 전환한다.
+        this.chatRoomStatus = ChatRoomStatus.CLOSED;
     }
 
     // 채팅방 참여 여부 검증

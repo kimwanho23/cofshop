@@ -196,6 +196,22 @@ class ChatRoomServiceTest {
         verify(chatRoomRepository).findById(1L);
     }
 
+    @Test
+    @DisplayName("채팅방 종료: 담당 상담사 이력 유지")
+    void closeChatRoom_keepAssignedAgent() {
+        Member customer = createMember(1L);
+        Member agent = createMember(2L, Role.ADMIN);
+        ChatRoom chatRoom = ChatRoom.createChatRoom(customer);
+        chatRoom.assignAgent(agent);
+
+        when(chatRoomRepository.findById(1L)).thenReturn(Optional.of(chatRoom));
+
+        chatRoomService.closeChatRoom(1L);
+
+        assertThat(chatRoom.getChatRoomStatus()).isEqualTo(ChatRoomStatus.CLOSED);
+        assertThat(chatRoom.getAgent()).isEqualTo(agent);
+    }
+
     private Member createMember(Long id) {
         return createMember(id, Role.MEMBER);
     }
