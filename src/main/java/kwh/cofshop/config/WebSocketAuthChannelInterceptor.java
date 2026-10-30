@@ -1,11 +1,9 @@
 package kwh.cofshop.config;
 
 import kwh.cofshop.chat.api.ChatRoomAccessPort;
-import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.ForbiddenRequestException;
 import kwh.cofshop.global.exception.UnauthorizedRequestException;
-import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.global.exception.errorcodes.ForbiddenErrorCode;
 import kwh.cofshop.global.exception.errorcodes.UnauthorizedErrorCode;
@@ -33,7 +31,7 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String AUTHORIZATION_HEADER_LOWER = "authorization";
     private static final String BEARER_PREFIX = "Bearer ";
-    private static final String CHATROOM_TOPIC_PREFIX = "/topic/chatroom.";
+    private static final String APPLICATION_DESTINATION_PREFIX = "/app/";
     private static final Pattern CHATROOM_DESTINATION_PATTERN = Pattern.compile("^/topic/chatroom\\.(\\d+)$");
 
     private final JwtTokenProvider jwtTokenProvider;
@@ -54,6 +52,10 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
 
         if (StompCommand.SEND.equals(command) || StompCommand.SUBSCRIBE.equals(command)) {
             ensureAuthenticated(accessor);
+        }
+
+        if (StompCommand.SEND.equals(command)) {
+            authorizeSend(accessor);
         }
 
         if (StompCommand.SUBSCRIBE.equals(command)) {
@@ -82,13 +84,26 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
         }
     }
 
+    // 브로커(/topic)로 직접 보내면 참여자 검사와 저장을 건너뛰므로 애플리케이션 목적지만 허용
+    private void authorizeSend(StompHeaderAccessor accessor) {
+        String destination = accessor.getDestination();
+        if (!StringUtils.hasText(destination) || !destination.startsWith(APPLICATION_DESTINATION_PREFIX)) {
+            throw new ForbiddenRequestException(ForbiddenErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    // 패턴 구독(/topic/*)으로 모든 방을 받을 수 있으므로 정확한 채팅방 목적지만 허용
     private void authorizeSubscription(StompHeaderAccessor accessor) {
         String destination = accessor.getDestination();
-        if (!StringUtils.hasText(destination) || !destination.startsWith(CHATROOM_TOPIC_PREFIX)) {
-            return;
+        if (!StringUtils.hasText(destination)) {
+            throw new ForbiddenRequestException(ForbiddenErrorCode.ACCESS_DENIED);
+        }
+        Matcher matcher = CHATROOM_DESTINATION_PATTERN.matcher(destination);
+        if (!matcher.matches()) {
+            throw new ForbiddenRequestException(ForbiddenErrorCode.ACCESS_DENIED);
         }
 
-        Long roomId = extractRoomId(destination);
+        Long roomId = Long.valueOf(matcher.group(1));
         Long memberId = extractMemberId(accessor.getUser());
 
         if (!chatRoomAccessPort.existsRoom(roomId)) {
@@ -97,14 +112,6 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
         if (!chatRoomAccessPort.isParticipant(roomId, memberId)) {
             throw new ForbiddenRequestException(ForbiddenErrorCode.CHAT_ROOM_ACCESS_DENIED);
         }
-    }
-
-    private Long extractRoomId(String destination) {
-        Matcher matcher = CHATROOM_DESTINATION_PATTERN.matcher(destination);
-        if (!matcher.matches()) {
-            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
-        }
-        return Long.valueOf(matcher.group(1));
     }
 
     private Long extractMemberId(Principal principal) {
