@@ -27,21 +27,22 @@ Spring Boot 기반 쇼핑몰 백엔드 서버입니다. 회원/상품/장바구�
 | 구분 | 기술 |
 | --- | --- |
 | Language | Java 17 |
-| Framework | Spring Boot 3, Spring Data JPA, Spring Security |
-| Database | MySQL, H2(test) |
-| Cache/Queue | Redis, Redisson |
+| Framework | Spring Boot 3.5, Spring Data JPA, Spring Security, Spring Modulith |
+| Database | MySQL 8.0, Flyway, H2(일부 테스트) |
+| Cache/Queue | Redis, Redisson, RabbitMQ(선택) |
 | Docs | springdoc-openapi (Swagger UI) |
 | Build | Gradle |
-| Test | JUnit, Spring Test, REST Docs |
+| Test | JUnit, Mockito, Testcontainers, REST Docs |
 
 ## 구조 요약
 - `src/main/java/kwh/cofshop`
   - `config/` 설정 (Security, Redis, Swagger, WebSocket, QueryDSL 등)
   - `global/` 공통 응답/예외 처리
   - `member/`, `item/`, `order/`, `cart/`, `coupon/`, `payment/`, `chat/`, `statistics/`
-  - `aspect/`, `argumentResolver/`, `security/`
+  - `aspect/`, `argumentresolver/`, `security/`
 - `src/main/resources/`
-  - `application*.properties` (프로파일/환경 설정)
+  - `application*.properties.template` (프로파일/환경 설정 템플릿)
+  - `db/migration/` Flyway 스키마 마이그레이션
   - `templates/` 결제 관련 템플릿
 - `docs/` 상세 문서
 
@@ -98,15 +99,18 @@ Spring Boot 기반 쇼핑몰 백엔드 서버입니다. 회원/상품/장바구�
 | `PORTONE_CHANNEL_KEY` | PortOne Browser SDK Channel Key |
 | `JWT_SECRET_KEY` | JWT 시크릿 |
 | `SPRING_PROFILES_ACTIVE` | 실행 프로파일 (`dev`/`staging`/`prod`) |
+| `JPA_DDL_AUTO` | Hibernate 스키마 동작 (기본 `validate`) |
+| `FLYWAY_BASELINE_ON_MIGRATE` | 기존 DB를 Flyway로 전환할 때만 `true` |
 
 
 ## 운영/보안 유의사항
 - `src/main/resources/application*.properties`는 Git 추적에서 제외되어 있으니, 초기 1회 `./scripts/init-local-config.sh`를 실행해 템플릿에서 생성하세요.
 - 추적 가능한 템플릿은 `src/main/resources/application*.properties.template`에 있습니다.
+- DB 스키마 변경은 `src/main/resources/db/migration`에 Flyway 스크립트로 추가하세요.
 - 실제 비밀값(DB/Redis/결제/JWT)은 템플릿이 아닌 환경 변수/Secret Manager로 주입하세요.
 - CI는 `gitleaks` 시크릿 스캔을 수행하며, 규칙은 `.gitleaks.toml`에서 관리합니다.
 - GitHub Actions 배포는 `GitHub Environments`(`development`, `production`) 단위로 시크릿을 분리해 관리하세요.
 - GitHub 공개 리포지토리에는 시크릿을 커밋하지 않도록 주의하세요.
 
 ## Trouble Shooting
-자세한 내용은 `docs/TROUBLESHOOTING.md` 참고.
+자세한 내용은 `docs/TROUBLESHOOTING.md` 참고. 실서비스 전환 계획은 `docs/ROADMAP.md`를 참고하세요.

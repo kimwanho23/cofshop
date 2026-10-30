@@ -17,7 +17,7 @@
 - 네, 먼저 준비해야 합니다.
 - 앱은 부팅 시 DB 연결을 시도합니다.
 - production 기본은 `ddl-auto=validate`입니다.
-- 빈 DB 초기 1회는 `JPA_DDL_AUTO=create`로 부팅 후, 즉시 `validate`로 복귀하세요.
+- 빈 DB는 앱 기동 시 Flyway가 스키마를 생성합니다. `JPA_DDL_AUTO=create`를 사용하지 마세요.
 
 ## 2) MySQL 생성 예시
 ```sql
@@ -41,13 +41,12 @@ FLUSH PRIVILEGES;
 
 ## 2-1) 권한 모델 권장
 - 앱 런타임 계정: 최소 권한
-- 스키마 변경: 별도 마이그레이션 계정(Flyway/Liquibase) 사용
+- 스키마 변경: 앱 기동 시 Flyway가 앱 DB 계정으로 실행하므로, 현재 앱 계정에 DDL 권한이 필요합니다. 계정을 분리하려면 `spring.flyway.user`, `spring.flyway.password`를 별도로 설정하세요.
 
-## 2-2) 빈 DB 초기 부트스트랩(1회)
-1) `production` Environment Secret에 `JPA_DDL_AUTO=create` 설정
-2) `workflow_dispatch`로 production 1회 배포
-3) 테이블 생성 확인 후 `JPA_DDL_AUTO=validate`로 즉시 복구
-4) 이후부터는 `validate` 고정 운영
+## 2-2) 빈 DB 초기 부트스트랩
+1) `JPA_DDL_AUTO=validate`로 앱을 배포
+2) 앱 기동 시 Flyway가 `db/migration` 스크립트를 적용
+3) `flyway_schema_history` 테이블에서 적용 결과 확인
 
 ## 3) DB URL 예시
 - dev: `jdbc:mysql://<dev-host>:3306/cofshop_dev?serverTimezone=UTC&characterEncoding=UTF-8&useUnicode=true`
@@ -69,7 +68,7 @@ FLUSH PRIVILEGES;
 - `EC2_SSH_USER`
 - `EC2_SSH_KEY`
 - `SPRING_PROFILES_ACTIVE`
-- `JPA_DDL_AUTO` (권장: `validate`, 초기 1회만 `create`)
+- `JPA_DDL_AUTO` (`validate` 고정)
 - `DB_URL`
 - `DB_USERNAME`
 - `DB_PASSWORD`
@@ -87,14 +86,13 @@ FLUSH PRIVILEGES;
 | --- | --- | --- | --- | --- |
 | `development` | `dev` | `update` | `cofshop_dev` | `cofshop_app_dev` |
 | `staging` | `staging` | `validate` | `cofshop_staging` | `cofshop_app_staging` |
-| `production` | `prod` | `validate` (초기 1회 `create`) | `cofshop_prod` | `cofshop_app_prod` |
+| `production` | `prod` | `validate` | `cofshop_prod` | `cofshop_app_prod` |
 
 ## 7) 등록 체크리스트
 - [ ] MySQL/RDS에 `cofshop_dev`, `cofshop_staging`, `cofshop_prod` 생성
 - [ ] 환경별 DB 계정/비밀번호 생성
 - [ ] 런타임 최소 권한 부여
 - [ ] 스키마 마이그레이션 완료
-- [ ] 빈 DB라면 첫 배포 전에 `JPA_DDL_AUTO=create` 설정
 - [ ] 초기 생성 후 `JPA_DDL_AUTO=validate`로 복구
 - [ ] GitHub Environment `development` 생성
 - [ ] GitHub Environment `staging` 생성

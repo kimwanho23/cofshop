@@ -59,7 +59,7 @@
 - 보조 작업: Pending 메시지 정리/스케줄러 기반 만료 처리
 
 ## 결제(payment)
-- 책임: 결제 요청/검증/환불, 외부 PG(PortOne/Iamport) 연동
+- 책임: 결제 요청/검증/환불, 외부 PG(PortOne V2) 연동
 - 주요 구성: `PaymentEntity`, `PaymentService`, `PaymentController`
 - 동시성: `@DistributedLock`으로 결제/환불 동시 처리 제어
 - 흐름 요약: 주문 상태 변경 -> 결제 준비 -> PG 검증 -> 결제 상태 반영/환불
@@ -90,8 +90,8 @@
 2) `PaymentService.createPaymentRequest()`에서 `order.api.OrderPaymentPreparePort.prepare()` 호출  
 3) `PaymentEntity` 저장 -> 프론트 결제 화면으로 응답  
 4) 결제 완료 후 검증 호출 -> `verifyPayment()`  
-5) Iamport API 검증 후 금액/merchantUid 대조 -> 결제 상태 확정  
-6) 환불 요청 시 `refundPayment()`에서 상태 확인 + Iamport 취소 호출  
+5) PortOne API 검증 후 금액/merchantUid 대조 -> 결제 상태 확정  
+6) 환불 요청 시 `refundPayment()`에서 상태 확인 + PortOne 취소 호출  
 
 ### 쿠폰(coupon) 플로우 (Limited 쿠폰 발급)
 1) 발급 요청 수신  

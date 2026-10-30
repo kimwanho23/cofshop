@@ -20,24 +20,28 @@
 
 | ID | 위험 | 등급 | 상태 | 단계 |
 | --- | --- | --- | --- | --- |
-| R-01 | 결제 확인 누락 시 돈만 받고 주문 취소 | 높음 | 미해결 | 3 |
+| R-01 | 결제 확인 누락 시 돈만 받고 주문 취소 | 높음 | 해결 | 3 |
 | R-02 | 채팅 도청·메시지 위조 | 높음 | 해결 | 1 |
 | R-03 | 재고 덮어쓰기로 초과 판매 | 높음 | 해결 | 1 |
 | R-04 | 환불 복구 큐 무한 증가 | 높음 | 해결 | 1 |
-| R-05 | PG 환불 후 DB가 결제 완료로 복귀 | 높음 | 미해결 | 3 |
+| R-05 | PG 환불 후 DB가 결제 완료로 복귀 | 높음 | 해결 | 3 |
 | R-06 | 옵션 할인율이 주문 금액에 미반영 | 보통 | 해결 | 1 |
-| R-07 | 0원 주문 완료 경로 없음 | 보통 | 미해결 | 1 |
-| R-08 | 승인된 환불 실행을 회원에게 의존 | 보통 | 미해결 | 1 |
-| R-09 | 미구매자 리뷰 작성 가능 | 보통 | 미해결 | 1 |
-| R-10 | 판매 중지 미구현, 구매 제한 우회 | 보통 | 미해결 | 1 |
-| R-11 | DB 스키마 변경을 수동 관리 | 높음 | 미해결 | 2 |
-| R-12 | 메트릭·알림 없음 | 높음 | 미해결 | 2 |
+| R-07 | 0원 주문 완료 경로 없음 | 보통 | 해결 | 1 |
+| R-08 | 승인된 환불 실행을 회원에게 의존 | 보통 | 해결 | 1 |
+| R-09 | 미구매자 리뷰 작성 가능 | 보통 | 해결 | 1 |
+| R-10 | 판매 중지 미구현, 구매 제한 우회 | 보통 | 해결 | 1 |
+| R-11 | DB 스키마 변경을 수동 관리 | 높음 | 해결 | 2 |
+| R-12 | 메트릭·알림 없음 | 높음 | 해결 | 2 |
 | R-13 | 의존성 취약점 잔존 | 보통 | 수용 | 0 |
 | R-14 | 통합·동시성 테스트 부재 | 높음 | 진행 중 | 1 |
 | R-15 | 배포·롤백 미검증 | 높음 | 미해결 | 4 |
 | R-16 | 분산 락 유지 시간 초과 가능 | 낮음 | 미해결 | 4 |
 | R-17 | 결제 생성 중복 처리 catch 미동작 가능 | 낮음 | 미해결 | 3 |
 | R-18 | 미검토 영역 존재 | 보통 | 미해결 | 4 |
+| R-19 | `@DistributedLock` 메서드가 실제 앱에서 전부 실패 | 높음 | 해결 | 1 |
+| R-20 | RabbitMQ 비활성 설정에서 앱 기동 실패 | 높음 | 해결 | 1 |
+| R-21 | 설정 템플릿이 없어 새 클론에서 실행 불가 | 높음 | 해결 | 2 |
+| R-22 | 클라이언트 오류와 권한 거부가 500으로 응답 | 보통 | 해결 | 2 |
 
 ## 결제·주문
 
@@ -47,7 +51,9 @@
 - **상황:** 고객이 PG 결제 후 브라우저를 닫으면 `/verify`가 호출되지 않습니다. 30분 뒤 자동 취소가 DB의 `READY` 상태만 보고 주문을 취소합니다. 회원의 직접 취소도 같은 판단을 합니다.
 - **영향:** 결제 금액이 환불되지 않은 채 주문만 취소됩니다.
 - **근거:** 코드에 webhook 처리와 PG 대사 스케줄러가 없습니다.
-- **조치:** 취소 전에 PG 상태를 조회하고, webhook 또는 대사 스케줄러로 상태를 맞춥니다.
+- **해결:** `PaymentReconciliationScheduler`가 결제 요청 후 5분~24시간 지난 `READY` 결제를 1분마다 PG와 대조합니다. PG 결제 완료면 확정하고, 주문이 이미 취소됐으면 PG 취소까지 진행합니다. 자동 취소 전에도 PG를 확인하며, PG 조회가 실패하면 취소를 보류합니다.
+- **검증:** `ApplicationIntegrationTest`(PG는 대체), `PaymentReconciliationSchedulerTest`, `OrderAutoCancelSchedulerTest`
+- **남은 위험:** 실제 PortOne 응답(404, 상태 값)으로는 확인하지 않았습니다. 24시간이 지난 뒤 결제된 건은 대사 대상이 아닙니다.
 
 ### R-03 재고 덮어쓰기로 초과 판매
 
@@ -71,7 +77,9 @@
 - **상황:** 취소 요청 타임아웃이나 취소 직후 상태 불일치 시 곧바로 `PAID`로 되돌립니다.
 - **영향:** PG에서는 환불됐는데 DB는 결제 완료로 남습니다. 회원이 다시 요청해야 맞춰지며, 그동안 환불 승인 상태라 배송 진행은 막힙니다.
 - **미확인:** PortOne의 취소 비동기 처리 여부. 타임아웃 경로는 이와 무관하게 발생합니다.
-- **조치:** 결과가 불확실하면 `REFUND_PENDING`을 유지하고 대사로 확정합니다.
+- **해결:** PG가 취소 실패를 명확히 응답한 경우에만 `PAID`로 되돌립니다. 타임아웃이나 처리 중이면 `REFUND_PENDING`을 유지하고 `ApprovedRefundRetryScheduler`가 PG 상태로 확정합니다.
+- **검증:** `ApplicationIntegrationTest`(PG는 대체), `PaymentServiceTest`
+- **남은 위험:** PG 장애가 길어지면 재시도와 `ApprovedRefundStuck` 알림이 계속됩니다. 수동 처리 기능은 아직 없습니다.
 
 ### R-06 옵션 할인율이 주문 금액에 미반영
 
@@ -86,14 +94,16 @@
 - **위치:** `OrderService.applyPoint`, `Order.finalizePrice`, `PaymentService.createPaymentRequest`
 - **상황:** 전액 할인과 무료 배송이 겹치면 최종 금액이 0원이지만 PG를 거치지 않는 처리가 없습니다.
 - **영향:** PG가 0원 결제를 거부하면 주문이 자동 취소됩니다. PortOne의 동작은 미확인입니다.
-- **조치:** 0원 주문 정책을 정한 뒤 반영합니다.
+- **해결:** 최종 금액이 0원이면 주문 생성 시 바로 `PAID`로 처리합니다. 환불도 PG 없이 승인 시 바로 완료합니다.
+- **검증:** `OrderServiceTest`
 
 ### R-08 승인된 환불 실행을 회원에게 의존
 
 - **위치:** `PaymentController.refundPayment`, `OrderService.processRefundRequestByAdmin`
 - **상황:** 관리자는 승인만 하고, 실행 API는 회원 전용입니다.
 - **영향:** 회원이 호출하지 않으면 환불되지 않은 채 배송도 막힌 상태로 남습니다.
-- **조치:** 승인 시 자동 실행하거나 관리자 실행 경로를 추가합니다.
+- **해결:** 승인 커밋 후 `OrderRefundApprovedEvent`로 환불을 비동기 실행합니다. 실패하거나 이벤트가 유실되면 `ApprovedRefundRetryScheduler`가 5분 간격으로 재시도합니다. 회원 환불 API는 유지합니다.
+- **검증:** `ApprovedRefundExecutorTest`, `ApprovedRefundRetrySchedulerTest`, `OrderRefundApprovedEventListenerTest`, `OrderPolicyQueryTest`, `ApplicationIntegrationTest`(PG는 대체). 실제 PortOne 연동은 검증하지 않았습니다.
 
 ### R-17 결제 생성 중복 처리 catch 미동작 가능
 
@@ -118,14 +128,16 @@
 
 - **위치:** `ReviewService.save`
 - **영향:** 구매하지 않은 사용자가 평점을 조작할 수 있습니다.
-- **조치:** 리뷰 자격 정책을 정한 뒤 구매 이력을 검증합니다.
+- **해결:** 해당 상품을 구매 확정(`COMPLETED`)한 회원만 작성할 수 있습니다. 기존 리뷰는 그대로 둡니다.
+- **검증:** `ReviewServiceTest`, `OrderPolicyQueryTest`
 
 ### R-10 판매 중지 미구현, 구매 제한 우회
 
 - **위치:** `ItemOption.validatePurchasable`, `OrderItemService.createOrderItems`
 - **상황:** 상품 상태를 판매 중지로 바꾸는 코드를 찾지 못했고 주문 시 상품 상태도 확인하지 않습니다. `itemLimit`은 주문 1건 기준입니다.
 - **영향:** 상품 단위 판매 중단이 불가능하고, 주문을 나누면 구매 제한을 넘을 수 있습니다.
-- **조치:** 판매 중지 기능과 주문 시 검증을 추가하고, 제한 기준을 정합니다.
+- **해결:** 판매자용 `PATCH /api/item/{itemId}/state`를 추가하고 주문 시 판매 상태를 검사합니다. `itemLimit`은 회원당 누적(취소·환불 제외, 기간 제한 없음)으로 검사합니다.
+- **검증:** `OrderItemServiceTest`, `ItemServiceTest`, `ItemControllerTest`, `OrderPolicyQueryTest`
 
 ## 운영·품질
 
@@ -133,13 +145,31 @@
 
 - **근거:** Flyway, Liquibase가 없고 `docs/sql`, `docs/db`에 스크립트가 흩어져 있습니다.
 - **영향:** 운영 기본값이 `ddl-auto=validate`라서 적용을 빠뜨리면 앱이 기동되지 않고, 적용 이력도 남지 않습니다.
-- **조치:** Flyway를 도입합니다.
+- **해결:** Flyway를 도입했습니다. V1은 엔티티 기준 Hibernate DDL이고, V2에서 스케줄러용 인덱스를 추가했습니다. 기존 `docs/sql`, `docs/db` 스크립트는 V1에 통합되어 제거했습니다.
+- **검증:** `ApplicationIntegrationTest`가 빈 MySQL에 마이그레이션을 적용하고 `ddl-auto=validate`로 기동합니다.
+- **주의:** 운영 데이터가 있는 DB에는 아직 적용해 보지 않았습니다.
+
+### R-21 설정 템플릿이 없어 새 클론에서 실행 불가
+
+- **상황:** `application*.properties`는 Git에서 제외되는데, 문서와 `init-local-config.sh`가 가리키는 `.template` 파일이 저장소에 없었습니다.
+- **영향:** 새 클론이나 CI에서 빌드한 이미지에는 설정이 없어 앱을 실행할 수 없습니다.
+- **해결:** 환경 변수 기반 템플릿 4개를 추가했습니다.
+- **검증:** 깨끗한 복사본에서 `init-local-config.sh` 실행 후 `ApplicationIntegrationTest`로 확인합니다.
+
+### R-22 클라이언트 오류와 권한 거부가 500으로 응답
+
+- **위치:** `GlobalExceptionHandler`
+- **상황:** `Exception` 처리기가 스프링 MVC 예외를 모두 받아 없는 경로, 잘못된 메서드, 파라미터 오류를 500으로 응답했습니다. `@PreAuthorize` 거부도 컨트롤러 호출 중 발생해 403이 아니라 500이 됩니다.
+- **영향:** 정상 요청 오류가 서버 장애로 기록되어 5xx 알림이 오동작합니다.
+- **해결:** 해당 예외별로 404, 405, 406, 415, 400, 403으로 응답합니다.
+- **검증:** `GlobalExceptionHandlerWebTest`, `ActuatorIntegrationTest`
 
 ### R-12 메트릭·알림 없음
 
 - **근거:** `build.gradle`에 Actuator, Micrometer, Prometheus, Sentry가 없습니다.
 - **영향:** 복구 큐 적체, 결제 불일치, 오류율 증가를 사용자 신고 전에 알기 어렵습니다.
-- **조치:** 메트릭 수집과 알림을 구성합니다.
+- **해결:** Actuator, Prometheus 메트릭, 업무 메트릭, 알림 규칙, Discord 전송을 구성했습니다. [MONITORING.md](MONITORING.md)를 참고하세요.
+- **검증:** Prometheus의 `AppDown` 발동부터 Discord 전송까지 실행해 전송 실패 0건을 확인했습니다. 업무 메트릭 규칙은 `promtool` 테스트로만 확인했습니다.
 
 ### R-13 의존성 취약점 잔존
 
@@ -154,8 +184,23 @@
 
 - **근거:** 테스트 클래스 76개 중 59개가 Mockito 기반이고, Testcontainers와 동시성 테스트가 없습니다.
 - **영향:** 락, 트랜잭션, 쿼리 문제를 테스트로 발견할 수 없습니다. R-03이 이 경우입니다.
-- **진행:** Testcontainers MySQL과 재고 동시성 테스트를 추가했습니다. Redis와 분산 락을 포함한 통합 테스트는 아직 없습니다.
+- **진행:** Testcontainers로 MySQL·Redis 동시성 테스트와 앱 전체 통합 테스트(`ApplicationIntegrationTest`)를 추가했습니다. 이 테스트로 R-19, R-20을 발견했습니다. 결제 동시성과 인증 시나리오는 아직 없습니다.
 - **조치:** [TESTING.md](TESTING.md)의 나머지 기준을 적용합니다.
+
+### R-19 `@DistributedLock` 메서드가 실제 앱에서 전부 실패
+
+- **위치:** `DistributedLockAspect`의 `@Order`
+- **상황:** `@Order(HIGHEST_PRECEDENCE)`로 애스펙트가 `ExposeInvocationInterceptor`보다 먼저 실행되어 어노테이션 인자 바인딩이 실패했습니다. 주문 생성·취소, 결제, 환불 등 락을 쓰는 메서드가 모두 `IllegalStateException`으로 실패합니다.
+- **근거:** 실제 스프링 컨텍스트 테스트에서 재현했습니다. mock 기반 테스트는 프록시를 거치지 않아 통과했습니다.
+- **해결:** 순서를 `HIGHEST_PRECEDENCE + 100`으로 변경했습니다.
+- **검증:** `DistributedLockIntegrationTest`(트랜잭션 커밋 후 해제 포함), `ApplicationIntegrationTest`
+
+### R-20 RabbitMQ 비활성 설정에서 앱 기동 실패
+
+- **위치:** `LoggingCouponIssueEventPublisher`
+- **상황:** 스캔 대상에 `@ConditionalOnMissingBean`을 사용해 자기 자신이 조회되어 등록이 취소됐습니다. `coupon.rabbit.enabled=false`이면 발행기 빈이 없어 앱이 기동되지 않습니다.
+- **해결:** `@ConditionalOnProperty`로 변경했습니다.
+- **검증:** `ApplicationIntegrationTest`. RabbitMQ를 켠 설정의 기동은 검증하지 않았습니다.
 
 ### R-15 배포·롤백 미검증
 
