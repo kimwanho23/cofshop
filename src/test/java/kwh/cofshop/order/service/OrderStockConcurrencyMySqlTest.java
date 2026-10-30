@@ -9,7 +9,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 // Docker가 없는 로컬에서는 건너뛰고 CI에서 실행
 @Testcontainers(disabledWithoutDocker = true)
 @DataJpaTest(properties = {
-        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.jpa.hibernate.ddl-auto=validate",
         "spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect",
         "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect"
 })

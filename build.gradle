@@ -16,6 +16,7 @@ plugins {
 	id 'org.springframework.boot' version '3.5.16'
 	id 'io.spring.dependency-management' version '1.1.6'
 	id 'org.asciidoctor.jvm.convert' version '3.3.2'
+	id 'jacoco'
 }
 
 group = 'kwh'
@@ -56,6 +57,8 @@ dependencyManagement {
 
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-aop'
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -68,6 +71,8 @@ dependencies {
 		compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	runtimeOnly 'com.mysql:mysql-connector-j'
+	implementation 'org.flywaydb:flyway-core'
+	runtimeOnly 'org.flywaydb:flyway-mysql'
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
@@ -126,6 +131,47 @@ allprojects {
 tasks.named('test') {
 	outputs.dir snippetsDir
 	useJUnitPlatform()
+	finalizedBy 'jacocoTestReport'
+}
+
+// DTO, 생성 코드, 설정은 커버리지 측정에서 제외
+def jacocoExcludes = [
+		'**/dto/**',
+		'**/Q*.class',
+		'**/*MapperImpl*',
+		'**/config/**',
+		'**/CofshopApplication*'
+]
+
+tasks.named('jacocoTestReport') {
+	dependsOn 'test'
+	reports {
+		xml.required = true
+		html.required = true
+	}
+	classDirectories.setFrom(classDirectories.files.collect {
+		fileTree(dir: it, exclude: jacocoExcludes)
+	})
+}
+
+// 현재 수준을 하한으로 고정해 후퇴를 막음. 목표치는 docs/TESTING.md 참고
+tasks.named('jacocoTestCoverageVerification') {
+	dependsOn 'test'
+	classDirectories.setFrom(classDirectories.files.collect {
+		fileTree(dir: it, exclude: jacocoExcludes)
+	})
+	violationRules {
+		rule {
+			limit {
+				counter = 'LINE'
+				minimum = 0.65
+			}
+			limit {
+				counter = 'BRANCH'
+				minimum = 0.50
+			}
+		}
+	}
 }
 
 tasks.named('asciidoctor') {

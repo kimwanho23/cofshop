@@ -1,0 +1,5 @@
+imp.api.secretkey=${IMP_API_SECRETKEY:}
+imp.api.base-url=${IMP_API_BASE_URL:https://api.portone.io}
+portone.browser.store-id=${PORTONE_STORE_ID:}
+portone.browser.channel-key=${PORTONE_CHANNEL_KEY:}
+jwt.secret-key=${JWT_SECRET_KEY}
