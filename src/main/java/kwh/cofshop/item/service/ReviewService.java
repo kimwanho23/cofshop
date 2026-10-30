@@ -36,8 +36,7 @@ public class ReviewService {
     @Transactional
     public ReviewResponseDto save(Long itemId, ReviewRequestDto requestDto, Long memberId) {
         Member member = memberReadPort.getById(memberId);
-        Item item = itemRepository.findById(itemId)
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
+        Item item = findItemWithLock(itemId);
 
         Review review = Review.createReview(
                 requestDto.getRating(),
@@ -70,7 +69,7 @@ public class ReviewService {
         review.updateContent(reviewRequestDto.getContent());
         review.updateRating(reviewRequestDto.getRating());
 
-        Item item = review.getItem();
+        Item item = findItemWithLock(review.getItem().getId());
         item.updateReviewRating(oldRating, newRating);
         return reviewMapper.toResponseDto(review);
     }
@@ -85,8 +84,9 @@ public class ReviewService {
         }
 
         Long rating = review.getRating();
+        Item item = findItemWithLock(review.getItem().getId());
         reviewRepository.delete(review);
-        review.getItem().deleteReviewRating(rating);
+        item.deleteReviewRating(rating);
     }
 
     @Transactional(readOnly = true)
@@ -97,5 +97,10 @@ public class ReviewService {
     @Transactional(readOnly = true)
     public List<ReviewResponseDto> getReviewsByItemId(Long itemId) {
         return reviewRepository.findReviewResponsesByItemId(itemId);
+    }
+
+    private Item findItemWithLock(Long itemId) {
+        return itemRepository.findByIdWithLock(itemId)
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
     }
 }

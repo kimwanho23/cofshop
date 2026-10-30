@@ -65,7 +65,7 @@ class ReviewServiceTest {
     void save_itemNotFound() {
         Member member = createMember(1L);
         when(memberReadPort.getById(1L)).thenReturn(member);
-        when(itemRepository.findById(1L)).thenReturn(Optional.empty());
+        when(itemRepository.findByIdWithLock(1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> reviewService.save(1L, new ReviewRequestDto(), 1L))
                 .isInstanceOf(BusinessException.class);
@@ -78,7 +78,7 @@ class ReviewServiceTest {
         Item item = createItem();
 
         when(memberReadPort.getById(1L)).thenReturn(member);
-        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+        when(itemRepository.findByIdWithLock(1L)).thenReturn(Optional.of(item));
         when(reviewRepository.save(any(Review.class))).thenThrow(new DataIntegrityViolationException("dup"));
 
         ReviewRequestDto requestDto = new ReviewRequestDto();
@@ -98,7 +98,7 @@ class ReviewServiceTest {
         ReflectionTestUtils.setField(item, "reviewCount", 0L);
 
         when(memberReadPort.getById(1L)).thenReturn(member);
-        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+        when(itemRepository.findByIdWithLock(1L)).thenReturn(Optional.of(item));
         when(reviewMapper.toResponseDto(any(Review.class))).thenReturn(new ReviewResponseDto());
 
         ReviewRequestDto requestDto = new ReviewRequestDto();
@@ -144,8 +144,11 @@ class ReviewServiceTest {
                 .rating(4L)
                 .content("이전")
                 .build();
+        ReflectionTestUtils.setField(review, "id", 1L);
+        ReflectionTestUtils.setField(item, "id", 10L);
 
         when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
+        when(itemRepository.findByIdWithLock(10L)).thenReturn(Optional.of(item));
         when(reviewMapper.toResponseDto(review)).thenReturn(new ReviewResponseDto());
 
         ReviewRequestDto requestDto = new ReviewRequestDto();
@@ -193,8 +196,11 @@ class ReviewServiceTest {
                 .rating(4L)
                 .content("삭제")
                 .build();
+        ReflectionTestUtils.setField(review, "id", 1L);
+        ReflectionTestUtils.setField(item, "id", 10L);
 
         when(reviewRepository.findById(1L)).thenReturn(Optional.of(review));
+        when(itemRepository.findByIdWithLock(10L)).thenReturn(Optional.of(item));
 
         reviewService.deleteReview(1L, 1L);
 

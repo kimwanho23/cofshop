@@ -11,8 +11,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
@@ -50,17 +52,25 @@ public class ItemOptionService {
             return;
         }
 
+        List<Long> requestedOptionIds = existingItemOptions.stream()
+                .map(ItemOptionRequestDto::getId)
+                .toList();
+        if (requestedOptionIds.stream().anyMatch(id -> id == null || id <= 0)) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+        Set<Long> uniqueRequestedOptionIds = new HashSet<>(requestedOptionIds);
+        if (uniqueRequestedOptionIds.size() != requestedOptionIds.size()) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+
         Map<Long, ItemOption> existingOptionMap = itemOptionRepository.findByItemId(item.getId()).stream()
                 .collect(Collectors.toMap(ItemOption::getId, option -> option));
+        if (!existingOptionMap.keySet().containsAll(uniqueRequestedOptionIds)) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
 
         for (ItemOptionRequestDto optionDto : existingItemOptions) {
-            if (optionDto.getId() == null) {
-                continue;
-            }
             ItemOption existingOption = existingOptionMap.get(optionDto.getId());
-            if (existingOption == null) {
-                continue;
-            }
             existingOption.updateOption(
                     optionDto.getDescription(),
                     optionDto.getAdditionalPrice(),

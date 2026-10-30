@@ -1,6 +1,7 @@
 package kwh.cofshop.item.repository.query;
 
 import com.querydsl.core.types.ExpressionUtils;
+import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -19,6 +20,7 @@ import kwh.cofshop.item.dto.response.ItemSearchResponseDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
@@ -45,6 +47,9 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom {
     @Override
     public Page<ItemSearchResponseDto> searchItems(ItemSearchRequestDto requestDto, Pageable pageable) {
         QItemCategory primaryCategory = new QItemCategory("primaryCategory");
+        BooleanExpression namePredicate = nameCondition(requestDto.getItemName());
+        BooleanExpression categoryPredicate = categoryCondition(requestDto.getCategoryId());
+        List<OrderSpecifier<?>> orderSpecifiers = buildOrderSpecifiers(pageable);
 
         List<ItemSearchResponseDto> result = queryFactory
                 .select(Projections.fields(
@@ -62,8 +67,8 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom {
                         )
                 ))
                 .from(item)
-                .where(nameCondition(requestDto.getItemName()),
-                        categoryCondition(requestDto.getCategoryId()))
+                .where(namePredicate, categoryPredicate)
+                .orderBy(orderSpecifiers.toArray(OrderSpecifier[]::new))
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
@@ -71,8 +76,7 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom {
         JPAQuery<Long> totalCount = queryFactory
                 .select(item.count())
                 .from(item)
-                .where(nameCondition(requestDto.getItemName()),
-                        categoryCondition(requestDto.getCategoryId()));
+                .where(namePredicate, categoryPredicate);
 
         return PageableExecutionUtils.getPage(result, pageable, totalCount::fetchOne);
     }
@@ -252,5 +256,29 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom {
                         filterItemCategory.category.id.in(categoryIds)
                 )
                 .exists();
+    }
+
+    private List<OrderSpecifier<?>> buildOrderSpecifiers(Pageable pageable) {
+        List<OrderSpecifier<?>> orderSpecifiers = new ArrayList<>();
+        for (Sort.Order sortOrder : pageable.getSort()) {
+            orderSpecifiers.add(toOrderSpecifier(sortOrder));
+        }
+        if (orderSpecifiers.isEmpty()) {
+            orderSpecifiers.add(item.id.desc());
+        }
+        return orderSpecifiers;
+    }
+
+    private OrderSpecifier<?> toOrderSpecifier(Sort.Order sortOrder) {
+        boolean ascending = sortOrder.isAscending();
+        return switch (sortOrder.getProperty()) {
+            case "id" -> ascending ? item.id.asc() : item.id.desc();
+            case "itemName" -> ascending ? item.itemName.asc() : item.itemName.desc();
+            case "price" -> ascending ? item.price.asc() : item.price.desc();
+            case "discount" -> ascending ? item.discount.asc() : item.discount.desc();
+            case "deliveryFee" -> ascending ? item.deliveryFee.asc() : item.deliveryFee.desc();
+            case "createDate" -> ascending ? item.createDate.asc() : item.createDate.desc();
+            default -> ascending ? item.id.asc() : item.id.desc();
+        };
     }
 }

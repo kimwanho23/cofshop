@@ -137,8 +137,18 @@ class CategoryServiceTest {
     }
 
     @Test
+    @DisplayName("카테고리 경로 조회: 대상 없음")
+    void getCategoryPath_notFound() {
+        when(categoryRepository.findCategoryPath(1L)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> categoryService.getCategoryPath(1L))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
     @DisplayName("카테고리 하위 조회: 없음")
     void getCategoryChild_none() {
+        when(categoryRepository.existsById(1L)).thenReturn(true);
         when(categoryRepository.findChildCategoryResponses(1L)).thenReturn(List.of());
 
         List<CategoryResponseDto> result = categoryService.getCategoryChild(1L);
@@ -149,11 +159,21 @@ class CategoryServiceTest {
     @Test
     @DisplayName("카테고리 하위 조회: 있음")
     void getCategoryChild_hasChild() {
+        when(categoryRepository.existsById(1L)).thenReturn(true);
         when(categoryRepository.findChildCategoryResponses(1L)).thenReturn(List.of(new CategoryResponseDto()));
 
         List<CategoryResponseDto> result = categoryService.getCategoryChild(1L);
 
         assertThat(result).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("카테고리 하위 조회: 대상 없음")
+    void getCategoryChild_notFound() {
+        when(categoryRepository.existsById(1L)).thenReturn(false);
+
+        assertThatThrownBy(() -> categoryService.getCategoryChild(1L))
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test

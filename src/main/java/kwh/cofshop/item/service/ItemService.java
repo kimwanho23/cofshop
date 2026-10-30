@@ -245,8 +245,8 @@ public class ItemService { // 통합 Item 서비스
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
         validateSellerAuthority(memberId, item);
         List<ItemImg> itemImages = itemImgRepository.findByItemId(id);
-        itemImgService.deleteStoredFiles(itemImages);
         itemRepository.delete(item);
+        itemImgService.deleteStoredFilesAfterCommit(itemImages);
     }
 
     private void validateSellerAuthority(Long memberId, Item item) {

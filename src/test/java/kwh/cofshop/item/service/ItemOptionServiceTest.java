@@ -1,5 +1,6 @@
 package kwh.cofshop.item.service;
 
+import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemOption;
 import kwh.cofshop.item.dto.request.ItemOptionRequestDto;
@@ -17,6 +18,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -83,6 +85,28 @@ class ItemOptionServiceTest {
         assertThat(option.getDescription()).isEqualTo("변경");
         assertThat(option.getAdditionalPrice()).isEqualTo(200);
         assertThat(option.getStock()).isEqualTo(5);
+    }
+
+    @Test
+    @DisplayName("기존 옵션 업데이트: 존재하지 않는 옵션 ID는 예외")
+    void updateExistingItemOptions_missingOptionId() {
+        Item item = createItem();
+        ReflectionTestUtils.setField(item, "id", 1L);
+
+        ItemOption option = ItemOption.builder()
+                .description("기본")
+                .additionalPrice(100)
+                .stock(10)
+                .item(item)
+                .build();
+        ReflectionTestUtils.setField(option, "id", 10L);
+
+        when(itemOptionRepository.findByItemId(1L)).thenReturn(List.of(option));
+
+        assertThatThrownBy(() -> itemOptionService.updateExistingItemOptions(
+                item,
+                List.of(new ItemOptionRequestDto(999L, "변경", 200, 5))
+        )).isInstanceOf(BadRequestException.class);
     }
 
     @Test

@@ -55,6 +55,9 @@ public class CategoryService {
     //자식 카테고리 백트래킹
     public List<CategoryPathResponseDto> getCategoryPath(Long categoryId) {
         List<CategoryPathProjection> categoryPath = categoryRepository.findCategoryPath(categoryId);
+        if (categoryPath.isEmpty()) {
+            throw new BusinessException(BusinessErrorCode.CATEGORY_NOT_FOUND);
+        }
         List<CategoryPathResponseDto> responses = new ArrayList<>(categoryPath.size());
         for (int i = categoryPath.size() - 1; i >= 0; i--) {
             CategoryPathProjection projection = categoryPath.get(i);
@@ -69,6 +72,9 @@ public class CategoryService {
 
     // 해당 카테고리가 마지막인가? 아니면 선택 옵션 제공
     public List<CategoryResponseDto> getCategoryChild(Long categoryId) {
+        if (!categoryRepository.existsById(categoryId)) {
+            throw new BusinessException(BusinessErrorCode.CATEGORY_NOT_FOUND);
+        }
         List<CategoryResponseDto> childCategories = categoryRepository.findChildCategoryResponses(categoryId);
         childCategories.forEach(child -> child.setChildren(new ArrayList<>()));
         return childCategories;

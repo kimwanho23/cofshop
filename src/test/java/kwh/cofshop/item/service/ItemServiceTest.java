@@ -312,7 +312,7 @@ class ItemServiceTest {
 
         itemService.deleteItem(2L, 1L);
 
-        verify(itemImgService).deleteStoredFiles(List.of());
+        verify(itemImgService).deleteStoredFilesAfterCommit(List.of());
         verify(itemRepository).delete(item);
     }
 

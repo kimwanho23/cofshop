@@ -55,7 +55,7 @@ public class Item extends BaseEntity {
     @JoinColumn(name = "seller_id", nullable = false)
     private Member seller;  // 판매자 정보(이메일)
 
-    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<ItemOption> itemOptions = new ArrayList<>(); // 옵션 리스트
 
     @OneToMany(mappedBy = "item", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
@@ -82,6 +82,7 @@ public class Item extends BaseEntity {
     public void prePersist() {
         this.itemState = ItemState.SELL;
         this.discount = this.discount == null ? 0 : this.discount;
+        this.deliveryFee = this.deliveryFee == null ? 0 : this.deliveryFee;
         this.averageRating = 0.0;
         this.reviewCount = 0L;
     }

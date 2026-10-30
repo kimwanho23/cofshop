@@ -15,6 +15,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -87,20 +89,10 @@ public class ItemImgService {
             // 삭제할 이미지 조회
             List<ItemImg> deleteItems = itemImgRepository.findByItemIdAndItemImgId(item.getId(), deleteImgIds);
 
-            // 실제 파일 삭제
-            for (ItemImg img : deleteItems) {
-                if (StringUtils.hasText(img.getImgName())) {
-                    try {
-                        fileStore.deleteFile(img.getImgName());
-                    } catch (Exception e) {
-                        log.error("파일 삭제 실패: {}", img.getImgName(), e);
-                    }
-                }
-            }
-
             // DB에서 이미지 정보 삭제
             if (!deleteItems.isEmpty()) {
                 itemImgRepository.deleteAll(deleteItems);
+                deleteStoredFilesAfterCommit(deleteItems);
             }
         }
     }
@@ -173,12 +165,48 @@ public class ItemImgService {
         }
     }
 
+    public void deleteStoredFilesAfterCommit(List<ItemImg> itemImgs) {
+        if (itemImgs == null || itemImgs.isEmpty()) {
+            return;
+        }
+
+        List<String> fileNames = itemImgs.stream()
+                .map(ItemImg::getImgName)
+                .filter(StringUtils::hasText)
+                .toList();
+        if (fileNames.isEmpty()) {
+            return;
+        }
+
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            deleteFilesByNames(fileNames);
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                deleteFilesByNames(fileNames);
+            }
+        });
+    }
+
     private void cleanupUploadFiles(List<UploadFile> uploadFiles) {
         for (UploadFile uploadFile : uploadFiles) {
             try {
                 fileStore.deleteFile(uploadFile.getStoreFileName());
             } catch (RuntimeException e) {
                 log.warn("업로드 실패 보상 삭제 실패: {}", uploadFile.getStoreFileName(), e);
+            }
+        }
+    }
+
+    private void deleteFilesByNames(List<String> fileNames) {
+        for (String fileName : fileNames) {
+            try {
+                fileStore.deleteFile(fileName);
+            } catch (RuntimeException e) {
+                log.warn("파일 삭제 실패: {}", fileName, e);
             }
         }
     }
