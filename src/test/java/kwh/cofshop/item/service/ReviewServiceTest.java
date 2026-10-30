@@ -3,6 +3,7 @@ package kwh.cofshop.item.service;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.ForbiddenRequestException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
+import kwh.cofshop.item.api.ReviewEligibilityPort;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.Review;
 import kwh.cofshop.item.dto.request.ReviewRequestDto;
@@ -48,8 +49,25 @@ class ReviewServiceTest {
     @Mock
     private MemberReadPort memberReadPort;
 
+    @Mock
+    private ReviewEligibilityPort reviewEligibilityPort;
+
     @InjectMocks
     private ReviewService reviewService;
+
+    @Test
+    @DisplayName("리뷰 생성: 구매 확정 이력이 없으면 거부")
+    void save_notPurchased() {
+        when(memberReadPort.getById(1L)).thenReturn(createMember(1L));
+        when(itemRepository.findByIdWithLock(1L)).thenReturn(Optional.of(createItem()));
+        when(reviewEligibilityPort.hasCompletedPurchase(1L, 1L)).thenReturn(false);
+
+        assertThatThrownBy(() -> reviewService.save(1L, new ReviewRequestDto(), 1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.REVIEW_PURCHASE_REQUIRED);
+        verify(reviewRepository, org.mockito.Mockito.never()).save(any(Review.class));
+    }
 
     @Test
     @DisplayName("리뷰 생성: 회원 없음")
@@ -79,6 +97,7 @@ class ReviewServiceTest {
 
         when(memberReadPort.getById(1L)).thenReturn(member);
         when(itemRepository.findByIdWithLock(1L)).thenReturn(Optional.of(item));
+        when(reviewEligibilityPort.hasCompletedPurchase(1L, 1L)).thenReturn(true);
         when(reviewRepository.save(any(Review.class))).thenThrow(new DataIntegrityViolationException("dup"));
 
         ReviewRequestDto requestDto = new ReviewRequestDto();
@@ -99,6 +118,7 @@ class ReviewServiceTest {
 
         when(memberReadPort.getById(1L)).thenReturn(member);
         when(itemRepository.findByIdWithLock(1L)).thenReturn(Optional.of(item));
+        when(reviewEligibilityPort.hasCompletedPurchase(1L, 1L)).thenReturn(true);
         when(reviewMapper.toResponseDto(any(Review.class))).thenReturn(new ReviewResponseDto());
 
         ReviewRequestDto requestDto = new ReviewRequestDto();

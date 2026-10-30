@@ -4,6 +4,7 @@ import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.ForbiddenRequestException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.global.exception.errorcodes.ForbiddenErrorCode;
+import kwh.cofshop.item.api.ReviewEligibilityPort;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.Review;
 import kwh.cofshop.item.dto.request.ReviewRequestDto;
@@ -32,11 +33,16 @@ public class ReviewService {
     private final ReviewMapper reviewMapper;
     private final ItemRepository itemRepository;
     private final MemberReadPort memberReadPort;
+    private final ReviewEligibilityPort reviewEligibilityPort;
 
     @Transactional
     public ReviewResponseDto save(Long itemId, ReviewRequestDto requestDto, Long memberId) {
         Member member = memberReadPort.getById(memberId);
         Item item = findItemWithLock(itemId);
+
+        if (!reviewEligibilityPort.hasCompletedPurchase(memberId, itemId)) {
+            throw new BusinessException(BusinessErrorCode.REVIEW_PURCHASE_REQUIRED);
+        }
 
         Review review = Review.createReview(
                 requestDto.getRating(),
