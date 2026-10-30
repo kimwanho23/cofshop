@@ -67,7 +67,10 @@ public enum BusinessErrorCode implements ErrorCode {
     PAYMENT_CANNOT_REFUND("CANNOT-REFUND", HttpStatus.CONFLICT, "환불이 불가능합니다"),
     PAYMENT_ALREADY_CANCELLED("ALREADY_CANCELLED", HttpStatus.CONFLICT, "이미 취소된 결제입니다."),
     PAYMENT_REFUND_FAIL("PAY-REFUND-FAILED", HttpStatus.CONFLICT, "환불에 실패했습니다."),
-    PAYMENT_FAIL("PAY-FAILED", HttpStatus.CONFLICT, "결제에 실패했습니다.");
+    PAYMENT_FAIL("PAY-FAILED", HttpStatus.CONFLICT, "결제에 실패했습니다."),
+
+    // 락/동시성
+    LOCK_ACQUISITION_FAILED("LOCK-ACQUIRE-FAILED", HttpStatus.CONFLICT, "잠시 후 다시 시도해 주세요.");
 
     private final String code;
     private final HttpStatus httpStatus;

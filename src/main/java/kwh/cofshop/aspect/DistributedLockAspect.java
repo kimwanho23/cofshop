@@ -1,8 +1,8 @@
 package kwh.cofshop.aspect;
 
 import kwh.cofshop.global.annotation.DistributedLock;
-import kwh.cofshop.global.exception.BadRequestException;
-import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
+import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -11,19 +11,21 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 
 @Slf4j
 @Aspect
 @Component
+@Order(Ordered.HIGHEST_PRECEDENCE)
 @RequiredArgsConstructor
 public class DistributedLockAspect {
 
     private static final String LOCK_PREFIX = "LOCK:";
 
     private final RedissonClient redissonClient;
-    private final AopForTransaction aopForTransaction;
 
     @Around("@annotation(distributedLock)")
     public Object lock(ProceedingJoinPoint joinPoint, DistributedLock distributedLock) throws Throwable {
@@ -47,15 +49,15 @@ public class DistributedLockAspect {
 
             if (!isLocked) {
                 log.warn("락 획득 실패 - {}", lockKey);
-                throw new BadRequestException(BadRequestErrorCode.BAD_REQUEST);
+                throw new BusinessException(BusinessErrorCode.LOCK_ACQUISITION_FAILED);
             }
             log.info("락 획득 성공 - {}", lockKey);
-            return aopForTransaction.proceed(joinPoint);
+            return joinPoint.proceed();
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             log.warn("락 대기 중 인터럽트 - {}", lockKey);
-            throw new BadRequestException(BadRequestErrorCode.BAD_REQUEST);
+            throw new BusinessException(BusinessErrorCode.LOCK_ACQUISITION_FAILED);
         } finally {
             if (isLocked && lock.isHeldByCurrentThread()) {
                 lock.unlock();
