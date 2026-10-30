@@ -194,6 +194,17 @@ public class Order extends BaseTimeEntity {
     }
 
 
+    // 전액 할인 주문은 PG 결제 없이 바로 결제 완료 처리
+    public void completePaymentIfFree() {
+        if (isFreeOrder()) {
+            this.orderState = OrderState.PAID;
+        }
+    }
+
+    public boolean isFreeOrder() {
+        return this.finalPrice != null && this.finalPrice == 0L;
+    }
+
     // 연관관계 편의 메서드
     public void addOrderItem(OrderItem orderItem) {
         this.orderItems.add(orderItem);

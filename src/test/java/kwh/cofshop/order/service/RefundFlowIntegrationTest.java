@@ -61,6 +61,8 @@ class RefundFlowIntegrationTest {
     private CouponApi couponApi;
     @Mock
     private OrderPaymentStatusPort orderPaymentStatusPort;
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Mock
     private PaymentEntityRepository paymentEntityRepository;
@@ -88,7 +90,8 @@ class RefundFlowIntegrationTest {
                 memberReadPort,
                 memberPointPort,
                 couponApi,
-                orderPaymentStatusPort
+                orderPaymentStatusPort,
+                eventPublisher
         );
         OrderRefundPort orderRefundPort = new OrderRefundPortAdapter(orderRepository, orderService);
         paymentRefundTxService = new PaymentRefundTxService(

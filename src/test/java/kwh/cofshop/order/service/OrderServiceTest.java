@@ -27,7 +27,9 @@ import kwh.cofshop.order.api.OrderPaymentStatusPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import kwh.cofshop.order.api.OrderRefundApprovedEvent;
 import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -75,8 +77,104 @@ class OrderServiceTest {
     @Mock
     private OrderPaymentStatusPort orderPaymentStatusPort;
 
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
     @InjectMocks
     private OrderService orderService;
+
+    @Test
+    @DisplayName("주문 생성: 전액 할인이면 PG 없이 바로 결제 완료")
+    void createInstanceOrder_freeOrder_paidImmediately() {
+        Member member = createMember(1L);
+        member.restorePoint(5000);
+        when(memberReadPort.getByIdWithLock(1L)).thenReturn(member);
+
+        ItemOption option = createOption(createItem(), 100, 10);
+        when(orderItemService.getItemOptionsWithLock(any())).thenReturn(List.of(option));
+        OrderItem orderItem = OrderItem.builder()
+                .item(option.getItem())
+                .itemOption(option)
+                .orderPrice(1100)
+                .discountRate(0)
+                .quantity(2)
+                .build();
+        when(orderItemService.createOrderItems(any(), any())).thenReturn(List.of(orderItem));
+        when(deliveryFeePolicy.calculate(any())).thenReturn(0);
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderMapper.toResponseDto(any(Order.class))).thenReturn(new OrderResponseDto());
+
+        OrderRequestDto requestDto = new OrderRequestDto();
+        requestDto.setAddress(createAddressRequestDto());
+        requestDto.setOrderItems(List.of(new OrderItemRequestDto()));
+        requestDto.setUsePoint(2200);
+
+        orderService.createInstanceOrder(1L, requestDto);
+
+        ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
+        verify(orderRepository).save(orderCaptor.capture());
+        assertThat(orderCaptor.getValue().getFinalPrice()).isZero();
+        assertThat(orderCaptor.getValue().getOrderState()).isEqualTo(OrderState.PAID);
+        verify(orderItemService).validateMemberPurchaseLimit(1L, requestDto.getOrderItems(), List.of(option));
+    }
+
+    @Test
+    @DisplayName("관리자 환불 승인: 유료 주문은 환불 실행 이벤트 발행")
+    void processRefundRequestByAdmin_approved_publishesEvent() {
+        Order order = Order.builder()
+                .id(1L)
+                .orderState(OrderState.PAID)
+                .refundRequestStatus(OrderRefundRequestStatus.REQUESTED)
+                .finalPrice(1000L)
+                .member(createMember(1L))
+                .build();
+        when(orderRepository.findByIdWithLock(1L)).thenReturn(Optional.of(order));
+
+        orderService.processRefundRequestByAdmin(1L, OrderRefundRequestStatus.APPROVED, "승인");
+
+        verify(eventPublisher).publishEvent(new OrderRefundApprovedEvent(1L));
+        assertThat(order.getOrderState()).isEqualTo(OrderState.PAID);
+    }
+
+    @Test
+    @DisplayName("관리자 환불 승인: 무료 주문은 이벤트 없이 바로 환불 완료")
+    void processRefundRequestByAdmin_freeOrder_completedImmediately() {
+        Member member = createMember(1L);
+        Order order = Order.builder()
+                .id(1L)
+                .orderState(OrderState.PAID)
+                .refundRequestStatus(OrderRefundRequestStatus.REQUESTED)
+                .finalPrice(0L)
+                .usePoint(500)
+                .member(member)
+                .orderItems(List.of())
+                .build();
+        when(orderRepository.findByIdWithLock(1L)).thenReturn(Optional.of(order));
+
+        orderService.processRefundRequestByAdmin(1L, OrderRefundRequestStatus.APPROVED, "승인");
+
+        assertThat(order.getOrderState()).isEqualTo(OrderState.CANCELLED);
+        assertThat(order.getRefundRequestStatus()).isEqualTo(OrderRefundRequestStatus.REFUNDED);
+        verify(memberPointPort).restorePoint(member.getId(), 500);
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
+    }
+
+    @Test
+    @DisplayName("관리자 환불 반려: 환불 실행 이벤트를 발행하지 않음")
+    void processRefundRequestByAdmin_rejected_noEvent() {
+        Order order = Order.builder()
+                .id(1L)
+                .orderState(OrderState.PAID)
+                .refundRequestStatus(OrderRefundRequestStatus.REQUESTED)
+                .finalPrice(1000L)
+                .member(createMember(1L))
+                .build();
+        when(orderRepository.findByIdWithLock(1L)).thenReturn(Optional.of(order));
+
+        orderService.processRefundRequestByAdmin(1L, OrderRefundRequestStatus.REJECTED, "반려");
+
+        verify(eventPublisher, never()).publishEvent(any(Object.class));
+    }
 
     @Test
     @DisplayName("주문 생성: 쿠폰/포인트 없음")

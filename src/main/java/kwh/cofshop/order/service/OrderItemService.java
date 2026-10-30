@@ -5,9 +5,13 @@ import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.item.api.ItemReadPort;
+import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemOption;
 import kwh.cofshop.order.domain.OrderItem;
+import kwh.cofshop.order.domain.OrderState;
 import kwh.cofshop.order.dto.request.OrderItemRequestDto;
+import kwh.cofshop.order.repository.OrderItemRepository;
+import kwh.cofshop.order.repository.projection.ItemPurchasedQuantityProjection;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +26,7 @@ import java.util.stream.Collectors;
 public class OrderItemService {
 
     private final ItemReadPort itemReadPort;
+    private final OrderItemRepository orderItemRepository;
 
     // 옵션 조회
     public List<ItemOption> getItemOptionsWithLock(List<OrderItemRequestDto> itemDtoList) {
@@ -31,6 +36,38 @@ public class OrderItemService {
                 .toList();
 
         return itemReadPort.findItemOptionsByIdsWithLock(optionIds);
+    }
+
+    // 회원당 누적 구매 제한 검증 (취소·환불된 주문 제외). 동시 주문은 호출부의 회원 락으로 직렬화됨
+    public void validateMemberPurchaseLimit(Long memberId, List<OrderItemRequestDto> dtoList, List<ItemOption> options) {
+        Map<Long, Integer> itemLimitByItemId = options.stream()
+                .map(ItemOption::getItem)
+                .filter(item -> item.getItemLimit() != null)
+                .collect(Collectors.toMap(Item::getId, Item::getItemLimit, (first, second) -> first));
+        if (itemLimitByItemId.isEmpty()) {
+            return;
+        }
+
+        Map<Long, Long> purchasedQuantityByItemId = orderItemRepository
+                .sumPurchasedQuantities(memberId, itemLimitByItemId.keySet(), OrderState.CANCELLED)
+                .stream()
+                .collect(Collectors.toMap(
+                        ItemPurchasedQuantityProjection::getItemId,
+                        ItemPurchasedQuantityProjection::getQuantity
+                ));
+        Map<Long, Long> requestedQuantityByItemId = dtoList.stream()
+                .collect(Collectors.groupingBy(
+                        OrderItemRequestDto::getItemId,
+                        Collectors.summingLong(OrderItemRequestDto::getQuantity)
+                ));
+
+        itemLimitByItemId.forEach((itemId, itemLimit) -> {
+            long totalQuantity = purchasedQuantityByItemId.getOrDefault(itemId, 0L)
+                    + requestedQuantityByItemId.getOrDefault(itemId, 0L);
+            if (totalQuantity > itemLimit) {
+                throw new BusinessException(BusinessErrorCode.ITEM_LIMIT_EXCEEDED);
+            }
+        });
     }
 
     // 주문 생성

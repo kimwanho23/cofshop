@@ -2,7 +2,11 @@ package kwh.cofshop.order.service;
 
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemOption;
+import kwh.cofshop.item.domain.ItemState;
 import kwh.cofshop.item.domain.OptionState;
+import kwh.cofshop.order.domain.OrderState;
+import kwh.cofshop.order.repository.OrderItemRepository;
+import kwh.cofshop.order.repository.projection.ItemPurchasedQuantityProjection;
 import kwh.cofshop.item.api.ItemReadPort;
 import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.global.exception.BusinessException;
@@ -30,8 +34,69 @@ class OrderItemServiceTest {
     @Mock
     private ItemReadPort itemReadPort;
 
+    @Mock
+    private OrderItemRepository orderItemRepository;
+
     @InjectMocks
     private OrderItemService orderItemService;
+
+    @Test
+    @DisplayName("누적 구매 제한: 이전 구매량과 합쳐 제한을 넘으면 실패")
+    void validateMemberPurchaseLimit_exceeded() {
+        ItemOption option = createOption(10L, createItem(1L), 100, 10);
+        when(orderItemRepository.sumPurchasedQuantities(1L, java.util.Set.of(1L), OrderState.CANCELLED))
+                .thenReturn(List.of(purchased(1L, 9L)));
+
+        assertThatThrownBy(() -> orderItemService.validateMemberPurchaseLimit(1L, List.of(request(2)), List.of(option)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.ITEM_LIMIT_EXCEEDED);
+    }
+
+    @Test
+    @DisplayName("누적 구매 제한: 제한까지는 허용")
+    void validateMemberPurchaseLimit_withinLimit() {
+        ItemOption option = createOption(10L, createItem(1L), 100, 10);
+        when(orderItemRepository.sumPurchasedQuantities(1L, java.util.Set.of(1L), OrderState.CANCELLED))
+                .thenReturn(List.of(purchased(1L, 8L)));
+
+        orderItemService.validateMemberPurchaseLimit(1L, List.of(request(2)), List.of(option));
+    }
+
+    @Test
+    @DisplayName("주문 아이템 생성: 판매 중지 상품은 실패")
+    void createOrderItems_stoppedItem() {
+        Item item = createItem(1L);
+        item.changeItemState(ItemState.STOP);
+        ItemOption option = createOption(10L, item, 100, 10);
+
+        assertThatThrownBy(() -> orderItemService.createOrderItems(List.of(request(1)), List.of(option)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.ITEM_NOT_ON_SALE);
+    }
+
+    private OrderItemRequestDto request(int quantity) {
+        OrderItemRequestDto dto = new OrderItemRequestDto();
+        dto.setItemId(1L);
+        dto.setOptionId(10L);
+        dto.setQuantity(quantity);
+        return dto;
+    }
+
+    private ItemPurchasedQuantityProjection purchased(Long itemId, Long quantity) {
+        return new ItemPurchasedQuantityProjection() {
+            @Override
+            public Long getItemId() {
+                return itemId;
+            }
+
+            @Override
+            public Long getQuantity() {
+                return quantity;
+            }
+        };
+    }
 
     @Test
     @DisplayName("옵션 조회")

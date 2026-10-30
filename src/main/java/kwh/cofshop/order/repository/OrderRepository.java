@@ -41,6 +41,30 @@ public interface OrderRepository extends JpaRepository<Order, Long>, OrderReposi
                                                @Param("deadline") LocalDateTime deadline,
                                                Pageable pageable);
 
+    @Query("""
+            SELECT o.id
+            FROM Order o
+            WHERE o.refundRequestStatus = :refundStatus
+              AND o.orderState IN :states
+              AND o.refundProcessedAt <= :approvedBefore
+            ORDER BY o.refundProcessedAt ASC
+            """)
+    List<Long> findPendingApprovedRefundOrderIds(@Param("refundStatus") OrderRefundRequestStatus refundStatus,
+                                                 @Param("states") List<OrderState> states,
+                                                 @Param("approvedBefore") LocalDateTime approvedBefore,
+                                                 Pageable pageable);
+
+    @Query("""
+            SELECT COUNT(o)
+            FROM Order o
+            WHERE o.refundRequestStatus = :refundStatus
+              AND o.orderState IN :states
+              AND o.refundProcessedAt <= :approvedBefore
+            """)
+    long countPendingApprovedRefunds(@Param("refundStatus") OrderRefundRequestStatus refundStatus,
+                                     @Param("states") List<OrderState> states,
+                                     @Param("approvedBefore") LocalDateTime approvedBefore);
+
     @Query("SELECT o.orderState FROM Order o WHERE o.id = :orderId")
     Optional<OrderState> findOrderStateById(@Param("orderId") Long orderId);
 

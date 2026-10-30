@@ -18,10 +18,12 @@ import kwh.cofshop.order.dto.request.OrderRequestDto;
 import kwh.cofshop.order.dto.response.OrderCancelResponseDto;
 import kwh.cofshop.order.dto.response.OrderResponseDto;
 import kwh.cofshop.order.api.OrderPaymentStatusPort;
+import kwh.cofshop.order.api.OrderRefundApprovedEvent;
 import kwh.cofshop.order.mapper.OrderMapper;
 import kwh.cofshop.order.policy.DeliveryFeePolicy;
 import kwh.cofshop.order.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -34,6 +36,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class OrderService {
 
+    private static final String FREE_ORDER_REFUND_REASON = "무료 주문 환불 완료";
 
     // Order 관련
     private final OrderRepository orderRepository;
@@ -49,6 +52,8 @@ public class OrderService {
     // 쿠폰 할인 정책
     private final OrderPaymentStatusPort orderPaymentStatusPort;
 
+    private final ApplicationEventPublisher eventPublisher;
+
     // 바로구매 로직
     @DistributedLock(keyName = "'order:create:' + #memberId")
     @Transactional
@@ -57,6 +62,9 @@ public class OrderService {
 
         // 옵션 조회
         List<ItemOption> itemOptions = orderItemService.getItemOptionsWithLock(orderRequestDto.getOrderItems());
+
+        // 회원당 누적 구매 제한 검증
+        orderItemService.validateMemberPurchaseLimit(memberId, orderRequestDto.getOrderItems(), itemOptions);
 
         // 주문 항목 생성
         List<OrderItem> orderItems = orderItemService.createOrderItems(orderRequestDto.getOrderItems(), itemOptions);
@@ -80,6 +88,7 @@ public class OrderService {
 
         // 최종 금액 계산
         order.finalizePrice(priceAfterCouponDiscount, usedPoint, deliveryFee);
+        order.completePaymentIfFree();
 
         // 저장 및 반환
         return orderMapper.toResponseDto(orderRepository.save(order));
@@ -242,6 +251,20 @@ public class OrderService {
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.ORDER_NOT_FOUND));
 
         order.processRefundRequest(targetStatus, processReason, LocalDateTime.now());
+
+        if (targetStatus == OrderRefundRequestStatus.APPROVED) {
+            executeApprovedRefund(order);
+        }
+    }
+
+    private void executeApprovedRefund(Order order) {
+        if (order.isFreeOrder()) {
+            // PG 결제가 없으므로 주문 안에서 바로 환불 완료
+            cancelAndRestore(order, FREE_ORDER_REFUND_REASON);
+            completeRefundRequestByPayment(order, FREE_ORDER_REFUND_REASON, LocalDateTime.now());
+            return;
+        }
+        eventPublisher.publishEvent(new OrderRefundApprovedEvent(order.getId()));
     }
 
     void completeRefundRequestByPayment(Order order, String processedReason, LocalDateTime processedAt) {

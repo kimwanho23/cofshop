@@ -6,12 +6,15 @@ import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.order.api.OrderRefundPort;
 import kwh.cofshop.order.domain.Order;
 import kwh.cofshop.order.domain.OrderRefundRequestStatus;
+import kwh.cofshop.order.domain.OrderState;
 import kwh.cofshop.order.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -37,6 +40,27 @@ class OrderRefundPortAdapter implements OrderRefundPort {
         Order order = findOrder(orderId);
         orderService.cancelAndRestore(order, processedReason);
         orderService.completeRefundRequestByPayment(order, processedReason, LocalDateTime.now());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Long> findPendingApprovedRefundOrderIds(LocalDateTime approvedBefore, int limit) {
+        return orderRepository.findPendingApprovedRefundOrderIds(
+                OrderRefundRequestStatus.APPROVED,
+                List.of(OrderState.PAID, OrderState.REFUND_PENDING),
+                approvedBefore,
+                PageRequest.of(0, limit)
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countPendingApprovedRefunds(LocalDateTime approvedBefore) {
+        return orderRepository.countPendingApprovedRefunds(
+                OrderRefundRequestStatus.APPROVED,
+                List.of(OrderState.PAID, OrderState.REFUND_PENDING),
+                approvedBefore
+        );
     }
 
     private Order findOrder(Long orderId) {
