@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.Optional;
 
@@ -82,6 +83,26 @@ class CartServiceTest {
         when(memberReadPort.getById(1L)).thenReturn(member);
         when(cartRepository.save(any(Cart.class))).thenReturn(savedCart);
         when(cartMapper.toResponseDto(savedCart)).thenReturn(responseDto);
+
+        CartResponseDto result = cartService.createCart(1L);
+
+        assertThat(result).isSameAs(responseDto);
+        verify(cartRepository).save(any(Cart.class));
+    }
+
+    @Test
+    @DisplayName("createCart: 중복 생성 경합 시 기존 장바구니 반환")
+    void createCart_duplicateRace() {
+        Member member = member(1L);
+        Cart existingCart = new Cart(member);
+        CartResponseDto responseDto = new CartResponseDto();
+
+        when(cartRepository.findByMemberId(1L))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(existingCart));
+        when(memberReadPort.getById(1L)).thenReturn(member);
+        when(cartRepository.save(any(Cart.class))).thenThrow(new DataIntegrityViolationException("duplicate"));
+        when(cartMapper.toResponseDto(existingCart)).thenReturn(responseDto);
 
         CartResponseDto result = cartService.createCart(1L);
 

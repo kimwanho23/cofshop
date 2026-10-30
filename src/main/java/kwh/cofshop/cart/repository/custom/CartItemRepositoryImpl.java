@@ -39,23 +39,23 @@ public class CartItemRepositoryImpl implements CartItemRepositoryCustom {
     }
 
     @Override
-    public Integer sumTotalPriceByMemberId(Long memberId) {
+    public Long sumTotalPriceByMemberId(Long memberId) {
         QCartItem cartItem = QCartItem.cartItem;
         QItem item = QItem.item;
         QItemOption itemOption = QItemOption.itemOption;
 
-        NumberExpression<Integer> itemDiscountRate = item.discount.coalesce(0);
-        NumberExpression<Integer> optionAdditionalPrice = itemOption.additionalPrice.coalesce(0);
-        NumberExpression<Integer> optionDiscountRate = itemOption.discountRate.coalesce(0);
+        NumberExpression<Long> itemDiscountRate = item.discount.coalesce(0).longValue();
+        NumberExpression<Long> optionAdditionalPrice = itemOption.additionalPrice.coalesce(0).longValue();
+        NumberExpression<Long> optionDiscountRate = itemOption.discountRate.coalesce(0).longValue();
 
-        NumberExpression<Integer> discountedItemPrice = item.price
-                .multiply(Expressions.numberTemplate(Integer.class, "(100 - {0})", itemDiscountRate))
+        NumberExpression<Long> discountedItemPrice = item.price.longValue()
+                .multiply(Expressions.numberTemplate(Long.class, "(100 - {0})", itemDiscountRate))
                 .divide(100);
-        NumberExpression<Integer> basePrice = discountedItemPrice.add(optionAdditionalPrice);
-        NumberExpression<Integer> discountedOptionPrice = basePrice
-                .multiply(Expressions.numberTemplate(Integer.class, "(100 - {0})", optionDiscountRate))
+        NumberExpression<Long> basePrice = discountedItemPrice.add(optionAdditionalPrice);
+        NumberExpression<Long> discountedOptionPrice = basePrice
+                .multiply(Expressions.numberTemplate(Long.class, "(100 - {0})", optionDiscountRate))
                 .divide(100);
-        NumberExpression<Integer> lineTotal = discountedOptionPrice.multiply(cartItem.quantity);
+        NumberExpression<Long> lineTotal = discountedOptionPrice.multiply(cartItem.quantity.longValue());
 
         return queryFactory
                 .select(lineTotal.sum())

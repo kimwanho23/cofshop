@@ -10,7 +10,7 @@ public interface CartItemRepositoryCustom {
 
     List<CartItemResponseDto> findCartItemsByMemberId(Long id);
 
-    Integer sumTotalPriceByMemberId(Long memberId);
+    Long sumTotalPriceByMemberId(Long memberId);
 
     void deleteAllByCartId(Long cartId);
 

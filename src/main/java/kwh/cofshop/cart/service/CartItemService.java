@@ -8,7 +8,9 @@ import kwh.cofshop.cart.dto.response.CartItemResponseDto;
 import kwh.cofshop.cart.mapper.CartItemMapper;
 import kwh.cofshop.cart.repository.CartItemRepository;
 import kwh.cofshop.cart.repository.CartRepository;
+import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.item.api.ItemReadPort;
 import kwh.cofshop.item.domain.Item;
@@ -34,6 +36,8 @@ public class CartItemService {
     // 장바구니에 상품 단일 등록
     @Transactional
     public CartItemResponseDto addCartItem(CartItemRequestDto cartItemRequestDto, Long memberId) {
+        validateQuantity(cartItemRequestDto.getQuantity());
+
         Cart cart = cartRepository.findByMemberIdWithLock(memberId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.CART_NOT_FOUND));
 
@@ -53,7 +57,8 @@ public class CartItemService {
         CartItem cartItem;
         if (optionalCartItem.isPresent()) {
             cartItem = optionalCartItem.get();
-            cartItem.addQuantity(cartItemRequestDto.getQuantity());
+            int updatedQuantity = safeAddQuantity(cartItem.getQuantity(), cartItemRequestDto.getQuantity());
+            cartItem.changeQuantity(updatedQuantity);
         } else {
             cartItem = CartItem.builder()
                     .quantity(cartItemRequestDto.getQuantity())
@@ -83,7 +88,7 @@ public class CartItemService {
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.CART_NOT_FOUND));
 
         CartItem cartItem = cartItemRepository.findByCartIdAndItemOptionId(cart.getId(), itemOptionId)
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_OPTION_NOT_FOUND));
 
         cartItemRepository.delete(cartItem);
     }
@@ -91,12 +96,14 @@ public class CartItemService {
     // 장바구니 아이템 수량 변경
     @Transactional
     public void changeQuantity(Long memberId, CartItemRequestDto cartItemRequestDto) {
+        validateQuantity(cartItemRequestDto.getQuantity());
+
         // 현재 로그인한 사용자의 장바구니 가져오기
         Cart cart = cartRepository.findByMemberId(memberId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.CART_NOT_FOUND));
 
         CartItem cartItem = cartItemRepository.findByCartIdAndItemOptionId(cart.getId(), cartItemRequestDto.getOptionId())
-                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_OPTION_NOT_FOUND));
 
         cartItem.changeQuantity(cartItemRequestDto.getQuantity());
     }
@@ -127,7 +134,27 @@ public class CartItemService {
             throw new BusinessException(BusinessErrorCode.CART_NOT_FOUND);
         }
 
-        Integer totalPrice = cartItemRepository.sumTotalPriceByMemberId(memberId);
-        return totalPrice == null ? 0 : totalPrice;
+        Long totalPrice = cartItemRepository.sumTotalPriceByMemberId(memberId);
+        if (totalPrice == null) {
+            return 0;
+        }
+        if (totalPrice > Integer.MAX_VALUE || totalPrice < 0) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+        return totalPrice.intValue();
+    }
+
+    private void validateQuantity(int quantity) {
+        if (quantity <= 0) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+    }
+
+    private int safeAddQuantity(int currentQuantity, int addQuantity) {
+        long updated = (long) currentQuantity + addQuantity;
+        if (updated > Integer.MAX_VALUE) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+        return (int) updated;
     }
 }

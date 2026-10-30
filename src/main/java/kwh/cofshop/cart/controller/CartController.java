@@ -25,8 +25,7 @@ public class CartController {
     @Operation(summary = "장바구니 존재 확인", description = "멤버의 장바구니가 존재하는지 확인합니다.")
     @GetMapping("/me/exists")
     public Boolean checkCartExists(@LoginMember Long memberId) {
-        boolean exists = cartService.checkCartExistByMemberId(memberId);
-        return exists;
+        return cartService.checkCartExistByMemberId(memberId);
     }
 
     // 장바구니 생성

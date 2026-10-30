@@ -7,6 +7,7 @@ import kwh.cofshop.cart.dto.response.CartItemResponseDto;
 import kwh.cofshop.cart.mapper.CartItemMapper;
 import kwh.cofshop.cart.repository.CartItemRepository;
 import kwh.cofshop.cart.repository.CartRepository;
+import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.item.api.ItemReadPort;
 import kwh.cofshop.item.domain.Item;
@@ -29,6 +30,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -54,8 +56,27 @@ class CartItemServiceTest {
     void addCartItem_cartNotFound() {
         when(cartRepository.findByMemberIdWithLock(anyLong())).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> cartItemService.addCartItem(new CartItemRequestDto(), 1L))
+        CartItemRequestDto requestDto = new CartItemRequestDto();
+        requestDto.setItemId(10L);
+        requestDto.setOptionId(100L);
+        requestDto.setQuantity(1);
+
+        assertThatThrownBy(() -> cartItemService.addCartItem(requestDto, 1L))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    @DisplayName("장바구니 단건 추가: 수량이 0 이하이면 실패")
+    void addCartItem_invalidQuantity() {
+        CartItemRequestDto requestDto = new CartItemRequestDto();
+        requestDto.setItemId(10L);
+        requestDto.setOptionId(100L);
+        requestDto.setQuantity(0);
+
+        assertThatThrownBy(() -> cartItemService.addCartItem(requestDto, 1L))
+                .isInstanceOf(BadRequestException.class);
+
+        verifyNoInteractions(cartRepository, itemReadPort, cartItemRepository, cartItemMapper);
     }
 
     @Test
@@ -126,6 +147,35 @@ class CartItemServiceTest {
         assertThat(result).isSameAs(responseDto);
         assertThat(existing.getQuantity()).isEqualTo(3);
         verify(cartItemRepository, never()).save(existing);
+    }
+
+    @Test
+    @DisplayName("장바구니 단건 추가: 수량 합계 오버플로우면 실패")
+    void addCartItem_existingItem_overflow() {
+        Cart cart = createCartWithId(1L);
+        Item item = createItem(1000);
+        ItemOption option = createOption(item, 200, 100);
+        ReflectionTestUtils.setField(option, "id", 100L);
+
+        CartItem existing = CartItem.builder()
+                .cart(cart)
+                .item(item)
+                .itemOption(option)
+                .quantity(Integer.MAX_VALUE)
+                .build();
+
+        when(cartRepository.findByMemberIdWithLock(1L)).thenReturn(Optional.of(cart));
+        when(itemReadPort.findItemById(10L)).thenReturn(Optional.of(item));
+        when(itemReadPort.findItemOptionById(100L)).thenReturn(Optional.of(option));
+        when(cartItemRepository.findByCartIdAndItemOptionIdWithLock(1L, 100L)).thenReturn(Optional.of(existing));
+
+        CartItemRequestDto requestDto = new CartItemRequestDto();
+        requestDto.setItemId(10L);
+        requestDto.setOptionId(100L);
+        requestDto.setQuantity(1);
+
+        assertThatThrownBy(() -> cartItemService.addCartItem(requestDto, 1L))
+                .isInstanceOf(BadRequestException.class);
     }
 
     @Test
@@ -241,6 +291,19 @@ class CartItemServiceTest {
     }
 
     @Test
+    @DisplayName("장바구니 수량 변경: 수량이 0 이하이면 실패")
+    void changeQuantity_invalidQuantity() {
+        CartItemRequestDto requestDto = new CartItemRequestDto();
+        requestDto.setOptionId(100L);
+        requestDto.setQuantity(0);
+
+        assertThatThrownBy(() -> cartItemService.changeQuantity(1L, requestDto))
+                .isInstanceOf(BadRequestException.class);
+
+        verifyNoInteractions(cartRepository, cartItemRepository);
+    }
+
+    @Test
     @DisplayName("장바구니 목록 조회")
     void getCartItemsByMemberId() {
         when(cartRepository.existsByMemberId(1L)).thenReturn(true);
@@ -266,11 +329,21 @@ class CartItemServiceTest {
     @DisplayName("장바구니 합계 계산")
     void calculateTotalPrice() {
         when(cartRepository.existsByMemberId(1L)).thenReturn(true);
-        when(cartItemRepository.sumTotalPriceByMemberId(1L)).thenReturn(2900);
+        when(cartItemRepository.sumTotalPriceByMemberId(1L)).thenReturn(2900L);
 
         int totalPrice = cartItemService.calculateTotalPrice(1L);
 
         assertThat(totalPrice).isEqualTo(2900);
+    }
+
+    @Test
+    @DisplayName("장바구니 합계 계산: int 범위를 넘는 금액이면 실패")
+    void calculateTotalPrice_overflow() {
+        when(cartRepository.existsByMemberId(1L)).thenReturn(true);
+        when(cartItemRepository.sumTotalPriceByMemberId(1L)).thenReturn((long) Integer.MAX_VALUE + 1L);
+
+        assertThatThrownBy(() -> cartItemService.calculateTotalPrice(1L))
+                .isInstanceOf(BadRequestException.class);
     }
 
     private Cart createCartWithId(Long id) {

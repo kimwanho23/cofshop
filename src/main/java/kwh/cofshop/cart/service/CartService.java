@@ -5,10 +5,12 @@ import kwh.cofshop.cart.dto.response.CartResponseDto;
 import kwh.cofshop.cart.mapper.CartMapper;
 import kwh.cofshop.cart.repository.CartItemRepository;
 import kwh.cofshop.cart.repository.CartRepository;
+import kwh.cofshop.global.annotation.DistributedLock;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.member.api.MemberReadPort;
 import kwh.cofshop.member.domain.Member;
+import org.springframework.dao.DataIntegrityViolationException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,13 +27,18 @@ public class CartService {
     private final CartMapper cartMapper;
 
     // 장바구니가 없다면 생성을 해준다.
+    @DistributedLock(keyName = "'cart:create:' + #memberId")
     @Transactional
     public CartResponseDto createCart(Long memberId) {
-        Cart cart = cartRepository.findByMemberId(memberId)
-                .orElseGet(() -> {
-                    Member member = memberReadPort.getById(memberId);
-                    return cartRepository.save(new Cart(member));
-                });
+        Cart cart = cartRepository.findByMemberId(memberId).orElse(null);
+        if (cart == null) {
+            Member member = memberReadPort.getById(memberId);
+            try {
+                cart = cartRepository.save(new Cart(member));
+            } catch (DataIntegrityViolationException e) {
+                cart = cartRepository.findByMemberId(memberId).orElseThrow(() -> e);
+            }
+        }
         return cartMapper.toResponseDto(cart);
     }
 
