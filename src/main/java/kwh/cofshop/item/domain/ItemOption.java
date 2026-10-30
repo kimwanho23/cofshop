@@ -124,6 +124,9 @@ public class ItemOption {
     }
 
     public void validatePurchasable() {
+        if (this.item != null && this.item.getItemState() == ItemState.STOP) {
+            throw new BusinessException(BusinessErrorCode.ITEM_NOT_ON_SALE);
+        }
         if (this.optionState != OptionState.SELL) {
             throw new BusinessException(BusinessErrorCode.ITEM_OUT_OF_STOCK);
         }

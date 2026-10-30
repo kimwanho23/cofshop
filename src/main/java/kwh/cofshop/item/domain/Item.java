@@ -87,6 +87,10 @@ public class Item extends BaseEntity {
         this.reviewCount = 0L;
     }
 
+    public void changeItemState(ItemState itemState) {
+        this.itemState = itemState;
+    }
+
     // 평균 평점과 리뷰 개수 업데이트 메서드 (스케줄링 과정에서 정합성 유지)
     public void updateReviewStats(double averageRating, long reviewCount) {
         this.averageRating = averageRating;

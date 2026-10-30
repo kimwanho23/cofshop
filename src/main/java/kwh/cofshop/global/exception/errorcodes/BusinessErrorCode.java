@@ -34,6 +34,7 @@ public enum BusinessErrorCode implements ErrorCode {
     ITEM_OPTION_NOT_FOUND("ITEM-OPTION-404", HttpStatus.NOT_FOUND, "상품 옵션을 찾을 수 없습니다."),
     ITEM_OUT_OF_STOCK("ITEM-OUT-OF-STOCK", HttpStatus.CONFLICT, "재고가 부족합니다."),
     ITEM_LIMIT_EXCEEDED("ITEM-LIMIT-EXCEEDED", HttpStatus.CONFLICT, "상품 구매 가능 수량을 초과했습니다."),
+    ITEM_NOT_ON_SALE("ITEM-NOT-ON-SALE", HttpStatus.CONFLICT, "판매 중지된 상품입니다."),
 
     //쿠폰
     COUPON_NOT_FOUND("COUPON-404", HttpStatus.NOT_FOUND, "쿠폰을 찾을 수 없습니다."),
@@ -47,6 +48,7 @@ public enum BusinessErrorCode implements ErrorCode {
     // 리뷰
     REVIEW_NOT_FOUND("REVIEW-404", HttpStatus.NOT_FOUND, "리뷰를 찾을 수 없습니다."),
     REVIEW_ALREADY_EXISTS("REVIEW-409", HttpStatus.CONFLICT, "해당 회원의 리뷰가 이미 존재합니다."),
+    REVIEW_PURCHASE_REQUIRED("REVIEW-PURCHASE-REQUIRED", HttpStatus.FORBIDDEN, "구매 확정한 상품만 리뷰를 작성할 수 있습니다."),
 
     // 카테고리
     CATEGORY_NOT_FOUND("CATEGORY-404", HttpStatus.NOT_FOUND, "카테고리를 찾을 수 없습니다."),

@@ -36,6 +36,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -78,6 +79,24 @@ class ItemControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("상품 판매 상태 변경")
+    void changeItemState() throws Exception {
+        mockMvc.perform(patch("/api/item/1/state")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"itemState\":\"STOP\"}"))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("상품 판매 상태 변경: 상태 값이 없으면 실패")
+    void changeItemState_missingState() throws Exception {
+        mockMvc.perform(patch("/api/item/1/state")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

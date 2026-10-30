@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import kwh.cofshop.global.annotation.LoginMember;
 import kwh.cofshop.item.dto.request.ItemRequestDto;
 import kwh.cofshop.item.dto.request.ItemSearchRequestDto;
+import kwh.cofshop.item.dto.request.ItemStateRequestDto;
 import kwh.cofshop.item.dto.request.ItemUpdateRequestDto;
 import kwh.cofshop.item.dto.response.ItemResponseDto;
 import kwh.cofshop.item.dto.response.ItemSearchResponseDto;
@@ -90,6 +91,17 @@ public class ItemController {
         List<MultipartFile> safeImages = images == null ? Collections.emptyList() : images;
         ItemResponseDto updatedItem = itemService.updateItem(memberId, itemId, itemRequestDto, safeImages);
         return updatedItem;
+    }
+
+    // 판매 상태 변경
+    @Operation(summary = "상품 판매 상태 변경", description = "판매자가 상품을 판매 중지하거나 다시 판매합니다.")
+    @PatchMapping("/{itemId}/state")
+    public ResponseEntity<Void> changeItemState(
+            @PathVariable Long itemId,
+            @Parameter(hidden = true) @LoginMember Long memberId,
+            @Valid @RequestBody ItemStateRequestDto requestDto) {
+        itemService.changeItemState(memberId, itemId, requestDto.getItemState());
+        return ResponseEntity.noContent().build();
     }
 
     //////////// @DELETE

@@ -10,6 +10,7 @@ import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemCategory;
 import kwh.cofshop.item.domain.ItemImg;
 import kwh.cofshop.item.domain.ItemOption;
+import kwh.cofshop.item.domain.ItemState;
 import kwh.cofshop.item.dto.request.ItemImgRequestDto;
 import kwh.cofshop.item.dto.request.ItemOptionRequestDto;
 import kwh.cofshop.item.dto.request.ItemRequestDto;
@@ -347,6 +348,27 @@ class ItemServiceTest {
                 .memberPwd("pw")
                 .tel("01012341234")
                 .build();
+    }
+
+    @Test
+    @DisplayName("판매 상태 변경: 판매자는 판매 중지 가능")
+    void changeItemState_success() {
+        Item item = createItem();
+        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+
+        itemService.changeItemState(2L, 1L, ItemState.STOP);
+
+        assertThat(item.getItemState()).isEqualTo(ItemState.STOP);
+    }
+
+    @Test
+    @DisplayName("판매 상태 변경: 판매자가 아니면 실패")
+    void changeItemState_forbiddenWhenNotSeller() {
+        Item item = createItem();
+        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+
+        assertThatThrownBy(() -> itemService.changeItemState(999L, 1L, ItemState.STOP))
+                .isInstanceOf(ForbiddenRequestException.class);
     }
 
     private Item createItem() {
