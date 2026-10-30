@@ -1,0 +1,125 @@
+groups:
+  - name: cofshop-availability
+    rules:
+      - alert: AppDown
+        expr: up{job="cofshop"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "앱 메트릭 수집 실패"
+          description: "1분 이상 앱에서 메트릭을 수집하지 못했습니다."
+
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{job="cofshop", status=~"5.."}[5m]))
+            / sum(rate(http_server_requests_seconds_count{job="cofshop"}[5m])) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "5xx 비율 1% 초과"
+          description: "최근 5분 5xx 비율이 {{ $value | humanizePercentage }}입니다."
+
+      - alert: SlowRequests
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job="cofshop"}[5m]))) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 응답 시간 1초 초과"
+          description: "최근 5분 p95 응답 시간이 {{ $value | humanizeDuration }}입니다."
+
+      - alert: DatabasePoolExhausted
+        expr: hikaricp_connections_pending{job="cofshop"} > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "DB 커넥션 대기 발생"
+          description: "2분 이상 DB 커넥션을 기다리는 요청이 있습니다."
+
+      - alert: HighHeapUsage
+        expr: |
+          sum(jvm_memory_used_bytes{job="cofshop", area="heap"})
+            / sum(jvm_memory_max_bytes{job="cofshop", area="heap"}) > 0.9
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "힙 사용률 90% 초과"
+          description: "10분 이상 힙 사용률이 90%를 넘었습니다."
+
+  - name: cofshop-business
+    rules:
+      - alert: RefundRecoveryDeadLetter
+        expr: refund_recovery_dlq_size{job="cofshop"} > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "환불 복구 DLQ 발생"
+          description: "PG 환불 후 주문 보정에 실패한 건이 {{ $value }}건 있습니다. 수동 확인이 필요합니다."
+
+      - alert: RefundRecoveryBacklog
+        expr: refund_recovery_queue_size{job="cofshop"} > 10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "환불 복구 큐 적체"
+          description: "복구 대기 건수가 {{ $value }}건입니다."
+
+      - alert: ApprovedRefundStuck
+        expr: refund_approved_stuck{job="cofshop"} > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "승인된 환불 미완료"
+          description: "승인 후 30분이 지나도 끝나지 않은 환불이 {{ $value }}건 있습니다."
+
+      - alert: PaymentProviderFailures
+        expr: sum(rate(payment_provider_failures_total{job="cofshop"}[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PG 호출 실패 증가"
+          description: "최근 5분 PG 호출 실패가 초당 {{ $value | humanize }}건입니다."
+
+      - alert: PaymentReconciliationMismatch
+        expr: increase(payment_reconciliation_mismatch_total{job="cofshop"}[15m]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "PG와 결제 정보 불일치"
+          description: "대사 중 금액 또는 거래 ID가 다른 결제가 확인됐습니다. `[Reconcile]` 로그를 확인하세요."
+
+      - alert: LockAcquisitionFailures
+        expr: sum(rate(lock_acquisition_failures_total{job="cofshop"}[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "분산 락 획득 실패 증가"
+          description: "최근 5분 락 획득 실패가 초당 {{ $value | humanize }}건입니다."
+
+      - alert: CouponOutboxBacklog
+        expr: coupon_outbox_events{job="cofshop", status="PENDING"} > 1000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "쿠폰 outbox 적체"
+          description: "미발행 이벤트가 {{ $value }}건입니다."
+
+      - alert: CouponOutboxFailed
+        expr: coupon_outbox_events{job="cofshop", status="FAILED"} > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "쿠폰 outbox 발행 실패"
+          description: "발행에 실패한 이벤트가 {{ $value }}건 있습니다."

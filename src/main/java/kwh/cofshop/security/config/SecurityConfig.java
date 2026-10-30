@@ -61,6 +61,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/images/**", "/css/**", "/js/**", "/favicon.ico").permitAll()
                         .requestMatchers("/ws-chat/**").permitAll()
+                        // 운영 엔드포인트는 외부에 공개하지 않는 관리 포트(management.server.port)로만 제공
+                        .requestMatchers("/actuator/health/**", "/actuator/prometheus").permitAll()
                         .requestMatchers("/api/members/signup", "/", "/api/item/search", "/payments/sample",
                                 "/api/reviews/**", "/api/auth/login", "/api/auth/reissue", "/api/auth/logout", "/api/auth/csrf",
                                 "/swagger-ui/**", "/swagger-resources/**", "/v3/api-docs/**").permitAll()

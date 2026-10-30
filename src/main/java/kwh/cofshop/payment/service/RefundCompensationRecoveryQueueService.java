@@ -83,6 +83,17 @@ public class RefundCompensationRecoveryQueueService {
         acknowledgePayload(claimedTask.payload());
     }
 
+    public long pendingSize() {
+        try {
+            Long pending = redisTemplate.opsForList().size(REFUND_COMPENSATION_FAILURE_KEY);
+            Long processing = redisTemplate.opsForList().size(REFUND_COMPENSATION_PROCESSING_KEY);
+            return (pending == null ? 0L : pending) + (processing == null ? 0L : processing);
+        } catch (Exception e) {
+            log.error("[Refund] 복구 큐 크기 조회 실패", e);
+            return 0L;
+        }
+    }
+
     public long deadLetterSize() {
         try {
             Long size = redisTemplate.opsForList().size(REFUND_COMPENSATION_DEAD_LETTER_KEY);

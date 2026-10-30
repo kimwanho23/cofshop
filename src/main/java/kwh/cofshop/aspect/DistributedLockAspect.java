@@ -1,5 +1,6 @@
 package kwh.cofshop.aspect;
 
+import io.micrometer.core.instrument.Metrics;
 import kwh.cofshop.global.annotation.DistributedLock;
 import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
@@ -51,6 +52,7 @@ public class DistributedLockAspect {
 
             if (!isLocked) {
                 log.warn("락 획득 실패 - {}", lockKey);
+                Metrics.counter("lock.acquisition.failures").increment();
                 throw new BusinessException(BusinessErrorCode.LOCK_ACQUISITION_FAILED);
             }
             log.info("락 획득 성공 - {}", lockKey);

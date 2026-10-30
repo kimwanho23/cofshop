@@ -8,4 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CouponIssueOutboxRepository extends JpaRepository<CouponIssueOutboxEvent, Long> {
     Page<CouponIssueOutboxEvent> findByStatusOrderByIdAsc(CouponIssueOutboxStatus status, Pageable pageable);
+
+    long countByStatus(CouponIssueOutboxStatus status);
 }

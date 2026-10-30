@@ -11,6 +11,15 @@ services:
         condition: service_healthy
     ports:
       - "8080:8080"
+    # 관리 포트는 내부 네트워크에만 공개
+    expose:
+      - "8081"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health/liveness >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
     environment:
       TZ: Asia/Seoul
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
@@ -68,7 +77,44 @@ services:
       timeout: 5s
       retries: 10
 
+  prometheus:
+    profiles: ["monitoring"]
+    container_name: cofshop-prometheus
+    image: prom/prometheus:v3.5.0
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+
+  alertmanager:
+    profiles: ["monitoring"]
+    container_name: cofshop-alertmanager
+    image: prom/alertmanager:v0.28.1
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9093:9093"
+    environment:
+      ALERT_DISCORD_WEBHOOK_URL: ${ALERT_DISCORD_WEBHOOK_URL:-}
+    entrypoint:
+      - sh
+      - -c
+      - |
+        if [ -z "$$ALERT_DISCORD_WEBHOOK_URL" ]; then
+          echo "ALERT_DISCORD_WEBHOOK_URL is required" >&2
+          exit 1
+        fi
+        printf '%s' "$$ALERT_DISCORD_WEBHOOK_URL" > /tmp/discord_webhook_url
+        exec /bin/alertmanager --config.file=/etc/alertmanager/alertmanager.yml --storage.path=/alertmanager
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+
 volumes:
+  alertmanager_data:
+  prometheus_data:
   uploads_data:
   redis_data:
   mysql_data:

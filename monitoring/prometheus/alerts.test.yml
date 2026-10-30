@@ -1,0 +1,76 @@
+rule_files:
+  - alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - name: 앱 수집 실패
+    interval: 1m
+    input_series:
+      - series: 'up{job="cofshop"}'
+        values: "0x5"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: AppDown
+        exp_alerts:
+          - exp_labels: { severity: critical, job: cofshop }
+            exp_annotations:
+              summary: "앱 메트릭 수집 실패"
+              description: "1분 이상 앱에서 메트릭을 수집하지 못했습니다."
+
+  - name: 5xx 비율 초과와 정상 구분
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{job="cofshop", status="200"}'
+        values: "0+90x20"
+      - series: 'http_server_requests_seconds_count{job="cofshop", status="500"}'
+        values: "0+10x20"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: HighErrorRate
+        exp_alerts:
+          - exp_labels: { severity: critical }
+            exp_annotations:
+              summary: "5xx 비율 1% 초과"
+              description: "최근 5분 5xx 비율이 10%입니다."
+
+  - name: 4xx만 있으면 5xx 알림 없음
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{job="cofshop", status="404"}'
+        values: "0+100x20"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: HighErrorRate
+        exp_alerts: []
+
+  - name: 환불 DLQ 발생
+    interval: 1m
+    input_series:
+      - series: 'refund_recovery_dlq_size{job="cofshop"}'
+        values: "0 0 2 2 2 2"
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: RefundRecoveryDeadLetter
+        exp_alerts: []
+      - eval_time: 4m
+        alertname: RefundRecoveryDeadLetter
+        exp_alerts:
+          - exp_labels: { severity: critical, job: cofshop }
+            exp_annotations:
+              summary: "환불 복구 DLQ 발생"
+              description: "PG 환불 후 주문 보정에 실패한 건이 2건 있습니다. 수동 확인이 필요합니다."
+
+  - name: 승인 환불 미완료
+    interval: 1m
+    input_series:
+      - series: 'refund_approved_stuck{job="cofshop"}'
+        values: "1x10"
+    alert_rule_test:
+      - eval_time: 7m
+        alertname: ApprovedRefundStuck
+        exp_alerts:
+          - exp_labels: { severity: critical, job: cofshop }
+            exp_annotations:
+              summary: "승인된 환불 미완료"
+              description: "승인 후 30분이 지나도 끝나지 않은 환불이 1건 있습니다."

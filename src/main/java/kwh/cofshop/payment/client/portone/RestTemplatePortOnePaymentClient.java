@@ -8,6 +8,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
@@ -36,6 +37,8 @@ public class RestTemplatePortOnePaymentClient implements PortOnePaymentClient {
             }
 
             return response.getBody();
+        } catch (HttpClientErrorException.NotFound e) {
+            throw new PortOnePaymentNotFoundException("Payment not found in PortOne", e);
         } catch (RestClientException e) {
             throw new PortOneClientException("Failed to fetch payment from PortOne", e);
         }
