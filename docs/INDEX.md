@@ -8,3 +8,8 @@
 - `docs/examples/*.secrets.env.example` 환경별 GitHub Secrets 입력 템플릿 예시
 - `docs/README_ENCODING.md` README 인코딩 문제 안내
 - `docs/TROUBLESHOOTING.md` 개발 과정 이슈/해결 기록
+
+## Production Readiness
+- `docs/ROADMAP.md` 실서비스 전환 목표/단계별 계획/출시 기준
+- `docs/RISK_REGISTER.md` 위험 항목 추적
+- `docs/TESTING.md` 테스트 규칙/필수 시나리오/CI 기준
