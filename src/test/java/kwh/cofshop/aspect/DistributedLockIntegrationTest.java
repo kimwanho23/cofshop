@@ -26,6 +26,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -127,6 +128,56 @@ class DistributedLockIntegrationTest extends RedisIntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("분산 락: skipIfLocked는 다른 실행이 잡고 있으면 예외 없이 건너뜀")
+    void skipIfLocked_skipsWithoutFailure() throws Exception {
+        CountDownLatch locked = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        Thread holder = new Thread(() -> {
+            RLock lock = redissonClient().getLock("LOCK:held:skip");
+            lock.lock();
+            locked.countDown();
+            try {
+                release.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                lock.unlock();
+            }
+        });
+        holder.start();
+        assertThat(locked.await(10, TimeUnit.SECONDS)).isTrue();
+        AtomicLong runs = new AtomicLong();
+
+        proxy.runIfFree("skip", runs::incrementAndGet);
+        assertThat(runs).hasValue(0);
+
+        release.countDown();
+        holder.join(10_000);
+
+        proxy.runIfFree("skip", runs::incrementAndGet);
+        assertThat(runs).hasValue(1);
+    }
+
+    @Test
+    @DisplayName("분산 락: 작업이 길어지면 유지 시간이 자동 연장됨")
+    void longWork_renewsLease() {
+        AtomicLong remainingTtl = new AtomicLong();
+
+        proxy.hold("1", () -> {
+            try {
+                Thread.sleep(11_000); // watchdog 갱신 주기(10초)를 넘김
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            remainingTtl.set(redissonClient().getLock("LOCK:watchdog:1").remainTimeToLive());
+        });
+
+        // 연장이 없으면 30초 - 11초 = 19초 이하만 남음
+        assertThat(remainingTtl.get()).isGreaterThan(20_000L);
+        assertThat(redissonClient().getLock("LOCK:watchdog:1").isLocked()).isFalse();
+    }
+
+    @Test
     @DisplayName("분산 락: 본문에서 예외가 나도 락이 해제됨")
     void exception_releasesLock() {
         assertThatThrownBy(() -> proxy.fail("1"))
@@ -209,6 +260,16 @@ class DistributedLockIntegrationTest extends RedisIntegrationTestSupport {
         @DistributedLock(keyName = "'held:' + #key")
         public String nested(LockTarget self, String key) {
             return self.tryOnce(key);
+        }
+
+        @DistributedLock(keyName = "'held:' + #key", waitTime = 0, skipIfLocked = true)
+        public void runIfFree(String key, Runnable body) {
+            body.run();
+        }
+
+        @DistributedLock(keyName = "'watchdog:' + #key")
+        public void hold(String key, Runnable body) {
+            body.run();
         }
 
         @DistributedLock(keyName = "'fail:' + #key")

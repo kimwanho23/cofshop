@@ -14,7 +14,11 @@ public @interface DistributedLock {
 
     long waitTime() default 10L;
 
-    long leaseTime() default 30L;
+    // -1이면 Redisson watchdog이 작업이 끝날 때까지 자동 연장. 프로세스가 죽으면 약 30초 뒤 풀림
+    long leaseTime() default -1L;
 
     TimeUnit timeUnit() default TimeUnit.SECONDS;
+
+    // 스케줄러용. 다른 서버가 실행 중이면 실패로 보지 않고 이번 실행을 건너뜀
+    boolean skipIfLocked() default false;
 }

@@ -51,6 +51,10 @@ public class DistributedLockAspect {
             );
 
             if (!isLocked) {
+                if (distributedLock.skipIfLocked()) {
+                    log.debug("다른 실행이 락을 보유해 건너뜀 - {}", lockKey);
+                    return null;
+                }
                 log.warn("락 획득 실패 - {}", lockKey);
                 Metrics.counter("lock.acquisition.failures").increment();
                 throw new BusinessException(BusinessErrorCode.LOCK_ACQUISITION_FAILED);
