@@ -79,6 +79,7 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
 	testImplementation 'org.testcontainers:junit-jupiter'
+	testImplementation 'org.testcontainers:rabbitmq'
 	testImplementation 'org.testcontainers:mysql'
 	testImplementation 'org.apache.commons:commons-compress:1.27.1'
 
@@ -98,6 +99,12 @@ dependencies {
 	//Redis
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	implementation 'org.redisson:redisson-spring-boot-starter:3.52.0'
+	implementation('software.amazon.awssdk:s3:2.57.8') {
+		exclude group: 'software.amazon.awssdk', module: 'netty-nio-client'
+		exclude group: 'software.amazon.awssdk', module: 'apache-client'
+		exclude group: 'software.amazon.awssdk', module: 'apache5-client'
+	}
+	implementation 'software.amazon.awssdk:url-connection-client:2.57.8'
 
 	// QueryDSL
 	implementation 'com.querydsl:querydsl-jpa:5.0.0:jakarta'
@@ -164,11 +171,11 @@ tasks.named('jacocoTestCoverageVerification') {
 		rule {
 			limit {
 				counter = 'LINE'
-				minimum = 0.65
+				minimum = 0.85
 			}
 			limit {
 				counter = 'BRANCH'
-				minimum = 0.50
+				minimum = 0.65
 			}
 		}
 	}

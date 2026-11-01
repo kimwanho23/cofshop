@@ -1,3 +1,6 @@
+# 로컬 실행(bootRun, IDE)에서도 .env를 읽음. 시스템 환경 변수가 있으면 그 값을 우선함
+spring.config.import=optional:file:.env[.properties]
+
 # 기존 로컬 DB를 Flyway 관리로 전환할 때는 FLYWAY_BASELINE_ON_MIGRATE=true로 실행
 spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.format_sql=true

@@ -58,10 +58,13 @@ jobs:
           for test_class in \
             kwh.cofshop.ApplicationIntegrationTest \
             kwh.cofshop.ActuatorIntegrationTest \
+            kwh.cofshop.SecurityFlowIntegrationTest \
+            kwh.cofshop.ConcurrencyIntegrationTest \
+            kwh.cofshop.ShopFlowIntegrationTest \
+            kwh.cofshop.MultiInstanceIntegrationTest \
+            kwh.cofshop.coupon.messaging.CouponOutboxRabbitIntegrationTest \
             kwh.cofshop.order.service.OrderStockConcurrencyMySqlTest \
             kwh.cofshop.aspect.DistributedLockIntegrationTest \
-            kwh.cofshop.coupon.redisstream.service.CouponRedisServiceIntegrationTest \
-            kwh.cofshop.coupon.redisstream.service.LimitedCouponIssueIntegrationTest \
             kwh.cofshop.payment.service.RefundRecoveryQueueIntegrationTest; do
             report="build/test-results/test/TEST-${test_class}.xml"
             if [ ! -f "$report" ] || ! grep -Eq '<testsuite [^>]*tests="[1-9][0-9]*" skipped="0" failures="0" errors="0"' "$report"; then
