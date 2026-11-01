@@ -8,6 +8,7 @@ import lombok.Setter;
 @Setter
 public class ItemSearchResponseDto {
 
+    private Long id; // 상품 ID
     private String itemName; // 상품명
     private Integer price; // 가격
     private Integer discount; // 할인율 (null 허용)

@@ -1,6 +1,8 @@
 package kwh.cofshop.item.service;
 
 import kwh.cofshop.global.exception.BadRequestException;
+import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemOption;
 import kwh.cofshop.item.dto.request.ItemOptionRequestDto;
@@ -77,6 +79,7 @@ class ItemOptionServiceTest {
         ReflectionTestUtils.setField(option, "id", 10L);
 
         ItemOptionRequestDto dto = new ItemOptionRequestDto(10L, "변경", 200, 5);
+        dto.setExpectedStock(10);
 
         when(itemOptionRepository.findByItemId(1L)).thenReturn(List.of(option));
 
@@ -85,6 +88,60 @@ class ItemOptionServiceTest {
         assertThat(option.getDescription()).isEqualTo("변경");
         assertThat(option.getAdditionalPrice()).isEqualTo(200);
         assertThat(option.getStock()).isEqualTo(5);
+    }
+
+    @Test
+    @DisplayName("기존 옵션 업데이트: 읽은 뒤 재고가 변했으면 재고 변경을 거부")
+    void updateExistingItemOptions_stockChanged() {
+        Item item = createItem();
+        ReflectionTestUtils.setField(item, "id", 1L);
+        ItemOption option = ItemOption.builder().description("기본").stock(95).item(item).build();
+        ReflectionTestUtils.setField(option, "id", 10L);
+        when(itemOptionRepository.findByItemId(1L)).thenReturn(List.of(option));
+
+        ItemOptionRequestDto dto = new ItemOptionRequestDto(10L, "변경", 200, 150);
+        dto.setExpectedStock(100);
+
+        assertThatThrownBy(() -> itemOptionService.updateExistingItemOptions(item, List.of(dto)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.ITEM_STOCK_CHANGED);
+        assertThat(option.getStock()).isEqualTo(95);
+        assertThat(option.getDescription()).isEqualTo("기본");
+    }
+
+    @Test
+    @DisplayName("기존 옵션 업데이트: 재고를 바꾸지 않으면 그 사이 차감을 유지")
+    void updateExistingItemOptions_stockUnchanged_keepsCurrent() {
+        Item item = createItem();
+        ReflectionTestUtils.setField(item, "id", 1L);
+        ItemOption option = ItemOption.builder().description("기본").stock(95).item(item).build();
+        ReflectionTestUtils.setField(option, "id", 10L);
+        when(itemOptionRepository.findByItemId(1L)).thenReturn(List.of(option));
+
+        ItemOptionRequestDto dto = new ItemOptionRequestDto(10L, "변경", 200, 100);
+        dto.setExpectedStock(100);
+
+        itemOptionService.updateExistingItemOptions(item, List.of(dto));
+
+        assertThat(option.getStock()).isEqualTo(95);
+        assertThat(option.getDescription()).isEqualTo("변경");
+    }
+
+    @Test
+    @DisplayName("기존 옵션 업데이트: 읽은 재고가 없으면 거부")
+    void updateExistingItemOptions_expectedStockMissing() {
+        Item item = createItem();
+        ReflectionTestUtils.setField(item, "id", 1L);
+        ItemOption option = ItemOption.builder().description("기본").stock(10).item(item).build();
+        ReflectionTestUtils.setField(option, "id", 10L);
+        when(itemOptionRepository.findByItemId(1L)).thenReturn(List.of(option));
+
+        assertThatThrownBy(() -> itemOptionService.updateExistingItemOptions(
+                item,
+                List.of(new ItemOptionRequestDto(10L, "변경", 200, 5))
+        )).isInstanceOf(BadRequestException.class);
+        assertThat(option.getStock()).isEqualTo(10);
     }
 
     @Test
@@ -138,7 +195,9 @@ class ItemOptionServiceTest {
 
         ItemUpdateRequestDto dto = new ItemUpdateRequestDto();
         dto.setDeleteOptionIds(List.of(11L));
-        dto.setExistingItemOptions(List.of(new ItemOptionRequestDto(10L, "변경", 200, 5)));
+        ItemOptionRequestDto existingOption = new ItemOptionRequestDto(10L, "변경", 200, 5);
+        existingOption.setExpectedStock(10);
+        dto.setExistingItemOptions(List.of(existingOption));
         dto.setAddItemOptions(List.of(new ItemOptionRequestDto(null, "신규", 300, 3)));
 
         itemOptionService.updateItemOptions(item, dto);

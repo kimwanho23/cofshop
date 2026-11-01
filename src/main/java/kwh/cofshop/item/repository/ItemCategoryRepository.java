@@ -12,6 +12,8 @@ import java.util.List;
 
 @Repository
 public interface ItemCategoryRepository extends JpaRepository<ItemCategory, Long>, ItemCategoryRepositoryCustom {
+
+    boolean existsByCategory_Id(Long categoryId);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     List<ItemCategory> findByItemId(Long id);
 }

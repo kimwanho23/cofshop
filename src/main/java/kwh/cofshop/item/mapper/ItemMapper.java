@@ -21,7 +21,6 @@ public interface ItemMapper {
 
     @Mapping(target = "itemImages", source = "itemImgs")
     @Mapping(target = "itemOptions", source = "itemOptions")
-    @Mapping(target = "email", source = "seller.email")
     @Mapping(target = "categoryNames", expression = "java(toCategoryNames(item))")
     @Mapping(target = "categoryId", expression = "java(toPrimaryCategoryId(item))")
     ItemResponseDto toResponseDto(Item item);

@@ -18,7 +18,6 @@ public class ItemResponseDto {
     private String origin; // 원산지
     private Integer itemLimit; // 수량 제한(한번에 구매 가능한 개수)
     private ItemState itemState; // 아이템 상태
-    private String email; // 판매자 이메일
 
     private List<String> categoryNames; // 카테고리
     private List<ItemImgResponseDto> itemImages; // 이미지 정보

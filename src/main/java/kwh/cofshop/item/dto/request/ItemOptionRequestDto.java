@@ -26,6 +26,9 @@ public class ItemOptionRequestDto {
     @PositiveOrZero(message = "재고는 0 이상이어야 합니다.")
     private Integer stock; // 옵션별 재고
 
+    @PositiveOrZero(message = "기존 재고는 0 이상이어야 합니다.")
+    private Integer expectedStock; // 기존 옵션 수정 시 화면에서 읽은 재고
+
     public ItemOptionRequestDto() {
     }
 

@@ -1,5 +1,6 @@
 package kwh.cofshop.statistics.scheduler;
 
+import kwh.cofshop.global.annotation.DistributedLock;
 import kwh.cofshop.statistics.service.StatisticsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
 public class StatisticsScheduler {
     private final StatisticsService statisticsService;
 
+    @DistributedLock(keyName = "'statistics:top-items:scheduler'", waitTime = 0, skipIfLocked = true)
     @Scheduled(cron = "0 0 0 * * *")
     public void saveLast7DaysTopItem() {
         statisticsService.refreshTopItemsLast7DaysCache();

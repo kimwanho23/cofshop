@@ -15,6 +15,7 @@ import kwh.cofshop.item.service.ItemService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -53,6 +54,7 @@ public class ItemController {
 
     // 상품 등록
     @Operation(summary = "상품 등록", description = "판매상품을 등록합니다.")
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("")
     public ResponseEntity<ItemResponseDto> uploadItem(
             @Parameter(hidden = true) @LoginMember Long memberId,
@@ -81,6 +83,7 @@ public class ItemController {
     //////////// @PUT, PATCH
     // 상품 수정
     @Operation(summary = "상품 정보 수정", description = "상품 정보를 수정합니다.")
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{itemId}")
     public ItemResponseDto updateItem(
             @PathVariable Long itemId,
@@ -94,24 +97,24 @@ public class ItemController {
     }
 
     // 판매 상태 변경
-    @Operation(summary = "상품 판매 상태 변경", description = "판매자가 상품을 판매 중지하거나 다시 판매합니다.")
+    @Operation(summary = "상품 판매 상태 변경", description = "관리자가 상품을 판매 중지하거나 다시 판매합니다.")
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/{itemId}/state")
     public ResponseEntity<Void> changeItemState(
             @PathVariable Long itemId,
-            @Parameter(hidden = true) @LoginMember Long memberId,
             @Valid @RequestBody ItemStateRequestDto requestDto) {
-        itemService.changeItemState(memberId, itemId, requestDto.getItemState());
+        itemService.changeItemState(itemId, requestDto.getItemState());
         return ResponseEntity.noContent().build();
     }
 
     //////////// @DELETE
     // 상품 삭제
     @Operation(summary = "상품 삭제", description = "상품 정보를 삭제합니다.")
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{itemId}")
     public ResponseEntity<Void> deleteItem(
-            @PathVariable Long itemId,
-            @Parameter(hidden = true) @LoginMember Long memberId) {
-        itemService.deleteItem(memberId, itemId);
+            @PathVariable Long itemId) {
+        itemService.deleteItem(itemId);
         return ResponseEntity.noContent().build(); // 204 No Content
     }
 }

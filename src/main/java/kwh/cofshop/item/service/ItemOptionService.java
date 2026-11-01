@@ -1,7 +1,9 @@
 package kwh.cofshop.item.service;
 
 import kwh.cofshop.global.exception.BadRequestException;
+import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemOption;
 import kwh.cofshop.item.dto.request.ItemOptionRequestDto;
@@ -74,9 +76,25 @@ public class ItemOptionService {
             existingOption.updateOption(
                     optionDto.getDescription(),
                     optionDto.getAdditionalPrice(),
-                    optionDto.getStock()
+                    resolveStock(existingOption, optionDto)
             );
         }
+    }
+
+    // 재고는 절댓값으로 저장하므로, 읽은 뒤 들어온 주문 차감을 덮어쓰지 않도록 확인
+    private Integer resolveStock(ItemOption existingOption, ItemOptionRequestDto optionDto) {
+        Integer expectedStock = optionDto.getExpectedStock();
+        if (expectedStock == null) {
+            throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
+        }
+        // 재고를 바꾸지 않는 수정은 그 사이 재고가 변했어도 현재 값을 유지
+        if (expectedStock.equals(optionDto.getStock())) {
+            return existingOption.getStock();
+        }
+        if (!expectedStock.equals(existingOption.getStock())) {
+            throw new BusinessException(BusinessErrorCode.ITEM_STOCK_CHANGED);
+        }
+        return optionDto.getStock();
     }
 
     public void addNewItemOptions(Item item, List<ItemOptionRequestDto> addItemOptions) {

@@ -4,7 +4,6 @@ import kwh.cofshop.file.storage.TempUploadFileService;
 import kwh.cofshop.file.storage.UploadFile;
 import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.global.exception.BusinessException;
-import kwh.cofshop.global.exception.ForbiddenRequestException;
 import kwh.cofshop.item.domain.Category;
 import kwh.cofshop.item.domain.Item;
 import kwh.cofshop.item.domain.ItemCategory;
@@ -23,7 +22,6 @@ import kwh.cofshop.item.mapper.ItemMapper;
 import kwh.cofshop.item.repository.CategoryRepository;
 import kwh.cofshop.item.repository.ItemCategoryRepository;
 import kwh.cofshop.item.repository.ItemImgRepository;
-import kwh.cofshop.item.repository.ItemOptionRepository;
 import kwh.cofshop.item.repository.ItemRepository;
 import kwh.cofshop.member.api.MemberReadPort;
 import kwh.cofshop.member.domain.Member;
@@ -82,9 +80,6 @@ class ItemServiceTest {
     private ItemCategoryRepository itemCategoryRepository;
 
     @Mock
-    private ItemOptionRepository itemOptionRepository;
-
-    @Mock
     private ItemImgRepository itemImgRepository;
 
     @Mock
@@ -140,14 +135,12 @@ class ItemServiceTest {
         when(itemCategoryRepository.saveAll(any())).thenReturn(List.of(ItemCategory.builder().build()));
 
         ItemResponseDto responseDto = new ItemResponseDto();
-        responseDto.setEmail(member.getEmail());
         when(itemMapper.toResponseDto(item)).thenReturn(responseDto);
 
         MockMultipartFile file = new MockMultipartFile("image", "test.jpg", "image/jpeg", "data".getBytes());
 
         ItemResponseDto result = itemService.saveItem(requestDto, 1L, List.of(file));
 
-        assertThat(result.getEmail()).isEqualTo(member.getEmail());
     }
 
     @Test
@@ -230,16 +223,17 @@ class ItemServiceTest {
     }
 
     @Test
-    @DisplayName("상품 수정: 판매자 불일치")
-    void updateItem_forbiddenWhenNotSeller() {
+    @DisplayName("상품 수정: 등록하지 않은 관리자도 가능")
+    void updateItem_byOtherAdmin() throws Exception {
         Item item = createItem();
         when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
 
         ItemUpdateRequestDto dto = new ItemUpdateRequestDto();
         dto.setItemName("변경");
 
-        assertThatThrownBy(() -> itemService.updateItem(999L, 1L, dto, List.of()))
-                .isInstanceOf(ForbiddenRequestException.class);
+        itemService.updateItem(999L, 1L, dto, List.of());
+
+        assertThat(item.getItemName()).isEqualTo("변경");
     }
 
     @Test
@@ -300,7 +294,7 @@ class ItemServiceTest {
     void deleteItem_notFound() {
         when(itemRepository.findById(anyLong())).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> itemService.deleteItem(1L, 1L))
+        assertThatThrownBy(() -> itemService.deleteItem(1L))
                 .isInstanceOf(BusinessException.class);
     }
 
@@ -311,20 +305,10 @@ class ItemServiceTest {
         when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
         when(itemImgRepository.findByItemId(1L)).thenReturn(List.of());
 
-        itemService.deleteItem(2L, 1L);
+        itemService.deleteItem(1L);
 
         verify(itemImgService).deleteStoredFilesAfterCommit(List.of());
         verify(itemRepository).delete(item);
-    }
-
-    @Test
-    @DisplayName("상품 삭제: 판매자 불일치")
-    void deleteItem_forbiddenWhenNotSeller() {
-        Item item = createItem();
-        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
-
-        assertThatThrownBy(() -> itemService.deleteItem(999L, 1L))
-                .isInstanceOf(ForbiddenRequestException.class);
     }
 
     private ItemRequestDto createRequestDto() {
@@ -351,24 +335,14 @@ class ItemServiceTest {
     }
 
     @Test
-    @DisplayName("판매 상태 변경: 판매자는 판매 중지 가능")
+    @DisplayName("판매 상태 변경: 관리자는 판매 중지 가능")
     void changeItemState_success() {
         Item item = createItem();
         when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
 
-        itemService.changeItemState(2L, 1L, ItemState.STOP);
+        itemService.changeItemState(1L, ItemState.STOP);
 
         assertThat(item.getItemState()).isEqualTo(ItemState.STOP);
-    }
-
-    @Test
-    @DisplayName("판매 상태 변경: 판매자가 아니면 실패")
-    void changeItemState_forbiddenWhenNotSeller() {
-        Item item = createItem();
-        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
-
-        assertThatThrownBy(() -> itemService.changeItemState(999L, 1L, ItemState.STOP))
-                .isInstanceOf(ForbiddenRequestException.class);
     }
 
     private Item createItem() {

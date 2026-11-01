@@ -23,6 +23,7 @@ import java.util.List;
 public class StatisticsService {
 
     private static final String TOP_ITEMS_LAST_7_DAYS_KEY = "ranking:top_items:last7days";
+    private static final int MAX_SALES_RANGE_DAYS = 366;
 
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
@@ -76,7 +77,7 @@ public class StatisticsService {
 
     // 기간 별 판매량
     public List<DailySalesResponseDto> getDailySalesBetween(LocalDate from, LocalDate to) {
-        if (from == null || to == null || from.isAfter(to)) {
+        if (from == null || to == null || from.isAfter(to) || from.plusDays(MAX_SALES_RANGE_DAYS).isBefore(to)) {
             throw new BadRequestException(BadRequestErrorCode.INPUT_INVALID_VALUE);
         }
         return statisticsRepository.getDailySalesBetween(from, to);

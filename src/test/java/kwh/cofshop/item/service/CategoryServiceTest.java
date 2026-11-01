@@ -1,6 +1,7 @@
 package kwh.cofshop.item.service;
 
 import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.item.domain.Category;
 import kwh.cofshop.item.repository.projection.CategoryPathProjection;
 import kwh.cofshop.item.dto.request.CategoryRequestDto;
@@ -8,6 +9,7 @@ import kwh.cofshop.item.dto.response.CategoryPathResponseDto;
 import kwh.cofshop.item.dto.response.CategoryResponseDto;
 import kwh.cofshop.item.mapper.CategoryMapper;
 import kwh.cofshop.item.repository.CategoryRepository;
+import kwh.cofshop.item.repository.ItemCategoryRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,6 +32,9 @@ class CategoryServiceTest {
 
     @Mock
     private CategoryRepository categoryRepository;
+
+    @Mock
+    private ItemCategoryRepository itemCategoryRepository;
 
     @Mock
     private CategoryMapper categoryMapper;
@@ -213,6 +218,25 @@ class CategoryServiceTest {
     @DisplayName("카테고리 삭제: 대상 없음")
     void deleteCategory_notFound() {
         when(categoryRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> categoryService.deleteCategory(1L))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    @DisplayName("카테고리 삭제: 하위 카테고리나 상품이 있으면 거부")
+    void deleteCategory_inUse() {
+        Category category = Category.builder().name("원두").build();
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(categoryRepository.existsByParentCategoryId(1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> categoryService.deleteCategory(1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.CATEGORY_IN_USE);
+
+        when(categoryRepository.existsByParentCategoryId(1L)).thenReturn(false);
+        when(itemCategoryRepository.existsByCategory_Id(1L)).thenReturn(true);
 
         assertThatThrownBy(() -> categoryService.deleteCategory(1L))
                 .isInstanceOf(BusinessException.class);

@@ -9,6 +9,7 @@ import kwh.cofshop.item.dto.response.CategoryPathResponseDto;
 import kwh.cofshop.item.dto.response.CategoryResponseDto;
 import kwh.cofshop.item.mapper.CategoryMapper;
 import kwh.cofshop.item.repository.CategoryRepository;
+import kwh.cofshop.item.repository.ItemCategoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,7 @@ import java.util.*;
 public class CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final ItemCategoryRepository itemCategoryRepository;
     private final CategoryMapper categoryMapper;
 
     // 카테고리 생성
@@ -123,6 +125,11 @@ public class CategoryService {
     public void deleteCategory(Long categoryId) {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.CATEGORY_NOT_FOUND));
+        // FK가 on delete cascade라 그대로 지우면 하위 카테고리까지 함께 삭제됨
+        if (categoryRepository.existsByParentCategoryId(categoryId)
+                || itemCategoryRepository.existsByCategory_Id(categoryId)) {
+            throw new BusinessException(BusinessErrorCode.CATEGORY_IN_USE);
+        }
         categoryRepository.delete(category);
     }
 }

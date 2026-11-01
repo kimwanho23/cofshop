@@ -1,8 +1,6 @@
 package kwh.cofshop.cart.repository.custom;
 
 import com.querydsl.core.types.Projections;
-import com.querydsl.core.types.dsl.Expressions;
-import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import kwh.cofshop.cart.domain.CartItem;
 import kwh.cofshop.cart.domain.QCartItem;
@@ -44,26 +42,16 @@ public class CartItemRepositoryImpl implements CartItemRepositoryCustom {
         QItem item = QItem.item;
         QItemOption itemOption = QItemOption.itemOption;
 
-        NumberExpression<Long> itemDiscountRate = item.discount.coalesce(0).longValue();
-        NumberExpression<Long> optionAdditionalPrice = itemOption.additionalPrice.coalesce(0).longValue();
-        NumberExpression<Long> optionDiscountRate = itemOption.discountRate.coalesce(0).longValue();
-
-        NumberExpression<Long> discountedItemPrice = item.price.longValue()
-                .multiply(Expressions.numberTemplate(Long.class, "(100 - {0})", itemDiscountRate))
-                .divide(100);
-        NumberExpression<Long> basePrice = discountedItemPrice.add(optionAdditionalPrice);
-        NumberExpression<Long> discountedOptionPrice = basePrice
-                .multiply(Expressions.numberTemplate(Long.class, "(100 - {0})", optionDiscountRate))
-                .divide(100);
-        NumberExpression<Long> lineTotal = discountedOptionPrice.multiply(cartItem.quantity.longValue());
-
+        // 주문 금액과 같은 계산을 쓰도록 도메인 가격을 사용 (SQL 나눗셈은 절사 방식과 반환 타입이 다름)
         return queryFactory
-                .select(lineTotal.sum())
-                .from(cartItem)
-                .join(cartItem.item, item)
-                .join(cartItem.itemOption, itemOption)
+                .selectFrom(cartItem)
+                .join(cartItem.itemOption, itemOption).fetchJoin()
+                .join(itemOption.item, item).fetchJoin()
                 .where(cartItem.cart.member.id.eq(memberId))
-                .fetchOne();
+                .fetch()
+                .stream()
+                .mapToLong(line -> (long) line.getItemOption().getTotalPrice() * line.getQuantity())
+                .sum();
     }
 
     @Override // 해당 Cart 아이템 전체 삭제

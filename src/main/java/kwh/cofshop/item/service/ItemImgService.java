@@ -91,6 +91,8 @@ public class ItemImgService {
 
             // DB에서 이미지 정보 삭제
             if (!deleteItems.isEmpty()) {
+                // 컬렉션에 남아 있으면 flush 때 cascade로 삭제가 취소되고 파일만 지워짐
+                item.getItemImgs().removeAll(deleteItems);
                 itemImgRepository.deleteAll(deleteItems);
                 deleteStoredFilesAfterCommit(deleteItems);
             }

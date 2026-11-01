@@ -54,6 +54,7 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom {
         List<ItemSearchResponseDto> result = queryFactory
                 .select(Projections.fields(
                         ItemSearchResponseDto.class,
+                        item.id.as("id"),
                         item.itemName.as("itemName"),
                         item.price.as("price"),
                         item.discount.as("discount"),
@@ -106,7 +107,6 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom {
                         item.origin,
                         item.itemLimit,
                         item.itemState,
-                        item.seller.email.as("email"),
                         ExpressionUtils.as(
                                 JPAExpressions.select(primaryCategory.category.id.min())
                                         .from(primaryCategory)
@@ -225,9 +225,7 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom {
 
     private BooleanExpression nameCondition(String itemName) {
         return StringUtils.hasText(itemName)
-                ? Expressions.booleanTemplate(
-                "MATCH(item_name) AGAINST ({0} IN NATURAL LANGUAGE MODE)",
-                Expressions.constant(itemName))
+                ? item.itemName.containsIgnoreCase(itemName.trim())
                 : null;
     }
 

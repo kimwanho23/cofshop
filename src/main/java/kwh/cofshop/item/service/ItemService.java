@@ -4,10 +4,8 @@ import kwh.cofshop.file.storage.TempUploadFileService;
 import kwh.cofshop.file.storage.UploadFile;
 import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.global.exception.BusinessException;
-import kwh.cofshop.global.exception.ForbiddenRequestException;
 import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
-import kwh.cofshop.global.exception.errorcodes.ForbiddenErrorCode;
 import kwh.cofshop.item.api.PopularItemPort;
 import kwh.cofshop.item.domain.*;
 import kwh.cofshop.item.dto.request.ItemImgRequestDto;
@@ -55,7 +53,6 @@ public class ItemService { // 통합 Item 서비스
     private final TempUploadFileService tempUploadFileService;
     private final CategoryRepository categoryRepository;
     private final ItemCategoryRepository itemCategoryRepository;
-    private final ItemOptionRepository itemOptionRepository;
     private final ItemImgRepository itemImgRepository;
     private final PopularItemPort popularItemPort;
 
@@ -138,7 +135,6 @@ public class ItemService { // 통합 Item 서비스
         // 1. 상품 조회
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
-        validateSellerAuthority(memberId, item);
         List<MultipartFile> safeNewImages = newImages == null ? Collections.emptyList() : newImages;
         boolean hasDirectImages = !safeNewImages.isEmpty();
 
@@ -172,18 +168,6 @@ public class ItemService { // 통합 Item 서비스
             }
             throw e;
         }
-    }
-
-    public List<ItemImg> getItemImgs(Long id) {
-        return itemImgRepository.findByItemId(id);
-    }
-
-    public List<ItemCategory> getItemCategories(Long id) {
-        return itemCategoryRepository.findByItemId(id);
-    }
-
-    public List<ItemOption> getItemOptions(Long id) {
-        return itemOptionRepository.findByItemId(id);
     }
 
     // 처음 등록할 때 save
@@ -240,29 +224,22 @@ public class ItemService { // 통합 Item 서비스
 
     // 판매 상태 변경
     @Transactional
-    public void changeItemState(Long memberId, Long id, ItemState itemState) {
+    public void changeItemState(Long id, ItemState itemState) {
         Item item = itemRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
-        validateSellerAuthority(memberId, item);
         item.changeItemState(itemState);
     }
 
     // 아이템 삭제
     @Transactional
-    public void deleteItem(Long memberId, Long id) {
+    public void deleteItem(Long id) {
         Item item = itemRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(BusinessErrorCode.ITEM_NOT_FOUND));
-        validateSellerAuthority(memberId, item);
         List<ItemImg> itemImages = itemImgRepository.findByItemId(id);
         itemRepository.delete(item);
         itemImgService.deleteStoredFilesAfterCommit(itemImages);
     }
 
-    private void validateSellerAuthority(Long memberId, Item item) {
-        if (!item.getSeller().getId().equals(memberId)) {
-            throw new ForbiddenRequestException(ForbiddenErrorCode.MEMBER_UNAUTHORIZED);
-        }
-    }
 
     private boolean hasTempImageIds(List<ItemImgRequestDto> imgRequestDtoList) {
         return imgRequestDtoList.stream()
