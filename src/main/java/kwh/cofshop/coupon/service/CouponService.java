@@ -4,7 +4,6 @@ import kwh.cofshop.coupon.application.command.CreateCouponCommand;
 import kwh.cofshop.coupon.domain.Coupon;
 import kwh.cofshop.coupon.domain.CouponState;
 import kwh.cofshop.coupon.domain.CouponType;
-import kwh.cofshop.coupon.domain.event.CouponCreatedEvent;
 import kwh.cofshop.coupon.dto.response.CouponResponseDto;
 import kwh.cofshop.coupon.repository.CouponRepository;
 import kwh.cofshop.coupon.repository.projection.CouponReadProjection;
@@ -13,7 +12,6 @@ import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BadRequestErrorCode;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +23,6 @@ import java.util.List;
 public class CouponService {
 
     private final CouponRepository couponRepository;
-    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Transactional
     public Long createCoupon(CreateCouponCommand command) {
@@ -44,7 +41,6 @@ public class CouponService {
                 )
         );
 
-        applicationEventPublisher.publishEvent(new CouponCreatedEvent(savedCoupon.getId(), savedCoupon.getCouponCount()));
         return savedCoupon.getId();
     }
 

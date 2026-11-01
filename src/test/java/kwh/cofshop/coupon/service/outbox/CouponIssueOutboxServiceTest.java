@@ -15,14 +15,17 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -91,5 +94,27 @@ class CouponIssueOutboxServiceTest {
         assertThat(result).isEqualTo(0);
         assertThat(pending.getRetryCount()).isEqualTo(1);
         assertThat(pending.getStatus()).isEqualTo(CouponIssueOutboxStatus.FAILED);
+    }
+
+    @Test
+    @DisplayName("발행 완료 행 정리: 기준 시각 이전의 SENT 행만 삭제")
+    void deleteSentEventsBefore() {
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(7);
+        when(outboxRepository.findIdsPublishedBefore(CouponIssueOutboxStatus.SENT, cutoff, PageRequest.of(0, 2)))
+                .thenReturn(List.of(1L, 2L));
+
+        assertThat(outboxService.deleteSentEventsBefore(cutoff, 2)).isEqualTo(2);
+
+        verify(outboxRepository).deleteAllByIdInBatch(List.of(1L, 2L));
+    }
+
+    @Test
+    @DisplayName("발행 완료 행 정리: 대상이 없으면 삭제하지 않음")
+    void deleteSentEventsBefore_empty() {
+        when(outboxRepository.findIdsPublishedBefore(any(), any(), any())).thenReturn(List.of());
+
+        assertThat(outboxService.deleteSentEventsBefore(LocalDateTime.now(), 10)).isZero();
+
+        verify(outboxRepository, never()).deleteAllByIdInBatch(any());
     }
 }

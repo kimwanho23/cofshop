@@ -1,10 +1,10 @@
 package kwh.cofshop.coupon.scheduler;
 
+import kwh.cofshop.global.annotation.DistributedLock;
 import kwh.cofshop.coupon.service.CouponService;
 import kwh.cofshop.coupon.service.MemberCouponService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -21,7 +21,7 @@ public class CouponScheduler {
     private final CouponService couponService;
     private final MemberCouponService memberCouponService;
 
-    @Async
+    @DistributedLock(keyName = "'coupon:expire:scheduler'", waitTime = 0, skipIfLocked = true)
     @Scheduled(cron = "0 0 0 * * *")
     public void expireCoupons() {
         try {

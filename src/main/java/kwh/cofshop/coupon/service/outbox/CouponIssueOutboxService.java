@@ -13,6 +13,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -66,6 +67,21 @@ public class CouponIssueOutboxService {
             }
         }
         return successCount;
+    }
+
+    // 발행 실패(FAILED) 행은 원인 확인을 위해 남긴다
+    @Transactional
+    public int deleteSentEventsBefore(LocalDateTime cutoff, int batchSize) {
+        List<Long> ids = outboxRepository.findIdsPublishedBefore(
+                CouponIssueOutboxStatus.SENT,
+                cutoff,
+                PageRequest.of(0, Math.max(1, batchSize))
+        );
+        if (ids.isEmpty()) {
+            return 0;
+        }
+        outboxRepository.deleteAllByIdInBatch(ids);
+        return ids.size();
     }
 
     private String serialize(CouponIssuePayload payload) {

@@ -4,7 +4,6 @@ import kwh.cofshop.coupon.application.command.CreateCouponCommand;
 import kwh.cofshop.coupon.domain.Coupon;
 import kwh.cofshop.coupon.domain.CouponState;
 import kwh.cofshop.coupon.domain.CouponType;
-import kwh.cofshop.coupon.domain.event.CouponCreatedEvent;
 import kwh.cofshop.coupon.dto.response.CouponResponseDto;
 import kwh.cofshop.coupon.repository.CouponRepository;
 import kwh.cofshop.coupon.repository.projection.CouponReadProjection;
@@ -13,11 +12,9 @@ import kwh.cofshop.global.exception.BusinessException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -35,9 +32,6 @@ class CouponServiceTest {
 
     @Mock
     private CouponRepository couponStore;
-
-    @Mock
-    private ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks
     private CouponService couponService;
@@ -66,10 +60,6 @@ class CouponServiceTest {
         Long couponId = couponService.createCoupon(command);
 
         assertThat(couponId).isEqualTo(1L);
-        ArgumentCaptor<CouponCreatedEvent> captor = ArgumentCaptor.forClass(CouponCreatedEvent.class);
-        verify(applicationEventPublisher).publishEvent(captor.capture());
-        assertThat(captor.getValue().couponId()).isEqualTo(1L);
-        assertThat(captor.getValue().couponCount()).isEqualTo(10);
     }
 
     @Test

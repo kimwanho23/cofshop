@@ -181,16 +181,6 @@ class MemberCouponIssueServiceTest {
                 .isEqualTo(BusinessErrorCode.COUPON_RUN_OUT);
     }
 
-    @Test
-    @DisplayName("isAlreadyIssued")
-    void isAlreadyIssued() {
-        when(memberCouponRepository.existsByMember_IdAndCoupon_Id(1L, 2L)).thenReturn(true);
-
-        boolean result = memberCouponIssueService.isAlreadyIssued(1L, 2L);
-
-        assertThat(result).isTrue();
-    }
-
     private Member createMember(Long id) {
         return Member.builder()
                 .id(id)

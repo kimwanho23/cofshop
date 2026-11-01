@@ -26,11 +26,6 @@ public class MemberCouponIssueService {
     private final MemberReadPort memberReadPort;
     private final CouponIssueOutboxService couponIssueOutboxService;
 
-    @Transactional(readOnly = true)
-    public boolean isAlreadyIssued(Long memberId, Long couponId) {
-        return memberCouponRepository.existsByMember_IdAndCoupon_Id(memberId, couponId);
-    }
-
 
     @Transactional
     public Long issueCoupon(Long memberId, Long couponId) {
