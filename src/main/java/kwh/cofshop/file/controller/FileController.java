@@ -8,6 +8,7 @@ import kwh.cofshop.file.storage.TempUploadFileService;
 import kwh.cofshop.global.annotation.LoginMember;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +24,7 @@ import java.util.List;
 @RequestMapping("/api/files")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "Bearer Authentication")
+@PreAuthorize("hasRole('ADMIN')") // 임시 이미지는 상품 등록·수정에서만 사용
 public class FileController {
 
     private final TempUploadFileService tempUploadFileService;

@@ -1,5 +1,6 @@
 package kwh.cofshop.file.storage;
 
+import kwh.cofshop.global.annotation.DistributedLock;
 import kwh.cofshop.file.dto.response.TempFileUploadResponseDto;
 import kwh.cofshop.global.exception.BadRequestException;
 import kwh.cofshop.global.exception.ForbiddenRequestException;
@@ -127,6 +128,7 @@ public class TempUploadFileService {
         tempUploadFileRepository.delete(tempFile);
     }
 
+    @DistributedLock(keyName = "'file:temp-cleanup:scheduler'", waitTime = 0, skipIfLocked = true)
     @Scheduled(fixedDelayString = "${file.temp.cleanup.fixed-delay-ms:600000}")
     @Transactional
     public void cleanupExpiredTempFiles() {

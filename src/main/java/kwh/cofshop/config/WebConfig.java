@@ -18,8 +18,10 @@ public class WebConfig implements WebMvcConfigurer {
 
     private final LoginMemberArgumentResolver loginMemberArgumentResolver;
 
-    @Value("${file.dir}")
+    @Value("${file.dir:./uploads}")
     private String fileDir;
+    @Value("${file.storage:local}")
+    private String fileStorage;
     @Value("${security.cors.allowed-origin-patterns:http://localhost:8080}")
     private List<String> allowedOriginPatterns;
 
@@ -37,6 +39,9 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        if (!"local".equals(fileStorage)) {
+            return; // 공유 스토리지는 자체 URL로 제공
+        }
         String location = Paths.get(fileDir).toUri().toString();
         if (!location.endsWith("/")) {
             location = location + "/";
