@@ -3,7 +3,7 @@
 이 문서는 `cofshop` 백엔드의 주요 모듈을 패키지 기준으로 요약하고, 각 모듈의 책임과 주요 흐름을 설명합니다.
 
 ## 공통/인프라
-- config: 보안, Swagger, Redis/Stream, WebSocket, QueryDSL, CORS, PortOne 설정
+- config: 보안, Swagger, Redis, WebSocket, QueryDSL, CORS, PortOne 설정
 - global: 공통 애노테이션/예외/에러코드/공통 도메인 타입
 - aspect: 분산락/로깅/트랜잭션 보조 AOP
 - argumentResolver: 로그인 사용자 주입과 분산락 키 파싱
@@ -48,15 +48,12 @@
 - 흐름 요약: 품목 추가/수정 -> 총합 계산 -> 주문 전송
 
 ## 쿠폰(coupon)
-- 책임: 쿠폰 생성/발급/사용/만료, Redis 기반 발급 처리
+- 책임: 쿠폰 생성/발급/사용/만료
 - 패키지 구조: `api`, `controller`, `service`, `domain`, `repository`, `dto`, `mapper` 중심으로 단순화
-- 부가 구성: 비동기/운영성 코드는 `messaging`, `scheduler`, `redisstream`, `repository.outbox`, `service.outbox`로 분리
-- Redis 구조
-  - 재고/중복/순서 제어: `coupon:stock:*`, `coupon:issued:*`, `coupon:issued:order:*`, `coupon:seq:*`
-  - 발급 큐: Redis Stream `stream:events`
-  - 컨슈머 그룹: `consumer-group:coupon`
-- 흐름 요약: 발급 요청 -> Redis Stream 적재 -> 컨슈머 처리 -> DB 반영
-- 보조 작업: Pending 메시지 정리/스케줄러 기반 만료 처리
+- 부가 구성: 비동기/운영성 코드는 `messaging`, `scheduler`, `repository.outbox`, `service.outbox`로 분리
+- 발급: 조건부 UPDATE로 수량 차감, 유니크 제약으로 1인 1장. 전환 배경은 [coupon-messaging-decision.md](architecture/coupon-messaging-decision.md) 참고
+- 이벤트: outbox에 저장 후 스케줄러가 발행 (RabbitMQ 또는 로그)
+- 보조 작업: 스케줄러 기반 만료 처리
 
 ## 결제(payment)
 - 책임: 결제 요청/검증/환불, 외부 PG(PortOne V2) 연동
@@ -95,11 +92,10 @@
 
 ### 쿠폰(coupon) 플로우 (Limited 쿠폰 발급)
 1) 발급 요청 수신  
-2) Redis Stream `stream:events`에 메시지 적재  
-3) 컨슈머가 메시지를 수신해 발급 정책/재고/중복 조건을 검증  
-4) 검증 통과 시 DB 발급 이력 반영  
-5) 성공 메시지는 ACK 처리  
-6) 실패/지연 메시지는 재처리 작업으로 보정  
+2) 쿠폰 상태, 기간, 중복 검증  
+3) 조건부 UPDATE로 수량 차감 (수량이 없으면 실패)  
+4) 회원 쿠폰과 outbox 이벤트를 같은 트랜잭션으로 저장  
+5) 스케줄러가 outbox 이벤트 발행, 실패 시 재시도  
 
 ### 채팅(chat) 플로우 (STOMP)
 1) 클라이언트가 `/ws-chat` 연결  

@@ -3,6 +3,8 @@
 ## Overview
 - `docs/PROJECT_OVERVIEW.md` 프로젝트 구조/스택 개요
 - `docs/MODULES.md` 모듈 책임/상세 플로우
+- `docs/architecture/system-architecture.md` 실행 구성, CI, 모듈 의존성
+- `docs/architecture/coupon-messaging-decision.md` 쿠폰 발급을 Redis Stream에서 RabbitMQ로 전환한 이유
 - `docs/SECRETS_AND_ENV.md` 민감정보 분리, 운영 설정 예시
 - `docs/ENVIRONMENT_SETUP_RUNBOOK.md` DB 생성 + GitHub Environment 시크릿 등록 실무 절차
 - `docs/examples/*.secrets.env.example` 환경별 GitHub Secrets 입력 템플릿 예시

@@ -16,7 +16,7 @@
 - Security: Spring Security + JWT
 - Data: Spring Data JPA, QueryDSL, MapStruct, Flyway
 - DB: MySQL 8.0 (운영), H2 (일부 빠른 테스트)
-- Cache/Queue: Redis, Redisson(분산 락), Redis Stream, RabbitMQ(선택)
+- Cache/Queue: Redis, Redisson(분산 락), RabbitMQ(선택)
 - API Docs: springdoc-openapi (Swagger UI)
 - Payment: PortOne V2 REST API
 - Test: JUnit, Mockito, Testcontainers, Spring REST Docs
@@ -30,7 +30,7 @@
   - `item/`: 상품/카테고리/리뷰/이미지/옵션
   - `order/`: 주문/주문아이템/배송정책
   - `cart/`: 장바구니
-  - `coupon/`: 쿠폰 발급/사용, Redis Stream 작업자, outbox
+  - `coupon/`: 쿠폰 발급/사용, outbox
   - `payment/`: 결제 요청/검증/환불
   - `chat/`: 고객센터 1:1 채팅
   - `statistics/`: 매출/인기상품 통계
@@ -48,7 +48,7 @@
 - 상품(Item): 상품/옵션/이미지/카테고리/리뷰, 판매 상태 변경
 - 주문(Order): 주문 생성/취소/상태 변경, 환불 요청 처리
 - 장바구니(Cart): 품목 추가/수정/삭제
-- 쿠폰(Coupon): 발급/사용/만료 처리, Redis Stream 소비자/스케줄러
+- 쿠폰(Coupon): 발급/사용/만료 처리, outbox 스케줄러
 - 결제(Payment): PortOne 연동, 결제 검증/환불, 환불 복구 큐
 - 채팅(Chat): WebSocket 기반 1:1 채팅
 - 통계(Statistics): 기간/일별 매출, 인기 상품 집계

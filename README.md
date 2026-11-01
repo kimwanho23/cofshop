@@ -20,7 +20,7 @@ Spring Boot 기반 쇼핑몰 백엔드 서버입니다. 회원/상품/장바구�
 
 ## 프로젝트 개요
 - 도메인: 쇼핑몰(상품/주문/쿠폰/결제/리뷰/통계)
-- 아키텍처: Spring Boot REST API + Redis Stream + WebSocket(STOMP)
+- 아키텍처: Spring Boot REST API + WebSocket(STOMP) + Redis(분산 락, 채팅 중계) + RabbitMQ(선택)
 - 문서: Swagger UI 제공
 
 ## 기술 스택
@@ -51,7 +51,7 @@ Spring Boot 기반 쇼핑몰 백엔드 서버입니다. 회원/상품/장바구�
 - 상품: 등록/수정/조회/검색, 카테고리, 리뷰
 - 주문: 생성/취소/상태 변경, 배송 정책 적용
 - 장바구니: 담기/수정/삭제, 총 금액 계산
-- 쿠폰: Redis Stream 기반 발급 처리, 만료 스케줄링
+- 쿠폰: DB 기반 발급 처리, outbox 이벤트 발행, 만료 스케줄링
 - 결제: PortOne(Iamport) 연동, 결제 검증/환불
 - 채팅: WebSocket(STOMP) 1:1 상담
 - 통계: 기간별/일별 매출, 인기 상품 집계

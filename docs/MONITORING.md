@@ -65,6 +65,17 @@ docker compose --profile monitoring up -d alertmanager
 | `CouponOutboxBacklog` | warning | `CouponIssueOutboxScheduler` 동작 |
 | `CouponOutboxFailed` | warning | outbox의 `last_error` |
 
+## 결제 문제 처리 (관리자 API)
+
+| API | 용도 |
+| --- | --- |
+| `GET /api/admin/payments/issues` | 미완료 환불, 환불 진행 중 결제, PG 불일치, 복구 큐 크기 조회 |
+| `GET /api/admin/payments/{paymentId}/comparison` | DB와 PG 상태 비교, 처리 이력 조회 |
+| `POST /api/admin/payments/{paymentId}/reconcile` | `READY` 결제를 PG 상태로 즉시 맞춤 |
+| `POST /api/admin/payments/{paymentId}/refund/retry` | 승인된 환불을 즉시 재시도 |
+
+수동 처리 결과는 `payment_operation_log`에 남습니다. 금액이나 거래 ID 불일치는 자동으로 고치지 않으므로, PortOne 내역을 확인한 뒤 PortOne 콘솔에서 처리합니다.
+
 ## 아직 없는 것
 
 - **대시보드:** Grafana가 없습니다.
