@@ -120,6 +120,17 @@ public class Member {
         this.point = (int) updatedPoint;
     }
 
+    // 비밀번호 칸은 비울 수 없으므로 BCrypt 형식이 아닌 값을 넣어 어떤 입력과도 일치하지 않게 한다
+    public void withdraw() {
+        this.email = "withdrawn-" + this.id + "@deleted.invalid";
+        this.memberName = "탈퇴회원";
+        this.memberPwd = "!";
+        this.tel = "-";
+        this.point = 0;
+        this.lastLogin = null;
+        this.memberState = MemberState.QUIT;
+    }
+
     public void changeMemberState(MemberState newState) {
         this.memberState = newState;
     }

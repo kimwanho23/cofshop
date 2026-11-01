@@ -44,6 +44,9 @@ class MemberServiceUnitTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    @Mock
+    private MemberRejoinBlockService memberRejoinBlockService;
+
     private MemberRequestDto requestDto;
 
     private Member mockMember;

@@ -205,7 +205,26 @@ public class OrderService {
         if (order.getOrderState() != OrderState.DELIVERED) {
             throw new BusinessException(BusinessErrorCode.ORDER_CANNOT_CONFIRM);
         }
-        order.changeOrderState(OrderState.COMPLETED); // 구매 확정 가능 - 이 시점에서 반품 불가능함
+        if (order.isRefundRequestInProgress()) {
+            throw new BusinessException(BusinessErrorCode.ORDER_REFUND_REQUEST_IN_PROGRESS);
+        }
+        order.changeOrderState(OrderState.COMPLETED); // 구매 확정 후에도 정해진 기간 안에는 환불 요청 가능
+    }
+
+    // 배송 완료 후 일정 기간이 지난 주문 자동 구매 확정. 반품 요청이 진행 중이면 건너뜀
+    @DistributedLock(keyName = "'order:' + #orderId")
+    @Transactional
+    public boolean autoConfirmDeliveredOrder(Long orderId, LocalDateTime deadline) {
+        Order order = orderRepository.findByIdWithLock(orderId).orElse(null);
+        if (order == null
+                || order.getOrderState() != OrderState.DELIVERED
+                || order.getDeliveredAt() == null
+                || order.getDeliveredAt().isAfter(deadline)
+                || order.isRefundRequestInProgress()) {
+            return false;
+        }
+        order.changeOrderState(OrderState.COMPLETED);
+        return true;
     }
 
     @DistributedLock(keyName = "'order:' + #orderId")
@@ -260,6 +279,7 @@ public class OrderService {
     private void executeApprovedRefund(Order order) {
         if (order.isFreeOrder()) {
             // PG 결제가 없으므로 주문 안에서 바로 환불 완료
+            order.beginRefund();
             cancelAndRestore(order, FREE_ORDER_REFUND_REASON);
             completeRefundRequestByPayment(order, FREE_ORDER_REFUND_REASON, LocalDateTime.now());
             return;

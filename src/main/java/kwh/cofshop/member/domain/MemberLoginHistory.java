@@ -13,6 +13,10 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Entity
 @EntityListeners(AuditingEntityListener.class)
+@Table(indexes = {
+        @Index(name = "idx_member_login_history_member_login_dt", columnList = "memberId,loginDt"),
+        @Index(name = "idx_member_login_history_login_dt", columnList = "loginDt")
+})
 public class MemberLoginHistory {
 
     @Id

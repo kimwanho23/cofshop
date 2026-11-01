@@ -8,6 +8,7 @@ import kwh.cofshop.member.dto.request.MemberRequestDto;
 import kwh.cofshop.member.dto.response.MemberResponseDto;
 import kwh.cofshop.member.event.MemberCreatedEvent;
 import kwh.cofshop.member.event.MemberSessionInvalidatedEvent;
+import kwh.cofshop.member.event.MemberWithdrawalEvent;
 import kwh.cofshop.member.mapper.MemberMapper;
 import kwh.cofshop.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,11 +30,16 @@ public class MemberService {
     private final MemberMapper memberMapper;
     private final BCryptPasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
+    private final MemberRejoinBlockService memberRejoinBlockService;
 
     @Transactional
     public MemberResponseDto signUp(MemberRequestDto memberDto) {
         if (memberRepository.findByEmail(memberDto.getEmail()).isPresent()) {
             throw new BusinessException(BusinessErrorCode.MEMBER_ALREADY_EXISTS);
+        }
+
+        if (memberRejoinBlockService.isBlocked(memberDto.getEmail(), memberDto.getTel())) {
+            throw new BusinessException(BusinessErrorCode.MEMBER_REJOIN_RESTRICTED);
         }
 
         String encodedPassword = passwordEncoder.encode(memberDto.getMemberPwd());
@@ -70,7 +76,28 @@ public class MemberService {
         if (currentState == newState) {
             return;
         }
+        if (currentState == MemberState.QUIT) {
+            throw new BusinessException(BusinessErrorCode.MEMBER_ALREADY_WITHDRAWN);
+        }
+        if (newState == MemberState.QUIT) {
+            withdraw(memberId);
+            return;
+        }
         member.changeMemberState(newState);
+        eventPublisher.publishEvent(new MemberSessionInvalidatedEvent(memberId));
+    }
+
+    // 탈퇴: 진행 중 주문이 없을 때만 가능. 거래기록 보존은 각 모듈의 리스너가 처리한다
+    @Transactional
+    public void withdraw(Long memberId) {
+        Member member = getMember(memberId);
+        if (member.getMemberState() == MemberState.QUIT) {
+            return;
+        }
+        eventPublisher.publishEvent(new MemberWithdrawalEvent(
+                memberId, member.getEmail(), member.getMemberName(), member.getTel()));
+        memberRejoinBlockService.block(member.getEmail(), member.getTel());
+        member.withdraw();
         eventPublisher.publishEvent(new MemberSessionInvalidatedEvent(memberId));
     }
 

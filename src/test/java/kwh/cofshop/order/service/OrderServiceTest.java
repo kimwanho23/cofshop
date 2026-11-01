@@ -119,6 +119,61 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("반품 요청: 배송 완료 주문은 요청 가능")
+    void requestRefundRequest_deliveredOrder_success() {
+        Member member = createMember(1L);
+        Order order = Order.builder().orderState(OrderState.DELIVERED).member(member).build();
+        when(orderRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.of(order));
+
+        orderService.requestRefundRequest(1L, 1L, "상품 불량");
+
+        assertThat(order.getRefundRequestStatus()).isEqualTo(OrderRefundRequestStatus.REQUESTED);
+    }
+
+    @Test
+    @DisplayName("구매 확정: 반품 요청이 진행 중이면 불가")
+    void purchaseConfirmation_refundInProgress_fail() {
+        Member member = createMember(1L);
+        Order order = Order.builder()
+                .orderState(OrderState.DELIVERED)
+                .refundRequestStatus(OrderRefundRequestStatus.REQUESTED)
+                .member(member)
+                .build();
+        when(orderRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.purchaseConfirmation(1L, 1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.ORDER_REFUND_REQUEST_IN_PROGRESS);
+    }
+
+    @Test
+    @DisplayName("자동 구매 확정: 기한이 지난 배송 완료 주문만 확정")
+    void autoConfirmDeliveredOrder() {
+        Order order = Order.builder().orderState(OrderState.SHIPPING).member(createMember(1L)).build();
+        order.changeOrderState(OrderState.DELIVERED);
+        when(orderRepository.findByIdWithLock(1L)).thenReturn(Optional.of(order));
+
+        assertThat(orderService.autoConfirmDeliveredOrder(1L, LocalDateTime.now().minusDays(7))).isFalse();
+        assertThat(order.getOrderState()).isEqualTo(OrderState.DELIVERED);
+
+        assertThat(orderService.autoConfirmDeliveredOrder(1L, LocalDateTime.now().plusMinutes(1))).isTrue();
+        assertThat(order.getOrderState()).isEqualTo(OrderState.COMPLETED);
+    }
+
+    @Test
+    @DisplayName("자동 구매 확정: 반품 요청이 진행 중이면 건너뜀")
+    void autoConfirmDeliveredOrder_refundInProgress_skipped() {
+        Order order = Order.builder().orderState(OrderState.SHIPPING).member(createMember(1L)).build();
+        order.changeOrderState(OrderState.DELIVERED);
+        order.requestRefundRequest("상품 불량", LocalDateTime.now());
+        when(orderRepository.findByIdWithLock(1L)).thenReturn(Optional.of(order));
+
+        assertThat(orderService.autoConfirmDeliveredOrder(1L, LocalDateTime.now().plusMinutes(1))).isFalse();
+        assertThat(order.getOrderState()).isEqualTo(OrderState.DELIVERED);
+    }
+
+    @Test
     @DisplayName("관리자 환불 승인: 유료 주문은 환불 실행 이벤트 발행")
     void processRefundRequestByAdmin_approved_publishesEvent() {
         Order order = Order.builder()
@@ -806,11 +861,11 @@ class OrderServiceTest {
     }
 
     @Test
-    @DisplayName("환불 요청: 결제 완료 외 상태는 요청 불가")
+    @DisplayName("환불 요청: 결제 전 주문은 요청 불가")
     void requestRefundRequest_notPaidOrder_fail() {
         Member member = createMember(1L);
         Order order = Order.builder()
-                .orderState(OrderState.SHIPPING)
+                .orderState(OrderState.WAITING_FOR_PAY)
                 .member(member)
                 .build();
         when(orderRepository.findByIdAndMemberIdWithLock(1L, 1L)).thenReturn(Optional.of(order));

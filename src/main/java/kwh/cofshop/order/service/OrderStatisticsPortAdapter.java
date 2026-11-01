@@ -34,7 +34,7 @@ public class OrderStatisticsPortAdapter implements OrderStatisticsPort {
 
     private final DateTemplate<LocalDate> dateOnly = Expressions.dateTemplate(
             LocalDate.class,
-            "DATE({0})",
+            "cast({0} as LocalDate)",
             order.orderDate
     );
 

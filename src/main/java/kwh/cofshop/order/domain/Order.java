@@ -20,6 +20,9 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "orders")
 public class Order extends BaseTimeEntity {
+
+    private static final int REFUND_REQUEST_MONTHS_AFTER_DELIVERY = 3;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "order_id", nullable = false, updatable = false)
@@ -104,6 +107,15 @@ public class Order extends BaseTimeEntity {
     @Column(name = "refund_processed_reason", length = 500)
     private String refundProcessedReason;
 
+    // 배송 완료 시각 (자동 구매 확정 기준)
+    @Column(name = "delivered_at")
+    private LocalDateTime deliveredAt;
+
+    // 환불 진행 전 상태 (PG 환불 실패 시 되돌릴 상태)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "state_before_refund")
+    private OrderState stateBeforeRefund;
+
     // 연관 관계
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> orderItems = new ArrayList<>();
@@ -172,6 +184,9 @@ public class Order extends BaseTimeEntity {
 
     // 주문 상태 변경
     public void changeOrderState(OrderState orderState) {
+        if (orderState == OrderState.DELIVERED && this.orderState != OrderState.DELIVERED) {
+            this.deliveredAt = LocalDateTime.now();
+        }
         this.orderState = orderState;
     }
 
@@ -213,10 +228,6 @@ public class Order extends BaseTimeEntity {
         }
     }
 
-    public void cancel() {
-        cancel(null, LocalDateTime.now());
-    }
-
     public void cancel(String reason, LocalDateTime cancelledAt) {
         if (this.orderState == OrderState.CANCELLED) {
             throw new BusinessException(BusinessErrorCode.ORDER_ALREADY_CANCELLED);
@@ -236,7 +247,8 @@ public class Order extends BaseTimeEntity {
     }
 
     public void requestRefundRequest(String reason, LocalDateTime requestedAt) {
-        if (!isRefundRequestableOrderState()) {
+        LocalDateTime requestTime = requestedAt == null ? LocalDateTime.now() : requestedAt;
+        if (!isRefundRequestableAt(requestTime)) {
             throw new BusinessException(BusinessErrorCode.ORDER_REFUND_REQUEST_NOT_ALLOWED);
         }
 
@@ -250,7 +262,7 @@ public class Order extends BaseTimeEntity {
 
         this.refundRequestStatus = OrderRefundRequestStatus.REQUESTED;
         this.refundRequestReason = reason;
-        this.refundRequestedAt = requestedAt == null ? LocalDateTime.now() : requestedAt;
+        this.refundRequestedAt = requestTime;
         this.refundProcessedAt = null;
         this.refundProcessedReason = null;
     }
@@ -269,8 +281,36 @@ public class Order extends BaseTimeEntity {
         this.refundProcessedAt = processedAt == null ? LocalDateTime.now() : processedAt;
     }
 
-    private boolean isRefundRequestableOrderState() {
-        return this.orderState == OrderState.PAID;
+    // 구매 확정 후에도 배송 완료 3개월까지 환불·반품 요청 가능 (전자상거래법 제17조 제3항)
+    private boolean isRefundRequestableAt(LocalDateTime requestTime) {
+        if (this.orderState == OrderState.COMPLETED) {
+            return this.deliveredAt == null
+                    || !requestTime.isAfter(this.deliveredAt.plusMonths(REFUND_REQUEST_MONTHS_AFTER_DELIVERY));
+        }
+        return this.orderState == OrderState.PAID
+                || this.orderState == OrderState.PREPARING_FOR_SHIPMENT
+                || this.orderState == OrderState.SHIPPING
+                || this.orderState == OrderState.DELIVERED;
+    }
+
+    // 회원 탈퇴 시 주문에서 배송지를 지운다. 보존이 필요한 값은 OrderPersonalArchive로 옮긴다
+    public void clearPersonalInfo() {
+        this.address = null;
+        this.deliveryRequest = null;
+    }
+
+    public boolean isRefundRequestInProgress() {
+        return this.refundRequestStatus == OrderRefundRequestStatus.REQUESTED
+                || this.refundRequestStatus == OrderRefundRequestStatus.APPROVED;
+    }
+
+    // PG 없이 환불이 끝나는 무료 주문용. 결제 주문은 OrderStatePort로 전환
+    public void beginRefund() {
+        if (this.orderState == OrderState.REFUND_PENDING) {
+            return;
+        }
+        this.stateBeforeRefund = this.orderState;
+        this.orderState = OrderState.REFUND_PENDING;
     }
 
     private boolean isValidRefundRequestTransition(OrderRefundRequestStatus currentStatus, OrderRefundRequestStatus targetStatus) {

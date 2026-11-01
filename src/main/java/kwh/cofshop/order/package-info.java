@@ -3,6 +3,7 @@
         allowedDependencies = {
                 "member::domain",
                 "member::api",
+                "member::event",
                 "item::domain",
                 "item::api",
                 "coupon::api",

@@ -49,7 +49,7 @@ public class MemberController {
     }
 
     // 멤버의 로그인 기록 열람
-    @Operation(summary = "멤버 로그인 기록 조회", description = "조회 결과")
+    @Operation(summary = "멤버 로그인 기록 조회", description = "최근 100건을 최신순으로 조회합니다.")
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/history/{memberId}")
     public List<MemberLoginEvent> getLoginMemberHistory(@PathVariable Long memberId) {
@@ -82,11 +82,11 @@ public class MemberController {
     }
 
     // 회원 탈퇴
-    @Operation(summary = "회원탈퇴", description = "회원탈퇴 기능입니다.")
+    @Operation(summary = "회원탈퇴", description = "회원 정보를 파기합니다. 진행 중인 주문이 있으면 탈퇴할 수 없고, 보유 포인트는 소멸합니다.")
     @PatchMapping("/me/state")
     @PreAuthorize("hasRole('MEMBER')")
     public ResponseEntity<Void> quitMember(@LoginMember Long memberId) {
-        memberService.changeMemberState(memberId, MemberState.QUIT);
+        memberService.withdraw(memberId);
         return ResponseEntity.noContent().build();
     }
 

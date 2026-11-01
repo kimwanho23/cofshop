@@ -10,6 +10,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -48,14 +49,14 @@ class MemberLoginHistoryServiceTest {
     }
 
     @Test
-    @DisplayName("로그인 이력 조회")
+    @DisplayName("로그인 이력 조회: 최근 100건까지만 읽음")
     void getUserLoginHistory() {
-        when(memberLoginHistoryRepository.findLoginEventsByMemberId(1L))
+        when(memberLoginHistoryRepository.findLoginEventsByMemberId(1L, PageRequest.of(0, 100)))
                 .thenReturn(List.of(MemberLoginEvent.builder().build()));
 
         List<MemberLoginEvent> results = memberLoginHistoryService.getUserLoginHistory(1L);
 
         assertThat(results).hasSize(1);
-        verify(memberLoginHistoryRepository).findLoginEventsByMemberId(1L);
+        verify(memberLoginHistoryRepository).findLoginEventsByMemberId(1L, PageRequest.of(0, 100));
     }
 }

@@ -37,8 +37,7 @@ public class OrderAutoCancelScheduler {
     @Scheduled(fixedDelayString = "${order.auto-cancel.fixed-delay-ms:60000}")
     @DistributedLock(
             keyName = "'order:auto-cancel:scheduler'",
-            waitTime = 0,
-            leaseTime = 5,
+            waitTime = 0, skipIfLocked = true,
             timeUnit = TimeUnit.MINUTES
     )
     public void autoCancelStaleOrders() {

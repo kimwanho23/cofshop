@@ -26,6 +26,9 @@ public enum BusinessErrorCode implements ErrorCode {
     MEMBER_NOT_FOUND("MEMBER-404", HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다."),
     MEMBER_ALREADY_EXISTS("MEMBER-409", HttpStatus.CONFLICT, "이미 존재하는 회원 이메일입니다."),
     MEMBER_NOT_ADMIN("MEMBER-403", HttpStatus.FORBIDDEN, "관리자 권한이 필요합니다."),
+    MEMBER_HAS_ACTIVE_ORDERS("MEMBER-ACTIVE-ORDERS", HttpStatus.CONFLICT, "진행 중인 주문이 있어 탈퇴할 수 없습니다. 주문이 끝난 뒤 다시 시도해 주세요."),
+    MEMBER_REJOIN_RESTRICTED("MEMBER-REJOIN-RESTRICTED", HttpStatus.CONFLICT, "탈퇴 후 일정 기간 동안은 다시 가입할 수 없습니다."),
+    MEMBER_ALREADY_WITHDRAWN("MEMBER-WITHDRAWN", HttpStatus.CONFLICT, "탈퇴한 회원은 상태를 변경할 수 없습니다."),
     INVALID_POINT_OPERATION("POINT-400", HttpStatus.BAD_REQUEST, "포인트 요청 값이 유효하지 않습니다."),
     INSUFFICIENT_POINT("POINT-409", HttpStatus.CONFLICT, "보유 포인트가 부족합니다."),
 
@@ -33,6 +36,7 @@ public enum BusinessErrorCode implements ErrorCode {
     ITEM_NOT_FOUND("ITEM-404", HttpStatus.NOT_FOUND, "상품을 찾을 수 없습니다."),
     ITEM_OPTION_NOT_FOUND("ITEM-OPTION-404", HttpStatus.NOT_FOUND, "상품 옵션을 찾을 수 없습니다."),
     ITEM_OUT_OF_STOCK("ITEM-OUT-OF-STOCK", HttpStatus.CONFLICT, "재고가 부족합니다."),
+    ITEM_STOCK_CHANGED("ITEM-STOCK-CHANGED", HttpStatus.CONFLICT, "재고가 변경되었습니다. 다시 조회한 후 수정해 주세요."),
     ITEM_LIMIT_EXCEEDED("ITEM-LIMIT-EXCEEDED", HttpStatus.CONFLICT, "상품 구매 가능 수량을 초과했습니다."),
     ITEM_NOT_ON_SALE("ITEM-NOT-ON-SALE", HttpStatus.CONFLICT, "판매 중지된 상품입니다."),
 
@@ -52,6 +56,7 @@ public enum BusinessErrorCode implements ErrorCode {
 
     // 카테고리
     CATEGORY_NOT_FOUND("CATEGORY-404", HttpStatus.NOT_FOUND, "카테고리를 찾을 수 없습니다."),
+    CATEGORY_IN_USE("CATEGORY-IN-USE", HttpStatus.CONFLICT, "하위 카테고리나 상품이 있는 카테고리는 삭제할 수 없습니다."),
 
     // 채팅
     CHAT_ROOM_NOT_FOUND("CHAT-404", HttpStatus.NOT_FOUND, "고객 채팅방을 찾을 수 없습니다."),

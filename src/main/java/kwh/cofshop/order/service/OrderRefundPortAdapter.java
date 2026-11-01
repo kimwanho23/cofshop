@@ -20,6 +20,14 @@ import java.util.List;
 @RequiredArgsConstructor
 class OrderRefundPortAdapter implements OrderRefundPort {
 
+    private static final List<OrderState> REFUND_UNFINISHED_STATES = List.of(
+            OrderState.PAID,
+            OrderState.PREPARING_FOR_SHIPMENT,
+            OrderState.SHIPPING,
+            OrderState.DELIVERED,
+            OrderState.REFUND_PENDING
+    );
+
     private final OrderRepository orderRepository;
     private final OrderService orderService;
 
@@ -47,7 +55,7 @@ class OrderRefundPortAdapter implements OrderRefundPort {
     public List<Long> findPendingApprovedRefundOrderIds(LocalDateTime approvedBefore, int limit) {
         return orderRepository.findPendingApprovedRefundOrderIds(
                 OrderRefundRequestStatus.APPROVED,
-                List.of(OrderState.PAID, OrderState.REFUND_PENDING),
+                REFUND_UNFINISHED_STATES,
                 approvedBefore,
                 PageRequest.of(0, limit)
         );
@@ -58,7 +66,7 @@ class OrderRefundPortAdapter implements OrderRefundPort {
     public long countPendingApprovedRefunds(LocalDateTime approvedBefore) {
         return orderRepository.countPendingApprovedRefunds(
                 OrderRefundRequestStatus.APPROVED,
-                List.of(OrderState.PAID, OrderState.REFUND_PENDING),
+                REFUND_UNFINISHED_STATES,
                 approvedBefore
         );
     }

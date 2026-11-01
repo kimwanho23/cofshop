@@ -78,7 +78,7 @@ public class OrderController {
                 .body(responseDto);
     }
 
-    @Operation(summary = "환불 요청", description = "회원이 결제 완료 주문에 대해 환불 요청을 접수합니다.")
+    @Operation(summary = "환불 요청", description = "회원이 결제 완료 주문에 대해 환불 요청을 접수합니다. 구매 확정 후에도 배송 완료 3개월까지 가능합니다.")
     @PostMapping("/{orderId}/refund-request")
     @PreAuthorize("hasRole('MEMBER')")
     public ResponseEntity<Void> requestRefundRequest(

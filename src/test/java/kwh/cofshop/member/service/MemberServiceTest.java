@@ -6,7 +6,9 @@ import kwh.cofshop.member.domain.MemberState;
 import kwh.cofshop.member.dto.request.MemberRequestDto;
 import kwh.cofshop.member.dto.response.MemberResponseDto;
 import kwh.cofshop.member.event.MemberCreatedEvent;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.member.event.MemberSessionInvalidatedEvent;
+import kwh.cofshop.member.event.MemberWithdrawalEvent;
 import kwh.cofshop.member.mapper.MemberMapper;
 import kwh.cofshop.member.repository.MemberRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -44,6 +46,9 @@ class MemberServiceTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private MemberRejoinBlockService memberRejoinBlockService;
 
     @InjectMocks
     private MemberService memberService;
@@ -128,6 +133,69 @@ class MemberServiceTest {
                 ArgumentCaptor.forClass(MemberSessionInvalidatedEvent.class);
         verify(eventPublisher).publishEvent(captor.capture());
         assertThat(captor.getValue().memberId()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("탈퇴: 삭제 전 값을 이벤트로 넘기고 회원 정보를 지움")
+    void withdraw() {
+        Member member = activeMember();
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+
+        memberService.withdraw(1L);
+
+        ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher, org.mockito.Mockito.times(2)).publishEvent(captor.capture());
+        assertThat(captor.getAllValues().get(0))
+                .isEqualTo(new MemberWithdrawalEvent(1L, "user@example.com", "user", "01012341234"));
+        assertThat(captor.getAllValues().get(1)).isEqualTo(new MemberSessionInvalidatedEvent(1L));
+        assertThat(member.getMemberState()).isEqualTo(MemberState.QUIT);
+        assertThat(member.getEmail()).isEqualTo("withdrawn-1@deleted.invalid");
+        assertThat(member.getMemberName()).isEqualTo("탈퇴회원");
+        assertThat(member.getTel()).isEqualTo("-");
+        assertThat(member.getMemberPwd()).isEqualTo("!");
+        assertThat(member.getPoint()).isZero();
+    }
+
+    @Test
+    @DisplayName("탈퇴: 리스너가 거부하면 회원 정보를 지우지 않음")
+    void withdraw_rejectedByListener() {
+        Member member = activeMember();
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+        org.mockito.Mockito.doThrow(new BusinessException(BusinessErrorCode.MEMBER_HAS_ACTIVE_ORDERS))
+                .when(eventPublisher).publishEvent(any(MemberWithdrawalEvent.class));
+
+        assertThatThrownBy(() -> memberService.withdraw(1L)).isInstanceOf(BusinessException.class);
+
+        assertThat(member.getEmail()).isEqualTo("user@example.com");
+        assertThat(member.getMemberState()).isEqualTo(MemberState.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("상태 변경: 관리자의 탈퇴 처리도 같은 파기 절차를 거치고, 탈퇴 회원은 되돌릴 수 없음")
+    void changeMemberState_quit() {
+        Member member = activeMember();
+        when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+
+        memberService.changeMemberState(1L, MemberState.QUIT);
+        assertThat(member.getEmail()).isEqualTo("withdrawn-1@deleted.invalid");
+
+        assertThatThrownBy(() -> memberService.changeMemberState(1L, MemberState.ACTIVE))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.MEMBER_ALREADY_WITHDRAWN);
+    }
+
+    private Member activeMember() {
+        Member member = Member.builder()
+                .id(1L)
+                .email("user@example.com")
+                .memberName("user")
+                .memberPwd("encoded")
+                .tel("01012341234")
+                .build();
+        ReflectionTestUtils.setField(member, "memberState", MemberState.ACTIVE);
+        ReflectionTestUtils.setField(member, "point", 100);
+        return member;
     }
 
     @Test

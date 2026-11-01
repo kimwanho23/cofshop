@@ -27,7 +27,10 @@ class OrderStatePortAdapter implements OrderStatePort {
             ),
             OrderState.REFUND_PENDING, List.of(
                     OrderState.PAID,
-                    OrderState.REFUND_PENDING
+                    OrderState.PREPARING_FOR_SHIPMENT,
+                    OrderState.SHIPPING,
+                    OrderState.DELIVERED,
+                    OrderState.COMPLETED
             )
     );
 
@@ -51,7 +54,9 @@ class OrderStatePortAdapter implements OrderStatePort {
             throw new BusinessException(BusinessErrorCode.ORDER_INVALID_STATE_TRANSITION);
         }
 
-        int updated = orderRepository.updateOrderStateIfCurrentIn(orderId, currentStates, targetState);
+        int updated = targetState == OrderState.REFUND_PENDING
+                ? orderRepository.beginRefund(orderId, currentStates, targetState)
+                : orderRepository.updateOrderStateIfCurrentIn(orderId, currentStates, targetState);
         if (updated > 0) {
             return;
         }
@@ -62,5 +67,12 @@ class OrderStatePortAdapter implements OrderStatePort {
             return;
         }
         throw new BusinessException(BusinessErrorCode.ORDER_INVALID_STATE_TRANSITION);
+    }
+
+    @Override
+    @DistributedLock(keyName = "'order:' + #orderId")
+    @Transactional
+    public void rollbackRefundPending(Long orderId) {
+        orderRepository.rollbackRefund(orderId, OrderState.REFUND_PENDING, OrderState.PAID);
     }
 }

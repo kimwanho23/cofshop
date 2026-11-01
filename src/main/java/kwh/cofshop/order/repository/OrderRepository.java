@@ -65,6 +65,54 @@ public interface OrderRepository extends JpaRepository<Order, Long>, OrderReposi
                                      @Param("states") List<OrderState> states,
                                      @Param("approvedBefore") LocalDateTime approvedBefore);
 
+    @Query("""
+            SELECT o.id
+            FROM Order o
+            WHERE o.orderState = :state
+              AND o.deliveredAt <= :deadline
+              AND (o.refundRequestStatus IS NULL OR o.refundRequestStatus NOT IN :inProgress)
+            ORDER BY o.deliveredAt ASC
+            """)
+    List<Long> findAutoConfirmTargets(@Param("state") OrderState state,
+                                      @Param("deadline") LocalDateTime deadline,
+                                      @Param("inProgress") List<OrderRefundRequestStatus> inProgress,
+                                      Pageable pageable);
+
+    // 환불 실패 시 되돌릴 수 있도록 현재 상태를 함께 저장
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE Order o
+            SET o.stateBeforeRefund = o.orderState, o.orderState = :refundPending
+            WHERE o.id = :orderId
+              AND o.orderState IN :refundableStates
+            """)
+    int beginRefund(@Param("orderId") Long orderId,
+                    @Param("refundableStates") List<OrderState> refundableStates,
+                    @Param("refundPending") OrderState refundPending);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE Order o
+            SET o.orderState = COALESCE(o.stateBeforeRefund, :fallbackState), o.stateBeforeRefund = NULL
+            WHERE o.id = :orderId
+              AND o.orderState = :refundPending
+            """)
+    int rollbackRefund(@Param("orderId") Long orderId,
+                       @Param("refundPending") OrderState refundPending,
+                       @Param("fallbackState") OrderState fallbackState);
+
+    @Query("""
+            SELECT COUNT(o) > 0
+            FROM Order o
+            WHERE o.member.id = :memberId
+              AND (o.orderState NOT IN :finishedStates OR o.refundRequestStatus IN :inProgress)
+            """)
+    boolean existsActiveOrder(@Param("memberId") Long memberId,
+                              @Param("finishedStates") List<OrderState> finishedStates,
+                              @Param("inProgress") List<OrderRefundRequestStatus> inProgress);
+
+    List<Order> findAllByMember_Id(Long memberId);
+
     @Query("SELECT o.orderState FROM Order o WHERE o.id = :orderId")
     Optional<OrderState> findOrderStateById(@Param("orderId") Long orderId);
 
