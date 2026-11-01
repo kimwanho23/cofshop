@@ -7,12 +7,15 @@ import kwh.cofshop.security.filter.CustomLogoutFilter;
 import kwh.cofshop.security.filter.JwtFilter;
 import kwh.cofshop.security.handler.CustomAccessDeniedHandler;
 import kwh.cofshop.security.handler.CustomAuthenticationEntryPoint;
+import kwh.cofshop.security.handler.CustomAuthenticationFailureHandler;
 import kwh.cofshop.security.provider.CustomAuthenticationProvider;
 import kwh.cofshop.security.service.RefreshTokenService;
+import kwh.cofshop.security.token.AccessTokenRevocationStore;
 import kwh.cofshop.security.token.JwtTokenProvider;
 import kwh.cofshop.security.userdetails.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpMethod;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -38,11 +41,13 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 public class SecurityConfig {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final AccessTokenRevocationStore accessTokenRevocationStore;
     private final ObjectMapper objectMapper;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final RefreshTokenService refreshTokenService;
     private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
     private final CustomAccessDeniedHandler customAccessDeniedHandler;
+    private final CustomAuthenticationFailureHandler customAuthenticationFailureHandler;
     private final CustomUserDetailsService customUserDetailsService;
     private final Validator validator;
 
@@ -66,6 +71,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/members/signup", "/", "/api/item/search", "/payments/sample",
                                 "/api/reviews/**", "/api/auth/login", "/api/auth/reissue", "/api/auth/logout", "/api/auth/csrf",
                                 "/swagger-ui/**", "/swagger-resources/**", "/v3/api-docs/**").permitAll()
+                        // 비로그인 고객도 상품을 볼 수 있음
+                        .requestMatchers(HttpMethod.GET, "/api/item/**", "/api/categories/**").permitAll()
                         .requestMatchers("/api/**", "/item/**").authenticated()
                         .anyRequest().authenticated())
                 .exceptionHandling(exceptions -> exceptions
@@ -77,7 +84,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(new CustomLogoutFilter(refreshTokenService, jwtTokenProvider), LogoutFilter.class)
-                .addFilterBefore(new JwtFilter(jwtTokenProvider), CustomLoginFilter.class)
+                .addFilterBefore(new JwtFilter(jwtTokenProvider, accessTokenRevocationStore), CustomLoginFilter.class)
                 .addFilterAt(customLoginFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -97,6 +104,7 @@ public class SecurityConfig {
         // Required by AbstractAuthenticationProcessingFilter lifecycle.
         loginFilter.setAuthenticationManager(authenticationManager());
         loginFilter.setFilterProcessesUrl("/api/auth/login");
+        loginFilter.setAuthenticationFailureHandler(customAuthenticationFailureHandler);
         return loginFilter;
     }
 

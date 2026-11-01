@@ -31,7 +31,9 @@ public class JwtTokenProvider {
     private static final String TOKEN_TYPE_ACCESS = "ACCESS";
     private static final String TOKEN_TYPE_REFRESH = "REFRESH";
     private static final String BEARER_TYPE = "Bearer";
-    private static final long AUTH_TOKEN_EXPIRATION = Duration.ofHours(1).toMillis();
+    private static final String ISSUED_AT_MILLIS_KEY = "issuedAtMillis";
+    public static final long ACCESS_TOKEN_TTL_SECONDS = Duration.ofHours(1).toSeconds();
+    private static final long AUTH_TOKEN_EXPIRATION = Duration.ofSeconds(ACCESS_TOKEN_TTL_SECONDS).toMillis();
     private static final long REFRESH_TOKEN_EXPIRATION = Duration.ofDays(7).toMillis();
 
     public JwtTokenProvider(JwtProperties jwtProperties) {
@@ -98,6 +100,7 @@ public class JwtTokenProvider {
                 .claim(AUTHORITIES_KEY, authorities)
                 .claim("memberId", userDetails.getId())
                 .claim(TOKEN_TYPE_KEY, TOKEN_TYPE_ACCESS)
+                .claim(ISSUED_AT_MILLIS_KEY, System.currentTimeMillis())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + AUTH_TOKEN_EXPIRATION))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS512)
@@ -128,6 +131,7 @@ public class JwtTokenProvider {
                 .claim(AUTHORITIES_KEY, authorities)
                 .claim("memberId", memberId)
                 .claim(TOKEN_TYPE_KEY, TOKEN_TYPE_ACCESS)
+                .claim(ISSUED_AT_MILLIS_KEY, System.currentTimeMillis())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + AUTH_TOKEN_EXPIRATION))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS512)
@@ -142,6 +146,16 @@ public class JwtTokenProvider {
                 .setExpiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS512)
                 .compact();
+    }
+
+    // iat는 초 단위라 같은 초에 일어난 탈퇴와 재로그인을 구분하지 못한다
+    public long getIssuedAtMillis(String token) {
+        Claims claims = getClaims(token);
+        Long issuedAtMillis = claims.get(ISSUED_AT_MILLIS_KEY, Long.class);
+        if (issuedAtMillis != null) {
+            return issuedAtMillis;
+        }
+        return claims.getIssuedAt() == null ? 0L : claims.getIssuedAt().getTime();
     }
 
     public Long getMemberId(String token) {

@@ -1,6 +1,5 @@
 package kwh.cofshop.security;
 
-import kwh.cofshop.global.exception.UnauthorizedRequestException;
 import kwh.cofshop.member.api.MemberReadPort;
 import kwh.cofshop.member.domain.Member;
 import kwh.cofshop.member.domain.MemberState;
@@ -13,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -43,23 +43,25 @@ class CustomUserDetailsServiceTest {
     }
 
     @Test
-    @DisplayName("load user suspended")
+    @DisplayName("load user suspended: 상태를 담아 반환하고 판단은 비밀번호 확인 후로 미룸")
     void loadUserByUsername_suspended() {
         Member member = createMember(MemberState.SUSPENDED);
         when(memberReadPort.findByEmail("user@example.com")).thenReturn(Optional.of(member));
 
-        assertThatThrownBy(() -> customUserDetailsService.loadUserByUsername("user@example.com"))
-                .isInstanceOf(UnauthorizedRequestException.class);
+        UserDetails result = customUserDetailsService.loadUserByUsername("user@example.com");
+
+        assertThat(result.isAccountNonLocked()).isFalse();
     }
 
     @Test
-    @DisplayName("load user quit")
+    @DisplayName("load user quit: 상태를 담아 반환하고 판단은 비밀번호 확인 후로 미룸")
     void loadUserByUsername_quit() {
         Member member = createMember(MemberState.QUIT);
         when(memberReadPort.findByEmail("user@example.com")).thenReturn(Optional.of(member));
 
-        assertThatThrownBy(() -> customUserDetailsService.loadUserByUsername("user@example.com"))
-                .isInstanceOf(UnauthorizedRequestException.class);
+        UserDetails result = customUserDetailsService.loadUserByUsername("user@example.com");
+
+        assertThat(result.isAccountNonExpired()).isFalse();
     }
 
     @Test

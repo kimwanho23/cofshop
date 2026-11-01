@@ -1,6 +1,7 @@
 package kwh.cofshop.security.service;
 
 import kwh.cofshop.member.event.MemberSessionInvalidatedEvent;
+import kwh.cofshop.security.token.AccessTokenRevocationStore;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,6 +19,9 @@ class MemberSessionInvalidationListenerTest {
     @Mock
     private RefreshTokenService refreshTokenService;
 
+    @Mock
+    private AccessTokenRevocationStore accessTokenRevocationStore;
+
     @InjectMocks
     private MemberSessionInvalidationListener listener;
 
@@ -27,6 +31,7 @@ class MemberSessionInvalidationListenerTest {
         listener.invalidateRefreshToken(new MemberSessionInvalidatedEvent(1L));
 
         verify(refreshTokenService).delete(1L);
+        verify(accessTokenRevocationStore).revokeIssuedBeforeNow(1L);
     }
 
     @Test

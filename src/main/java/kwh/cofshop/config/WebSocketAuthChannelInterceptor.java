@@ -7,6 +7,7 @@ import kwh.cofshop.global.exception.UnauthorizedRequestException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.global.exception.errorcodes.ForbiddenErrorCode;
 import kwh.cofshop.global.exception.errorcodes.UnauthorizedErrorCode;
+import kwh.cofshop.security.token.AccessTokenRevocationStore;
 import kwh.cofshop.security.token.JwtTokenProvider;
 import kwh.cofshop.security.userdetails.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
     private static final Pattern CHATROOM_DESTINATION_PATTERN = Pattern.compile("^/topic/chatroom\\.(\\d+)$");
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final AccessTokenRevocationStore accessTokenRevocationStore;
     private final ChatRoomAccessPort chatRoomAccessPort;
 
     @Override
@@ -70,7 +72,8 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
         if (!StringUtils.hasText(token)) {
             throw new UnauthorizedRequestException(UnauthorizedErrorCode.TOKEN_NOT_EXIST);
         }
-        if (!jwtTokenProvider.validateToken(token) || !jwtTokenProvider.isAccessToken(token)) {
+        if (!jwtTokenProvider.validateToken(token) || !jwtTokenProvider.isAccessToken(token)
+                || accessTokenRevocationStore.isRevoked(token)) {
             throw new UnauthorizedRequestException(UnauthorizedErrorCode.TOKEN_INVALID);
         }
 

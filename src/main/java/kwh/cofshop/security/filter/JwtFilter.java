@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import kwh.cofshop.security.token.AccessTokenRevocationStore;
 import kwh.cofshop.security.token.JwtTokenProvider;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -21,9 +22,11 @@ public class JwtFilter extends OncePerRequestFilter {
     public static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final AccessTokenRevocationStore accessTokenRevocationStore;
 
-    public JwtFilter(JwtTokenProvider jwtTokenProvider) {
+    public JwtFilter(JwtTokenProvider jwtTokenProvider, AccessTokenRevocationStore accessTokenRevocationStore) {
         this.jwtTokenProvider = jwtTokenProvider;
+        this.accessTokenRevocationStore = accessTokenRevocationStore;
     }
 
     @Override
@@ -31,7 +34,8 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String token = resolveToken(request);
 
-        if (token != null && jwtTokenProvider.validateToken(token) && jwtTokenProvider.isAccessToken(token)) {
+        if (token != null && jwtTokenProvider.validateToken(token) && jwtTokenProvider.isAccessToken(token)
+                && !accessTokenRevocationStore.isRevoked(token)) {
             Authentication authentication = jwtTokenProvider.getAuthentication(token);
             SecurityContextHolder.getContext().setAuthentication(authentication);
         }

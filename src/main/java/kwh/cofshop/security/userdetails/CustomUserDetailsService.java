@@ -1,10 +1,7 @@
 package kwh.cofshop.security.userdetails;
 
-import kwh.cofshop.global.exception.UnauthorizedRequestException;
-import kwh.cofshop.global.exception.errorcodes.UnauthorizedErrorCode;
 import kwh.cofshop.member.api.MemberReadPort;
 import kwh.cofshop.member.domain.Member;
-import kwh.cofshop.member.domain.MemberState;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.GrantedAuthority;
@@ -32,14 +29,6 @@ public class CustomUserDetailsService implements UserDetailsService {
         Collection<? extends GrantedAuthority> authorities = List.of(
                 new SimpleGrantedAuthority("ROLE_" + member.getRole())
         );
-
-        if (member.getMemberState() == MemberState.SUSPENDED) {
-            throw new UnauthorizedRequestException(UnauthorizedErrorCode.MEMBER_SUSPENDED);
-        }
-
-        if (member.getMemberState() == MemberState.QUIT) {
-            throw new UnauthorizedRequestException(UnauthorizedErrorCode.MEMBER_QUIT);
-        }
 
         return new CustomUserDetails(
                 member.getId(),

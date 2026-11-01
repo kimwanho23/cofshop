@@ -36,6 +36,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CustomLoginFilter extends UsernamePasswordAuthenticationFilter {
 
+    private static final int MAX_DEVICE_LENGTH = 255; // member_login_history.device 길이
+
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
     private final ObjectMapper objectMapper;
@@ -93,7 +95,7 @@ public class CustomLoginFilter extends UsernamePasswordAuthenticationFilter {
         MemberLoginEvent memberLoginHistoryDto = MemberLoginEvent
                 .builder()
                 .loginDt(LocalDateTime.now())
-                .device(request.getHeader("User-Agent"))
+                .device(truncateDevice(request.getHeader("User-Agent")))
                 .ipAddress(request.getRemoteAddr())
                 .memberId(customUserDetails.getId())
                 .build();
@@ -110,6 +112,13 @@ public class CustomLoginFilter extends UsernamePasswordAuthenticationFilter {
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
         response.getWriter().write(objectMapper.writeValueAsString(tokenResponse));
+    }
+
+    // 긴 User-Agent로 컬럼 길이를 넘겨 로그인 이력을 남기지 않는 일을 막음
+    private String truncateDevice(String userAgent) {
+        return userAgent != null && userAgent.length() > MAX_DEVICE_LENGTH
+                ? userAgent.substring(0, MAX_DEVICE_LENGTH)
+                : userAgent;
     }
 
     private void addRefreshToken(Long memberId, String token) {

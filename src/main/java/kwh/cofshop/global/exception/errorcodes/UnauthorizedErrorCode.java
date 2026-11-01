@@ -11,6 +11,7 @@ public enum UnauthorizedErrorCode implements ErrorCode {
     // 401 Unauthorized
     MEMBER_SUSPENDED("U-1", HttpStatus.UNAUTHORIZED, "정지된 회원입니다."),
     MEMBER_QUIT("U-2", HttpStatus.UNAUTHORIZED, "탈퇴한 회원입니다."),
+    LOGIN_FAILED("U-LOGIN", HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."),
     TOKEN_EXPIRED("U-EXPIRED", HttpStatus.UNAUTHORIZED, "토큰이 만료되었습니다."),
     TOKEN_INVALID("U-INVALID", HttpStatus.UNAUTHORIZED, "토큰이 유효하지 않습니다."),
     TOKEN_NOT_EXIST("U-NOT_EXIST", HttpStatus.UNAUTHORIZED, "토큰이 존재하지 않습니다.");
