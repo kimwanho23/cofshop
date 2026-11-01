@@ -1,6 +1,10 @@
 package kwh.cofshop;
 
+import kwh.cofshop.global.exception.BusinessException;
+import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
+import kwh.cofshop.item.controller.ItemController;
 import kwh.cofshop.item.domain.Item;
+import kwh.cofshop.item.dto.request.ItemStateRequestDto;
 import kwh.cofshop.item.domain.ItemOption;
 import kwh.cofshop.item.repository.ItemOptionRepository;
 import kwh.cofshop.item.repository.ItemRepository;
@@ -11,7 +15,15 @@ import kwh.cofshop.order.domain.Address;
 import kwh.cofshop.order.domain.Order;
 import kwh.cofshop.order.domain.OrderItem;
 import kwh.cofshop.order.domain.OrderRefundRequestStatus;
+import kwh.cofshop.item.dto.request.ItemSearchRequestDto;
+import kwh.cofshop.item.dto.response.ItemSearchResponseDto;
+import kwh.cofshop.item.service.ItemService;
 import kwh.cofshop.order.domain.OrderState;
+import kwh.cofshop.statistics.dto.DailySalesResponseDto;
+import kwh.cofshop.statistics.dto.TopItemResponseDto;
+import kwh.cofshop.statistics.service.StatisticsService;
+import org.springframework.data.domain.Page;
+import kwh.cofshop.payment.dto.request.PaymentVerifyRequestDto;
 import kwh.cofshop.order.dto.request.OrderItemRequestDto;
 import kwh.cofshop.order.dto.request.OrderRequestDto;
 import kwh.cofshop.order.dto.response.OrderResponseDto;
@@ -24,7 +36,11 @@ import kwh.cofshop.payment.service.ApprovedRefundExecutor;
 import kwh.cofshop.payment.service.PaymentService;
 import kwh.cofshop.payment.client.portone.PortOnePayment;
 import kwh.cofshop.payment.client.portone.PortOnePaymentClient;
+import kwh.cofshop.payment.controller.PaymentAdminController;
 import kwh.cofshop.payment.domain.PaymentEntity;
+import kwh.cofshop.payment.domain.PaymentOperationLog;
+import kwh.cofshop.payment.dto.response.PaymentComparisonResponseDto;
+import kwh.cofshop.payment.dto.response.PaymentIssueResponseDto;
 import kwh.cofshop.payment.domain.PaymentStatus;
 import kwh.cofshop.payment.repository.PaymentEntityRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -32,6 +48,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -43,6 +62,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Base64;
@@ -50,6 +70,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -68,7 +89,6 @@ import static org.mockito.Mockito.when;
         "spring.redis.ssl.enabled=false",
         "file.dir=build/test-uploads",
         "imp.api.secretkey=test-only",
-        "coupon.stream.enabled=false",
         "coupon.rabbit.enabled=false",
         "coupon.outbox.enabled=false"
 })
@@ -96,6 +116,12 @@ class ApplicationIntegrationTest {
     private OrderService orderService;
 
     @Autowired
+    private ItemController itemController;
+
+    @Autowired
+    private PaymentAdminController paymentAdminController;
+
+    @Autowired
     private PaymentService paymentService;
 
     @Autowired
@@ -115,6 +141,12 @@ class ApplicationIntegrationTest {
 
     @Autowired
     private ItemRepository itemRepository;
+
+    @Autowired
+    private ItemService itemService;
+
+    @Autowired
+    private StatisticsService statisticsService;
 
     @Autowired
     private MemberRepository memberRepository;
@@ -291,6 +323,254 @@ class ApplicationIntegrationTest {
                 .isEqualTo(PaymentStatus.CANCELLED);
         assertThat(orderRepository.findById(orderId).orElseThrow().getRefundRequestStatus())
                 .isEqualTo(OrderRefundRequestStatus.REFUNDED);
+    }
+
+    @Test
+    @DisplayName("반품: 배송 완료 주문을 승인하면 PG 환불과 재고 복구까지 완료")
+    void returnDeliveredOrder_refundsAndRestoresStock() {
+        Member buyer = saveMember();
+        ItemOption option = saveOption(10);
+        Long orderId = savePaidOrderWithRefundRequest(buyer, option);
+        transactionTemplate.executeWithoutResult(status ->
+                orderRepository.findById(orderId).orElseThrow().changeOrderState(OrderState.DELIVERED));
+        PaymentEntity payment = paymentEntityRepository.findByOrderId(orderId).orElseThrow();
+        when(portOnePaymentClient.cancelPayment(anyString(), any()))
+                .thenReturn(new PortOneCancellation("cancel-1", "SUCCEEDED"));
+        when(portOnePaymentClient.getPayment(payment.getMerchantUid())).thenReturn(pgPayment(payment, "CANCELLED"));
+
+        orderService.processRefundRequestByAdmin(orderId, OrderRefundRequestStatus.APPROVED, "반품 확인");
+
+        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+            Order order = orderRepository.findById(orderId).orElseThrow();
+            assertThat(order.getOrderState()).isEqualTo(OrderState.CANCELLED);
+            assertThat(order.getRefundRequestStatus()).isEqualTo(OrderRefundRequestStatus.REFUNDED);
+        });
+        assertThat(stockOf(option)).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("반품: PG가 취소 실패를 응답하면 주문이 환불 전 상태(배송 완료)로 돌아감")
+    void returnDeliveredOrder_pgRejected_restoresPreviousState() {
+        Member buyer = saveMember();
+        ItemOption option = saveOption(10);
+        Long orderId = savePaidOrderWithRefundRequest(buyer, option);
+        transactionTemplate.executeWithoutResult(status ->
+                orderRepository.findById(orderId).orElseThrow().changeOrderState(OrderState.DELIVERED));
+        when(portOnePaymentClient.cancelPayment(anyString(), any()))
+                .thenReturn(new PortOneCancellation("cancel-1", "FAILED"));
+
+        orderService.processRefundRequestByAdmin(orderId, OrderRefundRequestStatus.APPROVED, "반품 확인");
+
+        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+            verify(portOnePaymentClient, atLeastOnce()).cancelPayment(anyString(), any());
+            assertThat(orderRepository.findById(orderId).orElseThrow().getOrderState()).isEqualTo(OrderState.DELIVERED);
+            assertThat(paymentEntityRepository.findByOrderId(orderId).orElseThrow().getStatus())
+                    .isEqualTo(PaymentStatus.PAID);
+        });
+    }
+
+    @Test
+    @DisplayName("자동 구매 확정: 7일 지난 배송 완료 주문만 확정")
+    void autoConfirm_onlyExpiredDeliveredOrder() {
+        Member buyer = saveMember();
+        ItemOption option = saveOption(10);
+        Long orderId = savePendingOrderWithReadyPayment(buyer, option);
+        transactionTemplate.executeWithoutResult(status ->
+                orderRepository.findById(orderId).orElseThrow().changeOrderState(OrderState.DELIVERED));
+
+        List<Long> notExpired = orderRepository.findAutoConfirmTargets(
+                OrderState.DELIVERED, LocalDateTime.now().minusDays(7),
+                List.of(OrderRefundRequestStatus.REQUESTED, OrderRefundRequestStatus.APPROVED), PageRequest.of(0, 100));
+        assertThat(notExpired).doesNotContain(orderId);
+
+        LocalDateTime later = LocalDateTime.now().plusDays(8);
+        List<Long> expired = orderRepository.findAutoConfirmTargets(
+                OrderState.DELIVERED, later,
+                List.of(OrderRefundRequestStatus.REQUESTED, OrderRefundRequestStatus.APPROVED), PageRequest.of(0, 100));
+        assertThat(expired).contains(orderId);
+
+        assertThat(orderService.autoConfirmDeliveredOrder(orderId, later)).isTrue();
+        assertThat(orderRepository.findById(orderId).orElseThrow().getOrderState()).isEqualTo(OrderState.COMPLETED);
+    }
+
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("상품 관리: 일반 회원은 판매 상태를 변경할 수 없음")
+    void itemManagement_memberDenied() {
+        assertThatThrownBy(() -> itemController.changeItemState(1L, new ItemStateRequestDto()))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("상품 관리: 관리자는 권한 검사를 통과함")
+    void itemManagement_adminAllowed() {
+        assertThatThrownBy(() -> itemController.changeItemState(Long.MAX_VALUE, new ItemStateRequestDto()))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.ITEM_NOT_FOUND);
+    }
+
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("결제 관리자: 일반 회원은 접근 불가")
+    void paymentAdmin_memberDenied() {
+        assertThatThrownBy(() -> paymentAdminController.getIssues()).isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> paymentAdminController.reconcile(1L, 1L)).isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("결제 관리자: 수동 대사로 결제가 확정되고 처리 이력과 비교 결과가 남음")
+    void paymentAdmin_reconcile_recordsHistory() {
+        Member buyer = saveMember();
+        Long orderId = savePendingOrderWithReadyPayment(buyer, saveOption(10));
+        PaymentEntity payment = paymentEntityRepository.findByOrderId(orderId).orElseThrow();
+        when(portOnePaymentClient.getPayment(payment.getMerchantUid())).thenReturn(pgPayment(payment, "PAID"));
+
+        assertThat(paymentAdminController.compare(payment.getId()).consistent()).isFalse();
+
+        paymentAdminController.reconcile(payment.getId(), 99L);
+
+        PaymentComparisonResponseDto comparison = paymentAdminController.compare(payment.getId());
+        assertThat(comparison.dbStatus()).isEqualTo("PAID");
+        assertThat(comparison.orderStatus()).isEqualTo("PAID");
+        assertThat(comparison.consistent()).isTrue();
+        assertThat(comparison.history()).hasSize(1);
+        assertThat(comparison.history().get(0).adminId()).isEqualTo(99L);
+        assertThat(comparison.history().get(0).action()).isEqualTo(PaymentOperationLog.Action.RECONCILE);
+        assertThat(comparison.history().get(0).result()).isEqualTo(PaymentOperationLog.Result.SUCCESS);
+    }
+
+    @Test
+    @DisplayName("상품 검색: 실제 DB에서 이름 일부로 찾고, 상세로 이동할 ID를 돌려줌")
+    void searchItems_byName() {
+        String unique = UUID.randomUUID().toString().substring(0, 8);
+        Member seller = saveMember();
+        Item item = itemRepository.save(Item.builder()
+                .itemName("에티오피아 예가체프 " + unique)
+                .price(1000)
+                .deliveryFee(0)
+                .origin("에티오피아")
+                .seller(seller)
+                .build());
+
+        ItemSearchRequestDto request = new ItemSearchRequestDto();
+        request.setItemName("체프 " + unique);
+        Page<ItemSearchResponseDto> found = itemService.searchItem(request, request.toPageable());
+
+        assertThat(found.getTotalElements()).isEqualTo(1);
+        assertThat(found.getContent().get(0).getId()).isEqualTo(item.getId());
+
+        request.setItemName("없는상품" + unique);
+        assertThat(itemService.searchItem(request, request.toPageable()).getTotalElements()).isZero();
+    }
+
+    @Test
+    @DisplayName("통계: 실제 DB에서 구매 확정 주문만 판매량과 인기 상품에 집계")
+    void statistics_countOnlyCompletedOrders() {
+        Member buyer = saveMember();
+        ItemOption option = saveOption(10);
+        Long completedOrderId = savePendingOrderWithReadyPayment(buyer, option);
+        Long pendingOrderId = savePendingOrderWithReadyPayment(buyer, option);
+        LocalDate today = LocalDate.now();
+        long salesBefore = statisticsService.getDailySales(today).stream()
+                .mapToLong(DailySalesResponseDto::getTotalSales).sum();
+        transactionTemplate.executeWithoutResult(status ->
+                orderRepository.findById(completedOrderId).orElseThrow().changeOrderState(OrderState.COMPLETED));
+
+        assertThat(statisticsService.getDailySales(today).stream()
+                .mapToLong(DailySalesResponseDto::getTotalSales).sum()).isEqualTo(salesBefore + 1);
+        assertThat(statisticsService.getDailySales(today).get(0).getTotalRevenue()).isGreaterThanOrEqualTo(1000L);
+        assertThat(statisticsService.getDailySalesBetween(today.minusDays(1), today)).isNotEmpty();
+        assertThat(statisticsService.refreshTopItemsLast7DaysCache())
+                .extracting(TopItemResponseDto::getItemId)
+                .contains(option.getItem().getId());
+        assertThat(orderRepository.findById(pendingOrderId).orElseThrow().getOrderState())
+                .isNotEqualTo(OrderState.COMPLETED);
+    }
+
+    @Test
+    @DisplayName("결제 검증: 거래 ID나 금액이 다르면 거부되고 결제·주문 상태가 그대로임")
+    void verifyPayment_mismatch_keepsState() {
+        Member buyer = saveMember();
+        Long orderId = savePendingOrderWithReadyPayment(buyer, saveOption(10));
+        PaymentEntity payment = paymentEntityRepository.findByOrderId(orderId).orElseThrow();
+        OrderState stateBefore = orderRepository.findById(orderId).orElseThrow().getOrderState();
+        when(portOnePaymentClient.getPayment(payment.getMerchantUid())).thenReturn(new PortOnePayment(
+                payment.getMerchantUid(), "imp-real", "pg-real", "PAID", new PortOnePayment.Amount(1000L, 1000L)));
+
+        PaymentVerifyRequestDto wrongUid = new PaymentVerifyRequestDto();
+        wrongUid.setImpUid("imp-forged");
+        wrongUid.setMerchantUid(payment.getMerchantUid());
+        wrongUid.setAmount(1000L);
+        assertThatThrownBy(() -> paymentService.verifyPayment(buyer.getId(), payment.getId(), wrongUid))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.PAYMENT_UID_DISCREPANCY);
+
+        PaymentVerifyRequestDto wrongAmount = new PaymentVerifyRequestDto();
+        wrongAmount.setImpUid("imp-real");
+        wrongAmount.setMerchantUid(payment.getMerchantUid());
+        wrongAmount.setAmount(1L);
+        assertThatThrownBy(() -> paymentService.verifyPayment(buyer.getId(), payment.getId(), wrongAmount))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.PAYMENT_AMOUNT_DISCREPANCY);
+
+        assertThat(paymentEntityRepository.findById(payment.getId()).orElseThrow().getStatus()).isEqualTo(PaymentStatus.READY);
+        assertThat(orderRepository.findById(orderId).orElseThrow().getOrderState()).isEqualTo(stateBefore);
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("결제 관리자: 금액이 다르면 확정하지 않고 실패 이력을 남김")
+    void paymentAdmin_reconcile_amountMismatch() {
+        Member buyer = saveMember();
+        Long orderId = savePendingOrderWithReadyPayment(buyer, saveOption(10));
+        PaymentEntity payment = paymentEntityRepository.findByOrderId(orderId).orElseThrow();
+        when(portOnePaymentClient.getPayment(payment.getMerchantUid())).thenReturn(new PortOnePayment(
+                payment.getMerchantUid(), "imp-x", "pg-x", "PAID", new PortOnePayment.Amount(999L, 999L)));
+
+        assertThatThrownBy(() -> paymentAdminController.reconcile(payment.getId(), 99L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.PAYMENT_AMOUNT_DISCREPANCY);
+
+        PaymentComparisonResponseDto comparison = paymentAdminController.compare(payment.getId());
+        assertThat(comparison.dbStatus()).isEqualTo("READY");
+        assertThat(comparison.history().get(0).result()).isEqualTo(PaymentOperationLog.Result.FAILED);
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("결제 관리자: 타임아웃으로 남은 환불이 문제 목록에 나오고 수동 재시도로 완료됨")
+    void paymentAdmin_retryRefund() {
+        Member buyer = saveMember();
+        Long orderId = savePaidOrderWithRefundRequest(buyer, saveOption(10));
+        PaymentEntity payment = paymentEntityRepository.findByOrderId(orderId).orElseThrow();
+        when(portOnePaymentClient.cancelPayment(anyString(), any())).thenThrow(new PortOneClientException("timeout"));
+        when(portOnePaymentClient.getPayment(payment.getMerchantUid())).thenReturn(pgPayment(payment, "PAID"));
+
+        orderService.processRefundRequestByAdmin(orderId, OrderRefundRequestStatus.APPROVED, "승인");
+        await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+            verify(portOnePaymentClient, atLeastOnce()).cancelPayment(anyString(), any());
+            assertThat(paymentEntityRepository.findById(payment.getId()).orElseThrow().getStatus())
+                    .isEqualTo(PaymentStatus.REFUND_PENDING);
+        });
+        assertThat(paymentAdminController.getIssues().refundPendingPayments())
+                .extracting(PaymentIssueResponseDto.PaymentSummary::paymentId)
+                .contains(payment.getId());
+
+        when(portOnePaymentClient.getPayment(payment.getMerchantUid())).thenReturn(pgPayment(payment, "CANCELLED"));
+
+        paymentAdminController.retryRefund(payment.getId(), 99L);
+
+        assertThat(paymentEntityRepository.findById(payment.getId()).orElseThrow().getStatus())
+                .isEqualTo(PaymentStatus.CANCELLED);
+        assertThat(paymentAdminController.getIssues().refundPendingPayments())
+                .extracting(PaymentIssueResponseDto.PaymentSummary::paymentId)
+                .doesNotContain(payment.getId());
     }
 
     private PortOnePayment pgPayment(PaymentEntity payment, String status) {

@@ -36,7 +36,6 @@ import static org.assertj.core.api.Assertions.assertThat;
         "spring.redis.ssl.enabled=false",
         "file.dir=build/test-uploads",
         "imp.api.secretkey=test-only",
-        "coupon.stream.enabled=false",
         "coupon.rabbit.enabled=false",
         "coupon.outbox.enabled=false",
         "management.server.port=0",
