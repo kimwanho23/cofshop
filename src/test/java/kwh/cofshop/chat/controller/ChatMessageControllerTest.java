@@ -14,7 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import kwh.cofshop.chat.messaging.ChatBroadcaster;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 
 import java.security.Principal;
@@ -33,7 +33,7 @@ class ChatMessageControllerTest {
     private ChatMessageService chatMessageService;
 
     @Mock
-    private SimpMessagingTemplate template;
+    private ChatBroadcaster chatBroadcaster;
 
     @InjectMocks
     private ChatMessageController chatMessageController;
@@ -53,7 +53,7 @@ class ChatMessageControllerTest {
 
         chatMessageController.handleMessage(requestDto, principal);
 
-        verify(template).convertAndSend("/topic/chatroom.1", responseDto);
+        verify(chatBroadcaster).publish(1L, responseDto);
     }
 
     @Test
@@ -71,7 +71,7 @@ class ChatMessageControllerTest {
 
         chatMessageController.deleteMessage(requestDto, principal);
 
-        verify(template).convertAndSend("/topic/chatroom.2", responseDto);
+        verify(chatBroadcaster).publish(2L, responseDto);
     }
 
     private Principal buildPrincipal(Long memberId) {

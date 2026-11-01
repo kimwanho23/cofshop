@@ -5,6 +5,7 @@ import kwh.cofshop.chat.dto.request.ChatMessageRequestDto;
 import kwh.cofshop.chat.dto.request.DeleteMessageRequestDto;
 import kwh.cofshop.chat.dto.response.ChatMessageResponseDto;
 import kwh.cofshop.chat.dto.response.DeletedMessageResponseDto;
+import kwh.cofshop.chat.messaging.ChatBroadcaster;
 import kwh.cofshop.chat.service.ChatMessageService;
 import kwh.cofshop.global.exception.UnauthorizedRequestException;
 import kwh.cofshop.global.exception.errorcodes.UnauthorizedErrorCode;
@@ -12,7 +13,6 @@ import kwh.cofshop.security.userdetails.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.annotation.Validated;
@@ -25,17 +25,14 @@ import java.security.Principal;
 public class ChatMessageController {
 
     private final ChatMessageService chatMessageService;
-    private final SimpMessagingTemplate template;
+    private final ChatBroadcaster chatBroadcaster;
 
     @MessageMapping("/chat.sendMessage")
     public void handleMessage(@Valid @Payload ChatMessageRequestDto requestDto, Principal principal) {
         Long memberId = extractMemberId(principal);
         ChatMessageResponseDto responseDto = chatMessageService.createChatMessage(requestDto, memberId);
 
-        template.convertAndSend(
-                "/topic/chatroom." + requestDto.getRoomId(),
-                responseDto
-        );
+        chatBroadcaster.publish(requestDto.getRoomId(), responseDto);
     }
 
     @MessageMapping("/chat.deleteMessage")
@@ -44,10 +41,7 @@ public class ChatMessageController {
         DeletedMessageResponseDto responseDto =
                 chatMessageService.deleteMessage(requestDto.getRoomId(), requestDto.getMessageId(), senderId);
 
-        template.convertAndSend(
-                "/topic/chatroom." + requestDto.getRoomId(),
-                responseDto
-        );
+        chatBroadcaster.publish(requestDto.getRoomId(), responseDto);
     }
 
     private Long extractMemberId(Principal principal) {
