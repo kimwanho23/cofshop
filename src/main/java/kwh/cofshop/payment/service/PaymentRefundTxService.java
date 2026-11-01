@@ -44,7 +44,7 @@ public class PaymentRefundTxService {
             throw new BusinessException(BusinessErrorCode.PAYMENT_CANNOT_REFUND);
         }
 
-        if (orderStatePort.getOrderState(orderId) != OrderStatus.PAID) {
+        if (!orderStatePort.getOrderState(orderId).isRefundable()) {
             throw new BusinessException(BusinessErrorCode.PAYMENT_CANNOT_REFUND);
         }
 
@@ -62,7 +62,7 @@ public class PaymentRefundTxService {
         if (paymentEntity.getStatus() == PaymentStatus.REFUND_PENDING) {
             paymentEntity.paymentStatusChange(PaymentStatus.PAID);
             if (orderId != null && orderStatePort.getOrderState(orderId) == OrderStatus.REFUND_PENDING) {
-                orderStatePort.changeOrderState(orderId, OrderStatus.PAID);
+                orderStatePort.rollbackRefundPending(orderId);
             }
         }
     }

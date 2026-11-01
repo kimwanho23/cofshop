@@ -55,19 +55,19 @@ public class RestTemplatePortOnePaymentClient implements PortOnePaymentClient {
                     headers
             );
 
-            ResponseEntity<PortOneCancellation> response = portOneRestTemplate.exchange(
+            ResponseEntity<PortOneCancelResponse> response = portOneRestTemplate.exchange(
                     portOneApiProperties.getBaseUrl() + "/payments/{paymentId}/cancel",
                     HttpMethod.POST,
                     request,
-                    PortOneCancellation.class,
+                    PortOneCancelResponse.class,
                     paymentId
             );
 
-            if (response.getBody() == null) {
+            if (response.getBody() == null || response.getBody().cancellation() == null) {
                 throw new PortOneClientException("PortOne cancel response is empty");
             }
 
-            return response.getBody();
+            return response.getBody().cancellation();
         } catch (RestClientException e) {
             throw new PortOneClientException("Failed to cancel payment in PortOne", e);
         }

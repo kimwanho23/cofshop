@@ -36,6 +36,9 @@ class PaymentReconciliationSchedulerTest {
     @Mock
     private PaymentReconciliationTxService reconciliationTxService;
 
+    @Mock
+    private kwh.cofshop.payment.service.PaymentOperationLogService operationLogService;
+
     @InjectMocks
     private PaymentReconciliationScheduler scheduler;
 
@@ -62,13 +65,17 @@ class PaymentReconciliationSchedulerTest {
     }
 
     @Test
-    @DisplayName("대사: 금액 불일치가 있어도 예외가 밖으로 나가지 않음")
+    @DisplayName("대사: 금액 불일치는 이력을 남기고 다음 건을 계속 처리")
     void reconcilePayments_mismatchHandled() {
+        kwh.cofshop.payment.domain.PaymentEntity payment = org.mockito.Mockito.mock(kwh.cofshop.payment.domain.PaymentEntity.class);
+        when(payment.getOrderId()).thenReturn(100L);
+        when(paymentEntityRepository.findById(1L)).thenReturn(java.util.Optional.of(payment));
         doThrow(new BusinessException(BusinessErrorCode.PAYMENT_AMOUNT_DISCREPANCY))
                 .when(paymentService).reconcilePayment(1L);
 
         scheduler.reconcilePayments();
 
+        verify(operationLogService).recordMismatchOnce(1L, 100L, BusinessErrorCode.PAYMENT_AMOUNT_DISCREPANCY.getCode());
         verify(paymentService).reconcilePayment(2L);
     }
 }

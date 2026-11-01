@@ -45,13 +45,11 @@ public class PaymentEntity {
     @Column(nullable = false)
     private PaymentStatus status; // 결제 상태
 
-    @Column(nullable = false)
+    // 회원 탈퇴 시 비운다
     private String buyerEmail;
 
-    @Column(nullable = false)
     private String buyerName;
 
-    @Column(nullable = false)
     private String buyerTel;
 
     @Column(name = "pg_provider", nullable = false)

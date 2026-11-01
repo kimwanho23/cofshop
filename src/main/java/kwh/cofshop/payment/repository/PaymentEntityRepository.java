@@ -31,6 +31,17 @@ public interface PaymentEntityRepository extends JpaRepository<PaymentEntity, Lo
 
     Optional<PaymentEntity> findByOrderId(Long orderId);
 
+    // 탈퇴 트랜잭션의 회원·주문 변경이 사라지지 않도록 영속성 컨텍스트를 비우지 않는다
+    @Modifying
+    @Query("""
+            UPDATE PaymentEntity p
+            SET p.buyerEmail = NULL, p.buyerName = NULL, p.buyerTel = NULL
+            WHERE p.memberId = :memberId
+            """)
+    int clearBuyerInfo(@Param("memberId") Long memberId);
+
+    List<PaymentEntity> findTop50ByStatusOrderByIdAsc(PaymentStatus status);
+
     // 오래 확인하지 않은 건부터 조회해 미결제 건이 많아도 뒤의 건이 밀리지 않게 함
     @Query("""
             SELECT p.id

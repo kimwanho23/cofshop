@@ -6,6 +6,7 @@ import kwh.cofshop.global.exception.BusinessException;
 import kwh.cofshop.global.exception.errorcodes.BusinessErrorCode;
 import kwh.cofshop.payment.domain.PaymentStatus;
 import kwh.cofshop.payment.repository.PaymentEntityRepository;
+import kwh.cofshop.payment.service.PaymentOperationLogService;
 import kwh.cofshop.payment.service.PaymentReconciliationTxService;
 import kwh.cofshop.payment.service.PaymentService;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class PaymentReconciliationScheduler {
     private final PaymentEntityRepository paymentEntityRepository;
     private final PaymentService paymentService;
     private final PaymentReconciliationTxService reconciliationTxService;
+    private final PaymentOperationLogService operationLogService;
 
     @Value("${payment.reconciliation.min-age-minutes:5}")
     private long minAgeMinutes;
@@ -39,7 +41,7 @@ public class PaymentReconciliationScheduler {
     private int batchSize;
 
     @Scheduled(fixedDelayString = "${payment.reconciliation.fixed-delay-ms:60000}")
-    @DistributedLock(keyName = "'payment:reconciliation'", waitTime = 0, leaseTime = 10, timeUnit = TimeUnit.MINUTES)
+    @DistributedLock(keyName = "'payment:reconciliation'", waitTime = 0, skipIfLocked = true, timeUnit = TimeUnit.MINUTES)
     public void reconcilePayments() {
         LocalDateTime now = LocalDateTime.now();
         List<Long> paymentIds = paymentEntityRepository.findReconciliationTargets(
@@ -70,11 +72,21 @@ public class PaymentReconciliationScheduler {
         }
     }
 
+    private void recordMismatch(Long paymentId, String errorCode) {
+        try {
+            paymentEntityRepository.findById(paymentId).ifPresent(payment ->
+                    operationLogService.recordMismatchOnce(paymentId, payment.getOrderId(), errorCode));
+        } catch (Exception e) {
+            log.error("[Reconcile] 불일치 이력 저장 실패 paymentId={}", paymentId, e);
+        }
+    }
+
     private void handleBusinessFailure(Long paymentId, BusinessException e) {
         if (e.getErrorCode() == BusinessErrorCode.PAYMENT_AMOUNT_DISCREPANCY
                 || e.getErrorCode() == BusinessErrorCode.PAYMENT_UID_DISCREPANCY) {
             log.error("[Reconcile] PG와 결제 정보 불일치 paymentId={}, code={}", paymentId, e.getErrorCode().getCode());
             Metrics.counter("payment.reconciliation.mismatch").increment();
+            recordMismatch(paymentId, e.getErrorCode().getCode());
             return;
         }
         log.warn("[Reconcile] 대사 보류 paymentId={}, code={}", paymentId, e.getErrorCode().getCode());

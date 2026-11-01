@@ -123,7 +123,7 @@ class PaymentRefundTxServiceTest {
         paymentRefundTxService.rollbackRefundPending(1L, 1L);
 
         verify(paymentEntity).paymentStatusChange(PaymentStatus.PAID);
-        verify(orderStatePort).changeOrderState(10L, OrderStatus.PAID);
+        verify(orderStatePort).rollbackRefundPending(10L);
     }
 
     @Test

@@ -30,6 +30,14 @@ public class ApprovedRefundExecutor {
 
         PaymentRefundRequestDto requestDto = new PaymentRefundRequestDto();
         requestDto.setAmount(paymentEntity.getPaidAmount());
-        paymentService.refundPayment(paymentEntity.getId(), paymentEntity.getMemberId(), requestDto);
+        try {
+            paymentService.refundPayment(paymentEntity.getId(), paymentEntity.getMemberId(), requestDto);
+        } catch (BusinessException e) {
+            if (e.getErrorCode() != BusinessErrorCode.PAYMENT_ALREADY_CANCELLED) {
+                throw e;
+            }
+            // 조회 후 락을 얻기 전에 다른 요청이 환불을 끝낸 경우. 실패가 아니므로 주문 보정만 확인
+            paymentRefundTxService.confirmRefundForRecovery(paymentEntity.getId(), paymentEntity.getMemberId());
+        }
     }
 }

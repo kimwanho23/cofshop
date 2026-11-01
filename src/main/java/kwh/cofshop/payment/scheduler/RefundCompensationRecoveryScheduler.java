@@ -30,7 +30,7 @@ public class RefundCompensationRecoveryScheduler {
     private int maxRetries;
 
     @Scheduled(fixedDelayString = "${payment.refund.recovery.fixed-delay-ms:60000}")
-    @DistributedLock(keyName = "'refund:compensation:recovery'", waitTime = 0, leaseTime = 5, timeUnit = TimeUnit.MINUTES)
+    @DistributedLock(keyName = "'refund:compensation:recovery'", waitTime = 0, skipIfLocked = true, timeUnit = TimeUnit.MINUTES)
     public void recoverFailedCompensations() {
         List<ClaimedRecoveryTask> claimedTasks = recoveryQueueService.dequeueBatch(batchSize);
         if (claimedTasks.isEmpty()) {

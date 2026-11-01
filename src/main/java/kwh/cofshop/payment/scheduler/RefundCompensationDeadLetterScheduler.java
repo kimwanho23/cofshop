@@ -27,8 +27,7 @@ public class RefundCompensationDeadLetterScheduler {
     @Scheduled(fixedDelayString = "${payment.refund.recovery.dead-letter.fixed-delay-ms:300000}")
     @DistributedLock(
             keyName = "'refund:compensation:dead-letter:monitor'",
-            waitTime = 0,
-            leaseTime = 5,
+            waitTime = 0, skipIfLocked = true,
             timeUnit = TimeUnit.MINUTES
     )
     public void inspectDeadLetters() {

@@ -198,8 +198,8 @@ class PaymentServiceTest {
     }
 
     @Test
-    @DisplayName("createPaymentRequest_duplicateInsert_returnsExisting")
-    void createPaymentRequest_duplicateInsert_returnsExisting() {
+    @DisplayName("결제 생성: 유니크 제약 위반은 롤백되도록 그대로 전파")
+    void createPaymentRequest_duplicateInsert_propagates() {
         OrderPaymentPrepareInfo paymentPrepareInfo = new OrderPaymentPrepareInfo(
                 1L,
                 "order-1",
@@ -209,22 +209,15 @@ class PaymentServiceTest {
                 "tester",
                 "010-0000-0000"
         );
-        when(paymentEntityRepository.findByOrderId(1L))
-                .thenReturn(Optional.empty())
-                .thenReturn(Optional.of(mockDuplicatedPayment(1L, 11L)));
+        when(paymentEntityRepository.findByOrderId(1L)).thenReturn(Optional.empty());
         when(orderPaymentPreparePort.prepare(1L, 1L)).thenReturn(paymentPrepareInfo);
         when(paymentEntityRepository.save(any(PaymentEntity.class)))
                 .thenThrow(new DataIntegrityViolationException("duplicate"));
 
         PaymentPrepareRequestDto requestDto = new PaymentPrepareRequestDto("kakaopay", "card");
 
-        PaymentCreateResult result = paymentService.createPaymentRequest(1L, 1L, requestDto);
-        PaymentResponseDto response = result.response();
-
-        assertThat(response.getPaymentId()).isEqualTo(11L);
-        assertThat(response.getMerchantUid()).isEqualTo("order-1");
-        assertThat(result.created()).isFalse();
-        verify(orderPaymentPreparePort).prepare(1L, 1L);
+        assertThatThrownBy(() -> paymentService.createPaymentRequest(1L, 1L, requestDto))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
@@ -805,7 +798,7 @@ class PaymentServiceTest {
         when(paymentEntity.getPaidAmount()).thenReturn(1000L);
         when(paymentEntity.getOrderId()).thenReturn(1L);
         when(paymentEntityRepository.findByIdAndMemberId(1L, 1L)).thenReturn(Optional.of(paymentEntity));
-        when(orderStatePort.getOrderState(1L)).thenReturn(OrderStatus.DELIVERED);
+        when(orderStatePort.getOrderState(1L)).thenReturn(OrderStatus.CANCELLED);
 
         PaymentRefundRequestDto requestDto = new PaymentRefundRequestDto();
         requestDto.setAmount(1000L);

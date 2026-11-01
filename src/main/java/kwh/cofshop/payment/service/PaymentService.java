@@ -26,7 +26,6 @@ import kwh.cofshop.payment.repository.projection.PaymentProviderLookupProjection
 import io.micrometer.core.instrument.Metrics;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -93,16 +92,8 @@ public class PaymentService {
                 normalizedPgProvider,
                 normalizedPayMethod
         );
-        try {
-            paymentEntityRepository.save(currentPayment);
-        } catch (DataIntegrityViolationException e) {
-            PaymentEntity duplicatedPayment = paymentEntityRepository.findByOrderId(orderId)
-                    .orElseThrow(() -> e);
-            if (!duplicatedPayment.getMemberId().equals(memberId)) {
-                throw new BusinessException(BusinessErrorCode.PAYMENT_NOT_FOUND);
-            }
-            return PaymentCreateResult.reused(PaymentResponseDto.from(duplicatedPayment));
-        }
+        // 중복 생성은 락과 order_id 유니크 제약이 막음. 위반 시 트랜잭션이 이미 롤백 표시되므로 409로 응답하고 재요청에서 재사용
+        paymentEntityRepository.save(currentPayment);
         return PaymentCreateResult.created(PaymentResponseDto.from(currentPayment));
     }
 
@@ -322,7 +313,7 @@ public class PaymentService {
         }
 
         Long orderId = getOrderId(paymentEntity);
-        if (orderStatePort.getOrderState(orderId) != OrderStatus.PAID) {
+        if (!orderStatePort.getOrderState(orderId).isRefundable()) {
             throw new BusinessException(BusinessErrorCode.PAYMENT_CANNOT_REFUND);
         }
         orderRefundPort.validateRefundApproved(orderId);

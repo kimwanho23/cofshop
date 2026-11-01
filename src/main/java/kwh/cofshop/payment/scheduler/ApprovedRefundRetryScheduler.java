@@ -28,7 +28,7 @@ public class ApprovedRefundRetryScheduler {
     private int batchSize;
 
     @Scheduled(fixedDelayString = "${payment.refund.approved-retry.fixed-delay-ms:300000}")
-    @DistributedLock(keyName = "'refund:approved:retry'", waitTime = 0, leaseTime = 5, timeUnit = TimeUnit.MINUTES)
+    @DistributedLock(keyName = "'refund:approved:retry'", waitTime = 0, skipIfLocked = true, timeUnit = TimeUnit.MINUTES)
     public void retryApprovedRefunds() {
         LocalDateTime approvedBefore = LocalDateTime.now().minusMinutes(Math.max(graceMinutes, 0L));
         List<Long> orderIds = orderRefundPort.findPendingApprovedRefundOrderIds(approvedBefore, Math.max(batchSize, 1));

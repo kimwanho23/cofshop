@@ -18,6 +18,9 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -68,6 +71,42 @@ class ApprovedRefundExecutorTest {
 
         verify(paymentRefundTxService).confirmRefundForRecovery(10L, 1L);
         verifyNoInteractions(paymentService);
+    }
+
+    @Test
+    @DisplayName("승인 환불: 락 대기 중 다른 요청이 환불을 끝내면 주문 보정만 확인")
+    void execute_cancelledWhileWaitingLock_confirmsOnly() {
+        PaymentEntity paymentEntity = mock(PaymentEntity.class);
+        when(paymentEntity.getId()).thenReturn(10L);
+        when(paymentEntity.getMemberId()).thenReturn(1L);
+        when(paymentEntity.getStatus()).thenReturn(PaymentStatus.PAID);
+        when(paymentEntity.getPaidAmount()).thenReturn(1000L);
+        when(paymentEntityRepository.findByOrderId(100L)).thenReturn(Optional.of(paymentEntity));
+        doThrow(new BusinessException(BusinessErrorCode.PAYMENT_ALREADY_CANCELLED))
+                .when(paymentService).refundPayment(eq(10L), eq(1L), any());
+
+        approvedRefundExecutor.execute(100L);
+
+        verify(paymentRefundTxService).confirmRefundForRecovery(10L, 1L);
+    }
+
+    @Test
+    @DisplayName("승인 환불: 다른 환불 실패는 재시도할 수 있게 전파")
+    void execute_otherFailure_propagates() {
+        PaymentEntity paymentEntity = mock(PaymentEntity.class);
+        when(paymentEntity.getId()).thenReturn(10L);
+        when(paymentEntity.getMemberId()).thenReturn(1L);
+        when(paymentEntity.getStatus()).thenReturn(PaymentStatus.PAID);
+        when(paymentEntity.getPaidAmount()).thenReturn(1000L);
+        when(paymentEntityRepository.findByOrderId(100L)).thenReturn(Optional.of(paymentEntity));
+        doThrow(new BusinessException(BusinessErrorCode.PAYMENT_CANNOT_REFUND))
+                .when(paymentService).refundPayment(eq(10L), eq(1L), any());
+
+        assertThatThrownBy(() -> approvedRefundExecutor.execute(100L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(BusinessErrorCode.PAYMENT_CANNOT_REFUND);
+        verifyNoInteractions(paymentRefundTxService);
     }
 
     @Test
